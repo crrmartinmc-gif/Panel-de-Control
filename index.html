@@ -246,8 +246,10 @@ window.panelMantenimientoCallback = function(data){
   window.__panelMantenimientoData = data || {ok:false,error:'Respuesta vacía'};
 };
 
+</script>
 <!-- V23: etiqueta SCRIPT FIJA; no se crea desde JavaScript. -->
 <script src="https://script.google.com/macros/s/AKfycbwCYctsbDVX3Vypjo69LCk9JU91uH9iADYcKjgd9QyFdfsnBDnKCdmsQJgHaNdprow/exec?callback=panelMantenimientoCallback"></script>
+<script>
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function norm(v){return String(v??'').trim().replace(/\s+/g,' ').toLowerCase();}
 function clean(v){return String(v??'').trim().replace(/\s+/g,' ');}
