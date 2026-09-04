@@ -302,18 +302,28 @@ function looksLikePlate(v){
 function extractDateLabel(v){
   const s=clean(v);if(!s)return null;
   const range=s.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\s*(?:al|a|hasta|–|-)\s*(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/i);
-  if(range){let y=range[3]?+range[3]:new Date().getFullYear();if(y<100)y+=2000;return dateKey(new Date(y,+range[2]-1,+range[1]));}
-  const d=parseDateAny(s);return d?dateKey(d):null;
+  if(range){
+    let y1=range[3]?+range[3]:new Date().getFullYear(); if(y1<100)y1+=2000;
+    let y2=range[6]?+range[6]:y1; if(y2<100)y2+=2000;
+    const inicio=dateKey(new Date(y1,+range[2]-1,+range[1]));
+    const fin=dateKey(new Date(y2,+range[5]-1,+range[4]));
+    return {inicio,fin,esRango:true};
+  }
+  const d=parseDateAny(s);return d?{inicio:dateKey(d),fin:dateKey(d),esRango:false}:null;
 }
 function detectColumnDate(rows,col){
   const radius=8;
-  // Prefer the nearest date/range in the header area above the data.
-  for(let r=0;r<Math.min(rows.length,12);r++){
+  // Busca la etiqueta de fecha/rango más cercana al bloque de la patente.
+  for(let r=0;r<Math.min(rows.length,15);r++){
     for(let c=Math.max(0,col-radius);c<=Math.min((rows[r]||[]).length-1,col+radius);c++){
       const d=extractDateLabel(rows[r]?.[c]);if(d)return d;
     }
   }
   return null;
+}
+function dateInRange(key,d){
+  if(!d||!key)return false;
+  return key>=d.inicio && key<=d.fin;
 }
 function detectDomainColumns(rows,hi){
   const candidates=[];
@@ -380,7 +390,8 @@ function normalize2026(source){
       seen.add(key);
 
       services.push({
-        fecha:dc.date,
+        fecha:dc.date?.inicio||null,
+        fechaFin:dc.date?.fin||dc.date?.inicio||null,
         descripcion:desc,
         hora,
         destino,
@@ -403,7 +414,8 @@ function normalize2026(source){
     domainColumns:domainCols.map(x=>({
       col:x.col+1,
       plateCount:x.plateCount,
-      date:x.date
+      date:x.date?.inicio||null,
+      dateFin:x.date?.fin||null
     })),
     servicesFound:services.length,
     rows:rows.length,
@@ -453,7 +465,7 @@ function buildEntities(){
 function estadoClase(e){const n=norm(e);if(n.includes('taller'))return'yellow';if(n.includes('fuera')||n.includes('suspend'))return'red';if(n.includes('final'))return'blue';return'gray';}
 function servicesForDate(){
   const key=dateKey(state.fecha);
-  const exact=state.servicios.filter(s=>s.fecha===key);
+  const exact=state.servicios.filter(s=>s.fecha===key || (s.fecha && s.fechaFin && key>=s.fecha && key<=s.fechaFin));
   if(exact.length)return exact;
   // Undated records are shown only when no dated records exist for that day.
   return state.servicios.filter(s=>!s.fecha);
