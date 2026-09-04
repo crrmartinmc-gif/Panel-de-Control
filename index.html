@@ -119,7 +119,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
    <div class="card panel">
     <div class="notice">
       <strong>Cómo estamos construyendo la flota:</strong>
-      se toma la patente como identificador único y se cruzan sus apariciones en servicios con la información disponible de mantenimiento.
+      se toma la patente como identificador único y se detectan sus apariciones directamente en las hojas, incluyendo los bloques con desplegables, para luego cruzarlas con servicios y mantenimiento.
       No se modifica ninguna hoja de Google Sheets.
     </div>
     <div class="filters">
@@ -374,15 +374,37 @@ function domainHeaderInColumn(rows,col){
 }
 function uniqueSorted(arr){return [...new Set(arr.filter(Boolean).map(clean))].sort((a,b)=>a.localeCompare(b,'es'));}
 function buildEntities(){
-  const s=state.servicios;
-  state.flota=uniqueSorted(s.map(x=>x.dominio)).map(d=>({dominio:d}));
+  const s=Array.isArray(state.servicios)?state.servicios:[];
+  const plates=new Map();
+  const addPlate=(raw,source='')=>{
+    const rawText=clean(raw).toUpperCase().replace(/\s+/g,'');
+    if(!looksLikePlate(rawText))return;
+    if(!plates.has(rawText))plates.set(rawText,{dominio:rawText,fuentes:new Set()});
+    if(source)plates.get(rawText).fuentes.add(source);
+  };
+
+  // 1) Primary source: every cell of every loaded sheet.
+  // This is intentional because the 2026 sheet uses dropdown cells and
+  // the patent can live in a repeated weekly block rather than a simple column.
+  Object.entries(state.fuentes||{}).forEach(([name,f])=>{
+    (f?.rows||[]).forEach(row=>(row||[]).forEach(cell=>addPlate(cell,name)));
+  });
+
+  // 2) Normalized services, as an additional source.
+  s.forEach(x=>addPlate(x.dominio,'Servicios'));
+
+  state.flota=[...plates.values()].map(v=>{
+    const m=state.mantenimiento.find(x=>norm(x.dominio)===norm(v.dominio));
+    return {
+      dominio:v.dominio,
+      modelo:m?.modelo||'',
+      estado:m?.estado||'Operativo',
+      fuentes:[...v.fuentes]
+    };
+  }).sort((a,b)=>a.dominio.localeCompare(b.dominio,'es'));
+
   state.choferes=uniqueSorted(s.map(x=>x.chofer)).map(n=>({nombre:n}));
   state.destinos=uniqueSorted(s.map(x=>x.destino)).map(n=>({destino:n}));
-  state.flota.forEach(v=>{
-    const m=state.mantenimiento.find(x=>norm(x.dominio)===norm(v.dominio));
-    v.estado=m?.estado||'Operativo';
-    v.modelo=m?.modelo||'';
-  });
 }
 function estadoClase(e){const n=norm(e);if(n.includes('taller'))return'yellow';if(n.includes('fuera')||n.includes('suspend'))return'red';if(n.includes('final'))return'blue';return'gray';}
 function servicesForDate(){
@@ -559,9 +581,9 @@ function renderFlota(){
   let list=base.map(v=>{
     const servicios=state.servicios.filter(s=>norm(s.dominio)===norm(v.dominio));
     const choferes=uniqueSorted(servicios.map(s=>s.chofer));
-    return {
-      ...v,
-      estadoReal:estadoFlotaDesdeDatos(v),
+    const m=state.mantenimiento.find(x=>norm(x.dominio)===norm(v.dominio));
+    return {...v,
+      estadoReal:estadoFlotaDesdeDatos({...v,estado:m?.estado||v.estado}),
       servicios:servicios.length,
       choferes,
       ultimaFecha:servicios.map(s=>s.fecha).filter(Boolean).sort().pop()||''
@@ -579,7 +601,10 @@ function renderFlota(){
 
   const total=base.length;
   const con=base.filter(v=>state.servicios.some(s=>norm(s.dominio)===norm(v.dominio))).length;
-  const taller=base.filter(v=>estadoFlotaDesdeDatos(v)==='En taller').length;
+  const taller=base.filter(v=>{
+    const m=state.mantenimiento.find(x=>norm(x.dominio)===norm(v.dominio));
+    return estadoFlotaDesdeDatos({...v,estado:m?.estado||v.estado})==='En taller';
+  }).length;
   const sin=total-con;
 
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
