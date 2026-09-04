@@ -77,7 +77,8 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
   <div class="menu-title">Menú principal</div>
   <nav class="nav">
    <button class="active" data-page="inicio"><i data-lucide="house"></i><span>Inicio</span></button>
-   <button data-page="flota"><i data-lucide="truck"></i><span>Flota</span></button>
+   <button data-page="mapa"><i data-lucide="map"></i><span>Mapa Operativo</span></button>
+    <button data-page="flota"><i data-lucide="truck"></i><span>Flota</span></button>
    <button data-page="choferes"><i data-lucide="users"></i><span>Choferes</span></button>
    <button data-page="servicios"><i data-lucide="clipboard-list"></i><span>Servicios</span></button>
    <button data-page="mantenimiento"><i data-lucide="wrench"></i><span>Mantenimiento</span></button>
@@ -212,15 +213,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 </div>
 
 <script>
-/* V27: lectura de valores + colores reales de Mantenimiento. */
-window.__mantenimientoColorData = null;
-function panelMantenimientoCallback(data){
-  window.__mantenimientoColorData = data || null;
-}
-</script>
-<script src="https://script.google.com/macros/s/AKfycbwCYctsbDVX3Vypjo69LCk9JU91uH9iADYcKjgd9QyFdfsnBDnKCdmsQJgHaNdprow/exec?callback=panelMantenimientoCallback"></script>
-<script>
-// V27: Mantenimiento usa B=Estado, C=Dominio y conserva colores reales.
+// V25: Mantenimiento usa directamente la columna B=Estado y C=Dominio.
 const CONFIG={
   spreadsheetId:'1ysCEVN9PljeIcIFxvBsoxL9iXOdWbVTjm4mn8GcPkK8',
   sheets:{
@@ -560,7 +553,6 @@ function renderServicios(){
     const blob=norm([s.descripcion,s.dominio,s.chofer,s.destino].join(' '));
     return (!q||blob.includes(q))&&(!est||(s.estado||'Programado')===est)&&(!veh||s.dominio===veh)&&(!ch||s.chofer===ch);
   });
-  list.sort((a,b)=>norm(a.descripcion).localeCompare(norm(b.descripcion),'es')||norm(a.hora).localeCompare(norm(b.hora),'es')||norm(a.dominio).localeCompare(norm(b.dominio),'es'));
   document.getElementById('serviciosTable').innerHTML=renderServicesTable(list);
 }
 function fillServiceFilters(){
@@ -577,48 +569,62 @@ function renderFlota(){
 }
 function renderChoferes(){
   const q=norm(document.getElementById('fChofer').value);
-  const list=state.choferes.filter(x=>!q||norm(x.nombre).includes(q)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  const list=state.choferes.filter(x=>!q||norm(x.nombre).includes(q));
   document.getElementById('choferTable').innerHTML=list.length?`<div style="overflow:auto"><table><thead><tr><th>Chofer</th><th>Servicios</th><th>Vehículos utilizados</th></tr></thead><tbody>${list.map(x=>{
     const ss=state.servicios.filter(s=>s.chofer===x.nombre);const vv=uniqueSorted(ss.map(s=>s.dominio)).join(', ');
     return `<tr><td><strong>${esc(x.nombre)}</strong></td><td>${ss.length}</td><td>${esc(vv||'—')}</td></tr>`;
   }).join('')}</tbody></table></div>`:'<div class="empty">No hay choferes detectados.</div>';
 }
 function renderMantenimiento(){
-  const q=norm(document.getElementById('fMant').value),e=norm(document.getElementById('fMantEstado').value);
+  const q=norm(document.getElementById('fMant').value),e=document.getElementById('fMantEstado').value;
   const list=state.mantenimiento.filter(x=>
     (!q||norm(Object.values(x).join(' ')).includes(q))&&
-    (!e||norm(x.estado)===e)
-  ).sort((a,b)=>a.dominio.localeCompare(b.dominio,'es'));
+    (!e||norm(x.estado)===norm(e))
+  );
 
   document.getElementById('mantTable').innerHTML=list.length?`
     <div style="overflow:auto">
       <table>
-        <thead><tr>
-          <th>Modelo</th><th>Estado</th><th>Dominio</th><th>Km Actual</th><th>Fecha</th><th>Service</th>
-          <th>Estado del Service</th><th>Pastilla de Freno %</th><th>Ploteo</th><th>Vtv</th><th>Espejos</th><th>Luces</th>
-        </tr></thead>
-        <tbody>${list.slice(0,500).map(x=>`
+        <thead>
           <tr>
-            <td>${esc(x.modelo||'—')}</td>
-            <td>${celdaColorHtml(x.estado,x.bgEstado)}</td>
-            <td>${celdaColorHtml(x.dominio,x.bgDominio)}</td>
-            <td>${esc(x.km||'—')}</td>
-            <td>${esc(x.fecha||'—')}</td>
-            <td>${esc(x.service||'—')}</td>
-            <td>${celdaColorHtml(x.estadoService,x.bgEstadoService)}</td>
-            <td>${celdaColorHtml(x.pastilla,x.bgPastilla)}</td>
-            <td>${celdaColorHtml(x.ploteo,x.bgPloteo)}</td>
-            <td>${celdaColorHtml(x.vtv,x.bgVtv)}</td>
-            <td>${celdaColorHtml(x.espejos,x.bgEspejos)}</td>
-            <td>${celdaColorHtml(x.luces,x.bgLuces)}</td>
-          </tr>`).join('')}
+            <th>Modelo</th>
+            <th>Estado</th>
+            <th>Dominio</th>
+            <th>Km Actual</th>
+            <th>Fecha</th>
+            <th>Service</th>
+            <th>Estado del Service</th>
+            <th>Pastilla de Freno %</th>
+            <th>Ploteo</th>
+            <th>Vtv</th>
+            <th>Espejos</th>
+            <th>Luces</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${list.slice(0,500).map(x=>`
+            <tr>
+              <td>${esc(x.modelo||'—')}</td>
+              <td><span class="badge ${estadoClase(x.estado||'')}">${esc(x.estado||'—')}</span></td>
+              <td><strong>${esc(x.dominio||'—')}</strong></td>
+              <td>${esc(x.km||'—')}</td>
+              <td>${esc(x.fecha||'—')}</td>
+              <td>${esc(x.service||'—')}</td>
+              <td>${esc(x.estadoService||'—')}</td>
+              <td>${esc(x.pastilla||'—')}</td>
+              <td>${esc(x.ploteo||'—')}</td>
+              <td>${esc(x.vtv||'—')}</td>
+              <td>${esc(x.espejos||'—')}</td>
+              <td>${esc(x.luces||'—')}</td>
+            </tr>
+          `).join('')}
         </tbody>
       </table>
     </div>`:'<div class="empty">No se detectaron registros de mantenimiento.</div>';
 }
 function renderDestinos(){
   const q=norm(document.getElementById('fDestino').value);
-  const list=state.destinos.filter(x=>!q||norm(x.destino).includes(q)).sort((a,b)=>a.destino.localeCompare(b.destino,'es'));
+  const list=state.destinos.filter(x=>!q||norm(x.destino).includes(q));
   document.getElementById('destinoTable').innerHTML=list.length?`<div style="overflow:auto"><table><thead><tr><th>Destino</th><th>Servicios</th><th>Vehículos</th><th>Choferes</th></tr></thead><tbody>${list.map(x=>{
     const ss=state.servicios.filter(s=>s.destino===x.destino);return `<tr><td><strong>${esc(x.destino)}</strong></td><td>${ss.length}</td><td>${uniqueSorted(ss.map(s=>s.dominio)).length}</td><td>${uniqueSorted(ss.map(s=>s.chofer)).length}</td></tr>`;
   }).join('')}</tbody></table></div>`:'<div class="empty">No hay destinos detectados.</div>';
@@ -638,7 +644,7 @@ function renderReportes(){
     count.get(key).n++;
   });
 
-  const reps=[...count.values()].filter(x=>x.n>1).sort((a,b)=>[a.descripcion,a.hora,a.destino].join(' ').localeCompare([b.descripcion,b.hora,b.destino].join(' '),'es'));
+  const reps=[...count.values()].filter(x=>x.n>1).sort((a,b)=>b.n-a.n);
   const unicos=[...count.values()].filter(x=>x.n===1).length;
 
   document.getElementById('rRepetidos').textContent=reps.length;
@@ -707,28 +713,9 @@ function estadoPorColor(color){
   }
   return 'Sin estado';
 }
-function colorTexto(bg){
-  const x=String(bg||'').toLowerCase().replace(/\s+/g,'');
-  if(!x || x==='#ffffff' || x==='#fff' || x==='#fefefe') return '#193329';
-  const m=x.match(/^#([0-9a-f]{6})$/i);
-  if(!m)return '#193329';
-  const r=parseInt(m[1].slice(0,2),16),g=parseInt(m[1].slice(2,4),16),b=parseInt(m[1].slice(4,6),16);
-  return (0.299*r+0.587*g+0.114*b)<155 ? '#fff' : '#193329';
-}
-function celdaColorHtml(valor,bg){
-  const v=clean(valor);
-  if(!v) return '—';
-  const color=String(bg||'').trim().toLowerCase();
-  const style=color && color!=='#ffffff' && color!=='#fff' && color!=='#fefefe'
-    ? `display:inline-block;padding:5px 9px;border-radius:7px;background:${esc(color)};color:${colorTexto(color)};font-weight:800;white-space:nowrap`
-    : 'font-weight:600';
-  return `<span style="${style}">${esc(v)}</span>`;
-}
 function leerEstadoMantenimientoDesdeHoja(data){
   const rows=data?.rows||[];
-  const bgs=data?.backgrounds||[];
   if(!rows.length) return [];
-
   return rows.slice(1).map((r,i)=>({
     modelo:clean(r?.[0]||''),
     estado:clean(r?.[1]||'Sin estado') || 'Sin estado',
@@ -742,14 +729,6 @@ function leerEstadoMantenimientoDesdeHoja(data){
     vtv:clean(r?.[9]||''),
     espejos:clean(r?.[10]||''),
     luces:clean(r?.[11]||''),
-    bgEstado:bgs[i+1]?.[1]||'',
-    bgDominio:bgs[i+1]?.[2]||'',
-    bgEstadoService:bgs[i+1]?.[6]||'',
-    bgPastilla:bgs[i+1]?.[7]||'',
-    bgPloteo:bgs[i+1]?.[8]||'',
-    bgVtv:bgs[i+1]?.[9]||'',
-    bgEspejos:bgs[i+1]?.[10]||'',
-    bgLuces:bgs[i+1]?.[11]||'',
     fila:i+2
   })).filter(x=>x.dominio);
 }
@@ -766,7 +745,7 @@ async function cargarTodo(){
     state.servicios=f2026?.rows?.length?normalize2026(f2026):[];
     // Mantenimiento V25: lectura directa de la hoja.
     // Estructura: A=Modelo, B=Estado, C=Dominio, D=Km Actual, E=Fecha, F=Service, G=Estado del Service, H=Pastilla de Freno %, I=Ploteo, J=Vtv, K=Espejos, L=Luces.
-    state.mantenimiento=leerEstadoMantenimientoDesdeHoja(window.__mantenimientoColorData?.ok ? window.__mantenimientoColorData : fuentes['Mantenimiento']);
+    state.mantenimiento=leerEstadoMantenimientoDesdeHoja(fuentes['Mantenimiento']);
     buildEntities();
     renderAll();
     const ok=Object.values(fuentes).filter(x=>x.rows?.length).length;
@@ -790,6 +769,16 @@ document.addEventListener('DOMContentLoaded',()=>{ if(window.lucide) lucide.crea
 
 
 <script>
+function prepararMapaOperativo(){
+  const activos=state.servicios.filter(s=>s.fecha===dateKey(new Date()) && s.dominio && s.chofer).length;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  set("mActivos",Math.min(4,uniqueSorted(state.servicios.filter(s=>s.fecha===dateKey(new Date())).map(s=>s.chofer)).length)+" / 4");
+  set("mRecorridos",activos);
+  set("mReclamos",0);
+  set("mAlertas",0);
+}
+const _renderAllOriginal=renderAll; renderAll=function(){_renderAllOriginal(); prepararMapaOperativo(); if(window.lucide)lucide.createIcons();};
+
 /* ===== FLOTA V7 ===== */
 function estadoFlotaDesdeDatos(v){
   const e=norm(v.estado||'');
@@ -823,7 +812,7 @@ function renderFlota(){
     if(actividad==='Con servicios' && v.servicios===0) return false;
     if(actividad==='Sin servicios' && v.servicios>0) return false;
     return true;
-  }).sort((a,b)=>a.dominio.localeCompare(b.dominio,'es'));
+  }).sort((a,b)=>b.servicios-a.servicios || a.dominio.localeCompare(b.dominio,'es'));
 
   const total=base.length;
   const con=base.filter(v=>state.servicios.some(s=>norm(s.dominio)===norm(v.dominio))).length;
