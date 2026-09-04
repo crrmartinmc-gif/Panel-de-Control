@@ -539,128 +539,81 @@ window.addEventListener('load',()=>{state.fecha=new Date();cargarTodo();});
 document.addEventListener('DOMContentLoaded',()=>{ if(window.lucide) lucide.createIcons(); });
 </script>
 
+
+
+
 <script>
-/* ===== FLOTA V6 ===== */
-function normFleet(v){
-  return String(v ?? '').trim().replace(/\s+/g,' ');
-}
-function patenteFleet(v){
-  const s=normFleet(v).toUpperCase();
-  if(!s) return '';
-  // Accept Argentine patent formats commonly found in the sheet.
-  if(/^[A-Z]{3}\d{3}$/.test(s) || /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(s) || /^[A-Z]{2}\d{3}[A-Z]$/.test(s)) return s;
-  return '';
-}
-function collectFleetFromServices(){
-  const arr = Array.isArray(window.servicios) ? window.servicios :
-              Array.isArray(window.services) ? window.services :
-              Array.isArray(window.todosLosServicios) ? window.todosLosServicios : [];
-  const map = new Map();
-  arr.forEach(s=>{
-    const raw = s.dominio ?? s.vehiculo ?? s.patente ?? s.vehicle ?? '';
-    const p = patenteFleet(raw);
-    if(!p) return;
-    if(!map.has(p)) map.set(p,{dominio:p,servicios:0,choferes:new Set(),ultimaFecha:'',modelo:''});
-    const x=map.get(p);
-    x.servicios++;
-    const ch=normFleet(s.chofer ?? s.driver ?? '');
-    if(ch) x.choferes.add(ch);
-    const fecha=normFleet(s.fecha ?? s.date ?? '');
-    if(fecha) x.ultimaFecha=fecha;
-  });
-  return map;
-}
-function collectFleetFromRaw(){
-  const out = new Map();
-  // Search every raw sheet row already loaded by the diagnostic reader.
-  const sources = Array.isArray(window.fuentes) ? window.fuentes :
-                  Array.isArray(window.sheetData) ? window.sheetData :
-                  Array.isArray(window.datosHojas) ? window.datosHojas : [];
-  function walk(rows){
-    if(!Array.isArray(rows)) return;
-    rows.forEach(r=>{
-      if(!Array.isArray(r)) return;
-      r.forEach(cell=>{
-        const p=patenteFleet(cell);
-        if(p && !out.has(p)) out.set(p,{dominio:p,servicios:0,choferes:new Set(),ultimaFecha:'',modelo:''});
-      });
-    });
-  }
-  sources.forEach(src=>{
-    if(Array.isArray(src?.rows)) walk(src.rows);
-    else if(Array.isArray(src?.data)) walk(src.data);
-    else walk(src);
-  });
-  return out;
-}
-function getFleetMap(){
-  const m=collectFleetFromRaw();
-  const s=collectFleetFromServices();
-  s.forEach((v,k)=>{
-    if(!m.has(k)) m.set(k,v);
-    else {
-      const x=m.get(k);
-      x.servicios=v.servicios;
-      v.choferes.forEach(c=>x.choferes.add(c));
-      if(v.ultimaFecha) x.ultimaFecha=v.ultimaFecha;
-    }
-  });
-  return m;
-}
-function limpiarFiltrosFlota(){
-  const a=document.getElementById('fFlota'),b=document.getElementById('estadoFlota'),c=document.getElementById('fActividadFlota');
-  if(a)a.value=''; if(b)b.value=''; if(c)c.value='';
-  renderFlota();
+/* ===== FLOTA V7 ===== */
+function estadoFlotaDesdeDatos(v){
+  const e=norm(v.estado||'');
+  if(e.includes('taller')||e.includes('mantenimiento')) return 'En taller';
+  if(e.includes('fuera')||e.includes('radiado')||e.includes('baja')) return 'Fuera de servicio';
+  return 'Operativo';
 }
 function renderFlota(){
-  const map=getFleetMap();
-  const q=normFleet(document.getElementById('fFlota')?.value).toLowerCase();
+  const q=norm(document.getElementById('fFlota')?.value||'');
   const estado=document.getElementById('estadoFlota')?.value||'';
   const actividad=document.getElementById('fActividadFlota')?.value||'';
 
-  let rows=[...map.values()].map(x=>{
-    const enTaller = typeof window.esVehiculoEnTaller==='function' ? !!window.esVehiculoEnTaller(x.dominio) : false;
-    const estadoReal=enTaller?'En taller':(x.servicios?'Operativo':'Sin actividad');
-    return {...x,enTaller,estadoReal};
+  const base=Array.isArray(state.flota)?state.flota:[];
+  let list=base.map(v=>{
+    const servicios=state.servicios.filter(s=>norm(s.dominio)===norm(v.dominio));
+    const choferes=uniqueSorted(servicios.map(s=>s.chofer));
+    return {
+      ...v,
+      estadoReal:estadoFlotaDesdeDatos(v),
+      servicios:servicios.length,
+      choferes,
+      ultimaFecha:servicios.map(s=>s.fecha).filter(Boolean).sort().pop()||''
+    };
   });
 
-  rows=rows.filter(x=>{
-    const texto=[x.dominio,x.modelo,[...x.choferes].join(' ')].join(' ').toLowerCase();
-    if(q && !texto.includes(q)) return false;
-    if(estado && x.estadoReal!==estado) return false;
-    if(actividad==='Con servicios' && !x.servicios) return false;
-    if(actividad==='Sin servicios' && x.servicios) return false;
+  list=list.filter(v=>{
+    const blob=norm([v.dominio,v.modelo,v.estadoReal,v.choferes.join(' ')].join(' '));
+    if(q && !blob.includes(q)) return false;
+    if(estado && v.estadoReal!==estado) return false;
+    if(actividad==='Con servicios' && v.servicios===0) return false;
+    if(actividad==='Sin servicios' && v.servicios>0) return false;
     return true;
-  }).sort((a,b)=>b.servicios-a.servicios || a.dominio.localeCompare(b.dominio));
+  }).sort((a,b)=>b.servicios-a.servicios || a.dominio.localeCompare(b.dominio,'es'));
 
-  const total=map.size;
-  const con=rows.length ? [...map.values()].filter(x=>x.servicios>0).length : [...map.values()].filter(x=>x.servicios>0).length;
-  const taller=[...map.values()].filter(x=>typeof window.esVehiculoEnTaller==='function' && window.esVehiculoEnTaller(x.dominio)).length;
+  const total=base.length;
+  const con=base.filter(v=>state.servicios.some(s=>norm(s.dominio)===norm(v.dominio))).length;
+  const taller=base.filter(v=>estadoFlotaDesdeDatos(v)==='En taller').length;
   const sin=total-con;
-  document.getElementById('fTotal').textContent=total||'0';
-  document.getElementById('fConServicios').textContent=con||'0';
-  document.getElementById('fEnTaller').textContent=taller||'0';
-  document.getElementById('fSinActividad').textContent=sin||'0';
+
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+  set('fTotal',total); set('fConServicios',con); set('fEnTaller',taller); set('fSinActividad',sin);
 
   const box=document.getElementById('flotaTable');
-  if(!rows.length){
+  if(!list.length){
     box.innerHTML='<div class="empty">No hay vehículos que coincidan con los filtros.</div>';
     return;
   }
+
   box.innerHTML='<div class="raw-wrap"><table><thead><tr>'+
-    '<th>Dominio</th><th>Estado</th><th>Servicios</th><th>Choferes detectados</th><th>Última fecha</th>'+
+    '<th>Dominio</th><th>Modelo</th><th>Estado</th><th>Servicios</th><th>Choferes detectados</th><th>Última actividad</th>'+
     '</tr></thead><tbody>'+
-    rows.map(x=>{
-      const badge=x.estadoReal==='En taller'?'yellow':(x.estadoReal==='Sin actividad'?'gray':'');
-      const ch=[...x.choferes].slice(0,3).join(', ') || '—';
-      return `<tr><td><strong>${escapeFleet(x.dominio)}</strong></td><td><span class="badge ${badge}">${escapeFleet(x.estadoReal)}</span></td><td>${x.servicios}</td><td>${escapeFleet(ch)}</td><td>${escapeFleet(x.ultimaFecha||'—')}</td></tr>`;
+    list.map(v=>{
+      const badge=v.estadoReal==='En taller'?'yellow':(v.estadoReal==='Fuera de servicio'?'red':'');
+      return `<tr>
+        <td><strong>${esc(v.dominio)}</strong></td>
+        <td>${esc(v.modelo||'—')}</td>
+        <td><span class="badge ${badge}">${esc(v.estadoReal)}</span></td>
+        <td>${v.servicios}</td>
+        <td>${esc(v.choferes.slice(0,4).join(', ')||'—')}</td>
+        <td>${esc(v.ultimaFecha||'—')}</td>
+      </tr>`;
     }).join('')+'</tbody></table></div>';
 }
-function escapeFleet(v){
-  return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function limpiarFiltrosFlota(){
+  ['fFlota','estadoFlota','fActividadFlota'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  renderFlota();
 }
 document.addEventListener('DOMContentLoaded',()=>{
-  setTimeout(()=>{try{renderFlota(); if(window.lucide)lucide.createIcons();}catch(e){console.warn('Flota V6:',e)}},500);
+  setTimeout(()=>{try{renderFlota();if(window.lucide)lucide.createIcons();}catch(e){console.warn('Flota V7:',e)}},700);
 });
 </script>
 
