@@ -356,6 +356,36 @@ function detectDomainColumns(rows,hi){
   }
   return candidates.filter(x=>x.plateCount>0 || x.headerHits>0);
 }
+function weekdayOffset(v){
+  const s=norm(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(s.includes('lunes'))return 0;
+  if(s.includes('martes'))return 1;
+  if(s.includes('miercoles'))return 2;
+  if(s.includes('jueves'))return 3;
+  if(s.includes('viernes'))return 4;
+  if(s.includes('sabado'))return 5;
+  if(s.includes('domingo'))return 6;
+  return null;
+}
+function addDaysKey(startKey,days){
+  if(!startKey)return null;
+  const p=startKey.split('-').map(Number);
+  if(p.length!==3)return null;
+  const d=new Date(p[0],p[1]-1,p[2]);
+  d.setDate(d.getDate()+days);
+  return dateKey(d);
+}
+function weekdayForRow(rows,r){
+  // La columna A tiene celdas combinadas verticalmente con LUNES, MARTES, etc.
+  // En CSV Google suele entregar el valor solo en la primera fila del bloque;
+  // por eso buscamos hacia arriba el último nombre de día.
+  for(let i=r;i>=0;i--){
+    const off=weekdayOffset(rows[i]?.[0]);
+    if(off!==null)return off;
+  }
+  return null;
+}
+
 function findBaseColumns(rows,hi){
   const maxCols=Math.max(0,...rows.slice(0,Math.min(rows.length,40)).map(r=>r.length));
   const heads=[];
@@ -388,6 +418,7 @@ function normalize2026(source){
     const desc=clean(row[base.desc]);
     const hora=clean(row[base.hora]);
     const destino=clean(row[base.destino]);
+    const diaOffset=weekdayForRow(rows,r);
 
     if(!desc&&!hora&&!destino)continue;
 
@@ -403,9 +434,13 @@ function normalize2026(source){
       if(seen.has(key))return;
       seen.add(key);
 
+      const fechaExacta=dc.date?.inicio&&diaOffset!==null
+        ? addDaysKey(dc.date.inicio,diaOffset)
+        : (dc.date?.inicio||null);
+
       services.push({
-        fecha:dc.date?.inicio||null,
-        fechaFin:dc.date?.fin||dc.date?.inicio||null,
+        fecha:fechaExacta,
+        fechaFin:fechaExacta||dc.date?.fin||dc.date?.inicio||null,
         descripcion:desc,
         hora,
         destino,
@@ -420,11 +455,12 @@ function normalize2026(source){
     });
   }
 
-  // If a block has no explicit date near its vehicle column, keep it visible
-  // but mark it undated; we will resolve its date from the block header later.
+  // La fecha exacta se obtiene combinando: rango semanal de FILA 1 + día de la semana de COLUMNA A.
+  // Si alguno de esos dos datos falta, el servicio conserva la fecha de inicio del bloque.
   source.diagnostics={
     dateRow:1,
     dateLabels:(rows[0]||[]).map((v,c)=>({col:c+1,label:clean(v),date:extractDateLabel(v)})).filter(x=>x.date),
+    weekdayRows:(rows||[]).map((r,i)=>({row:i+1,label:clean(r?.[0]),offset:weekdayOffset(r?.[0])})).filter(x=>x.offset!==null),
     headerRow:hi+1,
     baseColumns:{desc:base.desc+1,hora:base.hora+1,destino:base.destino+1},
     domainColumns:domainCols.map(x=>({
