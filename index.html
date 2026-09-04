@@ -647,18 +647,42 @@ function estadoPorColor(c){
 }
 function leerColoresMantenimiento(url){
   return new Promise((resolve,reject)=>{
-    const cb='pcMantCb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-    const script=document.createElement('script');
+    const token='pcMant_'+Date.now()+'_'+Math.random().toString(36).slice(2);
     let terminado=false;
-    const finalizar=fn=>{if(terminado)return;terminado=true;clearTimeout(timer);delete window[cb];script.remove();fn();};
-    const timer=setTimeout(()=>finalizar(()=>reject(new Error('Tiempo agotado leyendo colores de Mantenimiento'))),12000);
-    window[cb]=data=>finalizar(()=>{
-      const items=Array.isArray(data?.items)?data.items:(Array.isArray(data?.vehiculos)?data.vehiculos:[]);
-      resolve(items);
-    });
-    script.onerror=()=>finalizar(()=>reject(new Error('No se pudo conectar con el Web App de colores')));
-    script.src=url+(url.includes('?')?'&':'?')+'callback='+encodeURIComponent(cb)+'&sheet='+encodeURIComponent(CONFIG.sheets['Mantenimiento'])+'&range=B2:B30&_='+Date.now();
-    document.head.appendChild(script);
+    const timer=setTimeout(()=>{
+      if(terminado)return;
+      terminado=true;
+      window.removeEventListener('message',onMessage);
+      if(frame) frame.remove();
+      reject(new Error('Tiempo agotado leyendo colores de Mantenimiento'));
+    },15000);
+
+    const onMessage=(event)=>{
+      const data=event.data;
+      if(!data || data.tipo!=='PANEL_CONTROL_MANTENIMIENTO' || data.token!==token) return;
+      terminado=true;
+      clearTimeout(timer);
+      window.removeEventListener('message',onMessage);
+      if(frame) frame.remove();
+      if(data.ok){
+        const items=Array.isArray(data.items)?data.items:(Array.isArray(data.vehiculos)?data.vehiculos:[]);
+        resolve(items);
+      }else{
+        reject(new Error(data.error||'El Web App devolvió un error'));
+      }
+    };
+
+    window.addEventListener('message',onMessage);
+
+    const frame=document.createElement('iframe');
+    frame.setAttribute('title','Lectura de mantenimiento');
+    frame.style.cssText='position:fixed;width:1px;height:1px;left:-10px;top:-10px;border:0;opacity:0;pointer-events:none;';
+    frame.src=url+(url.includes('?')?'&':'?')+
+      'mode=panel&token='+encodeURIComponent(token)+
+      '&sheet='+encodeURIComponent(CONFIG.sheets['Mantenimiento'])+
+      '&range=B2%3AB30&_='+Date.now();
+
+    document.body.appendChild(frame);
   });
 }
 function guardarLocal(){
