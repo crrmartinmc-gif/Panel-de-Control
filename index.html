@@ -162,7 +162,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
   <section id="mantenimiento" class="page">
    <div class="page-head"><div><h2>Mantenimiento</h2><p>Lectura de la hoja de mantenimiento, sin modificar su estructura original.</p></div></div>
    <div class="card panel">
-    <div class="filters"><input id="fMant" placeholder="🔎 Buscar dominio, modelo o dato" oninput="renderMantenimiento()"><select id="fMantEstado" onchange="renderMantenimiento()"><option value="">Todos</option><option>Operativo</option><option>En taller</option><option>Fuera de servicio</option></select><div></div><div></div></div>
+    <div class="filters"><input id="fMant" placeholder="🔎 Buscar dominio, modelo o dato" oninput="renderMantenimiento()"><select id="fMantEstado" onchange="renderMantenimiento()"><option value="">Todos</option><option>Operativo</option><option>En taller</option><option>Condicional</option><option>Fuera de servicio</option></select><div></div><div></div></div>
     <div id="mantTable"></div>
    </div>
   </section>
@@ -212,6 +212,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 </div>
 
 <script>
+// V19: conecta el estado real de Mantenimiento mediante Apps Script.
 const CONFIG={
   spreadsheetId:'1ysCEVN9PljeIcIFxvBsoxL9iXOdWbVTjm4mn8GcPkK8',
   sheets:{
@@ -220,7 +221,10 @@ const CONFIG={
     'Direcciones Día Verde CGM':'Direcciones Día Verde CGM',
     'Salida del Partido':'Salida del Partido',
     'Mantenimiento':'Mantenimiento'
-  }
+  },
+  // URL del Web App de Apps Script que devuelve los colores de Mantenimiento.
+  // Después de desplegar el script, pegar aquí la URL terminada en /exec.
+  mantenimientoColorApi:'https://script.google.com/macros/s/AKfycbwCYctsbDVX3Vypjo69LCk9JU91uH9iADYcKjgd9QyFdfsnBDnKCdmsQJgHaNdprow/exec'
 };
 
 const state={
@@ -514,7 +518,7 @@ function buildEntities(){
   state.choferes=uniqueSorted(s.map(x=>x.chofer)).map(n=>({nombre:n}));
   state.destinos=uniqueSorted(s.map(x=>x.destino)).map(n=>({destino:n}));
 }
-function estadoClase(e){const n=norm(e);if(n.includes('taller'))return'yellow';if(n.includes('fuera')||n.includes('suspend'))return'red';if(n.includes('final'))return'blue';return'gray';}
+function estadoClase(e){const n=norm(e);if(n.includes('taller'))return'yellow';if(n.includes('condicional'))return'yellow';if(n.includes('fuera')||n.includes('suspend'))return'red';if(n.includes('final'))return'blue';return'gray';}
 function servicesForDate(){
   const key=dateKey(state.fecha);
   const exact=state.servicios.filter(s=>s.fecha===key || (s.fecha && s.fechaFin && key>=s.fecha && key<=s.fechaFin));
@@ -625,6 +629,38 @@ function cambiarDia(n){state.fecha.setDate(state.fecha.getDate()+n);fillServiceF
 function irHoy(){state.fecha=new Date();fillServiceFilters();renderServicios();renderInicio();}
 function abrirServicio(){document.getElementById('mFecha').value=dateKey(state.fecha);document.getElementById('modal').classList.add('show');}
 function cerrarModal(){document.getElementById('modal').classList.remove('show');}
+function normalizarColor(c){return String(c||'').toLowerCase().replace(/\s+/g,'');}
+function estadoPorColor(c){
+  const x=normalizarColor(c);
+  if(x==='#ff0000'||x==='#f00') return 'En taller';
+  if(x==='#ffa500'||x==='#ff9900'||x==='#f90'||x==='#999900') return 'Condicional';
+  if(x==='#ffffff'||x==='#fff') return 'Operativo';
+  // Tolerancia para tonos equivalentes o colores personalizados.
+  const m=x.match(/^#([0-9a-f]{6})$/i);
+  if(m){
+    const h=m[1],r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+    if(r>220&&g<90&&b<90) return 'En taller';
+    if(r>220&&g>120&&g<210&&b<100) return 'Condicional';
+    if(r>235&&g>235&&b>235) return 'Operativo';
+  }
+  return 'Sin estado';
+}
+function leerColoresMantenimiento(url){
+  return new Promise((resolve,reject)=>{
+    const cb='pcMantCb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const script=document.createElement('script');
+    let terminado=false;
+    const finalizar=fn=>{if(terminado)return;terminado=true;clearTimeout(timer);delete window[cb];script.remove();fn();};
+    const timer=setTimeout(()=>finalizar(()=>reject(new Error('Tiempo agotado leyendo colores de Mantenimiento'))),12000);
+    window[cb]=data=>finalizar(()=>{
+      const items=Array.isArray(data?.items)?data.items:(Array.isArray(data?.vehiculos)?data.vehiculos:[]);
+      resolve(items);
+    });
+    script.onerror=()=>finalizar(()=>reject(new Error('No se pudo conectar con el Web App de colores')));
+    script.src=url+(url.includes('?')?'&':'?')+'callback='+encodeURIComponent(cb)+'&sheet='+encodeURIComponent(CONFIG.sheets['Mantenimiento'])+'&range=B2:B30&_='+Date.now();
+    document.head.appendChild(script);
+  });
+}
 function guardarLocal(){
   const s={fecha:document.getElementById('mFecha').value,hora:document.getElementById('mHora').value,descripcion:document.getElementById('mDesc').value,dominio:document.getElementById('mVeh').value,chofer:document.getElementById('mChofer').value,destino:document.getElementById('mDestino').value,estado:document.getElementById('mEstado').value,origen:'local'};
   if(!s.descripcion){alert('Ingresá una descripción del servicio.');return;}
@@ -642,28 +678,29 @@ async function cargarTodo(){
     state.fuentes=fuentes;
     const f2026=fuentes['2026'];
     state.servicios=f2026?.rows?.length?normalize2026(f2026):[];
-    // Mantenimiento: la lógica de esta hoja es fija.
-    // Las patentes están en la columna B y solo se leen las primeras 30 filas.
-    // El estado visual (Rojo/Naranja/Blanco) requiere leer el formato de la celda;
-    // el CSV de Google Sheets no transmite colores, por eso en esta etapa no se inventa el estado.
+    // Mantenimiento: B2:B30 contiene las patentes. El color de fondo de B define el estado.
+    // El CSV no conserva formatos, por eso el color se obtiene desde el Web App de Apps Script.
     const mf=fuentes['Mantenimiento'];
+    state.mantenimiento=[];
     if(mf?.rows?.length){
-      const limite=Math.min(30,mf.rows.length);
-      state.mantenimiento=[];
-      for(let r=0;r<limite;r++){
-        const dominio=clean(mf.rows[r]?.[1]).toUpperCase().replace(/\s+/g,'');
-        if(!looksLikePlate(dominio)) continue;
-        state.mantenimiento.push({
-          modelo:'',
-          dominio,
-          km:'',
-          fecha:'',
-          service:'',
-          estado:'',
-          vtv:''
-        });
+      const rows=mf.rows.slice(1,30); // filas 2 a 30 inclusive
+      for(let i=0;i<rows.length;i++){
+        const dominio=clean(rows[i]?.[1]||'');
+        if(!dominio) continue;
+        state.mantenimiento.push({dominio,estado:'Sin estado',color:'',fila:i+2});
       }
-    }else state.mantenimiento=[];
+    }
+    if(CONFIG.mantenimientoColorApi){
+      try{
+        const colorData=await leerColoresMantenimiento(CONFIG.mantenimientoColorApi);
+        colorData.forEach(item=>{
+          const m=state.mantenimiento.find(x=>x.fila===item.fila);
+          if(!m) return;
+          m.color=normalizarColor(item.color||'');
+          m.estado=estadoPorColor(m.color);
+        });
+      }catch(e){ console.warn('No se pudo leer colores de Mantenimiento:',e); }
+    }
     buildEntities();renderAll();
     const ok=Object.values(fuentes).filter(x=>x.rows?.length).length;
     document.getElementById('connText').textContent=ok?'Google Sheets conectado · '+ok+'/'+Object.keys(CONFIG.sheets).length+' hojas leídas':'No se pudieron leer las hojas';
@@ -690,6 +727,7 @@ document.addEventListener('DOMContentLoaded',()=>{ if(window.lucide) lucide.crea
 function estadoFlotaDesdeDatos(v){
   const e=norm(v.estado||'');
   if(e.includes('taller')||e.includes('mantenimiento')) return 'En taller';
+  if(e.includes('condicional')) return 'Condicional';
   if(e.includes('fuera')||e.includes('radiado')||e.includes('baja')) return 'Fuera de servicio';
   return 'Operativo';
 }
