@@ -642,15 +642,27 @@ async function cargarTodo(){
     state.fuentes=fuentes;
     const f2026=fuentes['2026'];
     state.servicios=f2026?.rows?.length?normalize2026(f2026):[];
-    // Generic maintenance mapping. It does not require fixed column positions.
+    // Mantenimiento: la lógica de esta hoja es fija.
+    // Las patentes están en la columna B y solo se leen las primeras 30 filas.
+    // El estado visual (Rojo/Naranja/Blanco) requiere leer el formato de la celda;
+    // el CSV de Google Sheets no transmite colores, por eso en esta etapa no se inventa el estado.
     const mf=fuentes['Mantenimiento'];
     if(mf?.rows?.length){
-      const ro=rowObjects(mf.rows);const h=ro.heads;
-      const pick=(o,terms)=>{const i=findCol(h,terms);return i>=0?clean(mf.rows[ro.headerRow+1]?.[i]):''};
-      state.mantenimiento=ro.items.map(o=>{
-        const get=terms=>{const k=h.find(x=>terms.some(t=>norm(x).includes(norm(t))));return k?clean(o[k]):''};
-        return {modelo:get(['modelo','marca']),dominio:get(['dominio','patente']),km:get(['km','kilometraje']),fecha:get(['fecha']),service:get(['service','mantenimiento']),estado:get(['estado','situacion']),vtv:get(['vtv'])};
-      }).filter(x=>Object.values(x).some(Boolean));
+      const limite=Math.min(30,mf.rows.length);
+      state.mantenimiento=[];
+      for(let r=0;r<limite;r++){
+        const dominio=clean(mf.rows[r]?.[1]).toUpperCase().replace(/\s+/g,'');
+        if(!looksLikePlate(dominio)) continue;
+        state.mantenimiento.push({
+          modelo:'',
+          dominio,
+          km:'',
+          fecha:'',
+          service:'',
+          estado:'',
+          vtv:''
+        });
+      }
     }else state.mantenimiento=[];
     buildEntities();renderAll();
     const ok=Object.values(fuentes).filter(x=>x.rows?.length).length;
