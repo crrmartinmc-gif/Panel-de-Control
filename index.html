@@ -576,8 +576,50 @@ function renderChoferes(){
 }
 function renderMantenimiento(){
   const q=norm(document.getElementById('fMant').value),e=document.getElementById('fMantEstado').value;
-  const list=state.mantenimiento.filter(x=>(!q||norm(Object.values(x).join(' ')).includes(q))&&(!e||x.estado===e));
-  document.getElementById('mantTable').innerHTML=list.length?`<div style="overflow:auto"><table><thead><tr><th>Modelo</th><th>Dominio</th><th>Km</th><th>Fecha</th><th>Service</th><th>Estado</th><th>VTV</th></tr></thead><tbody>${list.slice(0,500).map(x=>`<tr><td>${esc(x.modelo||'—')}</td><td><strong>${esc(x.dominio||'—')}</strong></td><td>${esc(x.km||'—')}</td><td>${esc(x.fecha||'—')}</td><td>${esc(x.service||'—')}</td><td><span class="badge ${estadoClase(x.estado||'')}">${esc(x.estado||'—')}</span></td><td>${esc(x.vtv||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No se detectaron registros de mantenimiento.</div>';
+  const list=state.mantenimiento.filter(x=>
+    (!q||norm(Object.values(x).join(' ')).includes(q))&&
+    (!e||norm(x.estado)===norm(e))
+  );
+
+  document.getElementById('mantTable').innerHTML=list.length?`
+    <div style="overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Modelo</th>
+            <th>Estado</th>
+            <th>Dominio</th>
+            <th>Km Actual</th>
+            <th>Fecha</th>
+            <th>Service</th>
+            <th>Estado del Service</th>
+            <th>Pastilla de Freno %</th>
+            <th>Ploteo</th>
+            <th>Vtv</th>
+            <th>Espejos</th>
+            <th>Luces</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${list.slice(0,500).map(x=>`
+            <tr>
+              <td>${esc(x.modelo||'—')}</td>
+              <td><span class="badge ${estadoClase(x.estado||'')}">${esc(x.estado||'—')}</span></td>
+              <td><strong>${esc(x.dominio||'—')}</strong></td>
+              <td>${esc(x.km||'—')}</td>
+              <td>${esc(x.fecha||'—')}</td>
+              <td>${esc(x.service||'—')}</td>
+              <td>${esc(x.estadoService||'—')}</td>
+              <td>${esc(x.pastilla||'—')}</td>
+              <td>${esc(x.ploteo||'—')}</td>
+              <td>${esc(x.vtv||'—')}</td>
+              <td>${esc(x.espejos||'—')}</td>
+              <td>${esc(x.luces||'—')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>`:'<div class="empty">No se detectaron registros de mantenimiento.</div>';
 }
 function renderDestinos(){
   const q=norm(document.getElementById('fDestino').value);
@@ -587,14 +629,41 @@ function renderDestinos(){
   }).join('')}</tbody></table></div>`:'<div class="empty">No hay destinos detectados.</div>';
 }
 function renderReportes(){
-  const count={};state.servicios.forEach(s=>{const k=norm([s.descripcion,s.hora,s.destino].join('|'));if(k)count[k]=(count[k]||0)+1;});
-  const reps=Object.entries(count).filter(([,n])=>n>1).sort((a,b)=>b[1]-a[1]);
-  const unicos=Object.values(count).filter(n=>n===1).length;
+  // Agrupamos con una clave normalizada, pero mostramos los valores originales.
+  const count=new Map();
+
+  state.servicios.forEach(s=>{
+    const descripcion=clean(s.descripcion).replace(/\|/g,' ').replace(/\s+/g,' ').trim();
+    const hora=clean(s.hora).replace(/\|/g,' ').replace(/\s+/g,' ').trim();
+    const destino=clean(s.destino).replace(/\|/g,' ').replace(/\s+/g,' ').trim();
+    const key=norm([descripcion,hora,destino].join('|'));
+    if(!key)return;
+
+    if(!count.has(key)) count.set(key,{n:0,descripcion,hora,destino});
+    count.get(key).n++;
+  });
+
+  const reps=[...count.values()].filter(x=>x.n>1).sort((a,b)=>b.n-a.n);
+  const unicos=[...count.values()].filter(x=>x.n===1).length;
+
   document.getElementById('rRepetidos').textContent=reps.length;
   document.getElementById('rUnicos').textContent=unicos;
   document.getElementById('rDominios').textContent=state.flota.length;
   document.getElementById('rDestinos').textContent=state.destinos.length;
-  document.getElementById('repetidosTable').innerHTML=reps.length?`<div style="overflow:auto"><table><thead><tr><th>Servicio / hora / destino</th><th>Repeticiones</th></tr></thead><tbody>${reps.slice(0,100).map(([k,n])=>`<tr><td>${esc(k.replace(/\\|/g,' · '))}</td><td><span class="badge blue">${n}</span></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Todavía no hay suficientes datos para detectar repeticiones.</div>';
+
+  document.getElementById('repetidosTable').innerHTML=reps.length?`
+    <div style="overflow:auto">
+      <table>
+        <thead><tr><th>Servicio / hora / destino</th><th>Repeticiones</th></tr></thead>
+        <tbody>
+          ${reps.slice(0,100).map(x=>{
+            const display=[x.descripcion,x.hora,x.destino].filter(Boolean).join(' · ');
+            return `<tr><td>${esc(display)}</td><td><span class="badge blue">${x.n}</span></td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`:
+    '<div class="empty">Todavía no hay suficientes datos para detectar repeticiones.</div>';
 }
 function renderRaw(name){
   const f=state.fuentes[name];if(!f){document.getElementById('rawData').innerHTML='<div class="empty">Sin fuente.</div>';return;}
@@ -649,11 +718,16 @@ function leerEstadoMantenimientoDesdeHoja(data){
   return rows.slice(1).map((r,i)=>({
     modelo:clean(r?.[0]||''),
     estado:clean(r?.[1]||'Sin estado') || 'Sin estado',
-    dominio:clean(r?.[2]||'').toUpperCase().replace(/\\s+/g,''),
+    dominio:clean(r?.[2]||'').toUpperCase().replace(/\s+/g,''),
     km:clean(r?.[3]||''),
     fecha:clean(r?.[4]||''),
     service:clean(r?.[5]||''),
-    vtv:clean(r?.[6]||''),
+    estadoService:clean(r?.[6]||''),
+    pastilla:clean(r?.[7]||''),
+    ploteo:clean(r?.[8]||''),
+    vtv:clean(r?.[9]||''),
+    espejos:clean(r?.[10]||''),
+    luces:clean(r?.[11]||''),
     fila:i+2
   })).filter(x=>x.dominio);
 }
@@ -669,7 +743,7 @@ async function cargarTodo(){
     const f2026=fuentes['2026'];
     state.servicios=f2026?.rows?.length?normalize2026(f2026):[];
     // Mantenimiento V25: lectura directa de la hoja.
-    // Estructura fija: A=Modelo, B=Estado, C=Dominio, D=KM, E=Fecha, F=Service, G=VTV.
+    // Estructura: A=Modelo, B=Estado, C=Dominio, D=Km Actual, E=Fecha, F=Service, G=Estado del Service, H=Pastilla de Freno %, I=Ploteo, J=Vtv, K=Espejos, L=Luces.
     state.mantenimiento=leerEstadoMantenimientoDesdeHoja(fuentes['Mantenimiento']);
     buildEntities();
     renderAll();
