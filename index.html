@@ -251,7 +251,7 @@ function csvParse(text){
     const c=text[i],n=text[i+1];
     if(c==='"'){if(q&&n==='"'){cell+='"';i++;}else q=!q;}
     else if(c===','&&!q){row.push(cell);cell='';}
-    else if((c==='\n'||c==='\r')&&!q){if(c==='\r'&&n==='\n')i++;row.push(cell);cell='';if(row.some(x=>clean(x)!==''))rows.push(row);row=[];}
+    else if((c==='\\n'||c==='\\r')&&!q){if(c==='\\r'&&n==='\\n')i++;row.push(cell);cell='';if(row.some(x=>clean(x)!==''))rows.push(row);row=[];}
     else cell+=c;
   }
   row.push(cell);if(row.some(x=>clean(x)!==''))rows.push(row);
@@ -312,14 +312,28 @@ function extractDateLabel(v){
   const d=parseDateAny(s);return d?{inicio:dateKey(d),fin:dateKey(d),esRango:false}:null;
 }
 function detectColumnDate(rows,col){
-  const radius=8;
-  // Busca la etiqueta de fecha/rango más cercana al bloque de la patente.
-  for(let r=0;r<Math.min(rows.length,15);r++){
-    for(let c=Math.max(0,col-radius);c<=Math.min((rows[r]||[]).length-1,col+radius);c++){
-      const d=extractDateLabel(rows[r]?.[c]);if(d)return d;
-    }
+  // En la hoja 2026 la FILA 1 contiene los rangos semanales
+  // y la FILA 2 contiene los encabezados (Dominio, Chofer, Estado, Hr).
+  // Los rangos suelen estar en celdas combinadas, por lo que en CSV
+  // Google puede devolver la fecha solo en la primera columna del bloque.
+  // Por eso NO buscamos una fecha cercana: construimos los bloques
+  // directamente sobre la fila 1 y hacemos que cada bloque abarque
+  // desde su columna de inicio hasta antes del siguiente bloque.
+  const headerDateRow=0;
+  const row=rows[headerDateRow]||[];
+  const labels=[];
+  for(let c=0;c<row.length;c++){
+    const d=extractDateLabel(row[c]);
+    if(d) labels.push({col:c,date:d});
   }
-  return null;
+  if(!labels.length)return null;
+
+  let current=null;
+  for(const item of labels){
+    if(item.col>col)break;
+    current=item;
+  }
+  return current?current.date:null;
 }
 function dateInRange(key,d){
   if(!d||!key)return false;
@@ -409,6 +423,8 @@ function normalize2026(source){
   // If a block has no explicit date near its vehicle column, keep it visible
   // but mark it undated; we will resolve its date from the block header later.
   source.diagnostics={
+    dateRow:1,
+    dateLabels:(rows[0]||[]).map((v,c)=>({col:c+1,label:clean(v),date:extractDateLabel(v)})).filter(x=>x.date),
     headerRow:hi+1,
     baseColumns:{desc:base.desc+1,hora:base.hora+1,destino:base.destino+1},
     domainColumns:domainCols.map(x=>({
@@ -551,6 +567,7 @@ function renderRaw(name){
   let html='<div class="notice"><strong>'+esc(name)+'</strong> · '+rows.length+' filas · '+Math.max(0,...rows.map(r=>r.length))+' columnas · encabezado estimado: fila '+(hi+1)+'</div>';
   if(f.error)html+='<div class="notice err">Error: '+esc(f.error)+'</div>';
   html+='<div class="card panel" style="margin-bottom:12px"><h3>Diagnóstico automático</h3><div class="list-item"><span>Encabezado detectado</span><strong>Fila '+(diag.headerRow||hi+1)+'</strong></div>';
+  if(diag.dateLabels)html+='<div class="list-item"><span>Rangos semanales — fila 1</span><strong>'+diag.dateLabels.map(x=>'C'+x.col+' · '+esc(x.label)).join(' | ')+'</strong></div>';
   if(diag.baseColumns)html+='<div class="list-item"><span>Columnas base</span><strong>Descripción '+(diag.baseColumns.desc+1)+' · Hora '+(diag.baseColumns.hora+1)+' · Destino '+(diag.baseColumns.destino+1)+'</strong></div>';
   if(diag.domainColumns)html+='<div class="list-item"><span>Columnas de dominio detectadas</span><strong>'+diag.domainColumns.map(x=>'C'+x.col+(x.date?' · '+x.date:'')).join(' | ')+'</strong></div>';
   html+='</div>';
