@@ -1,191 +1,454 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-
-<!-- MODELO DE SERVICIOS - PRUEBA
-     El Panel debe interpretar el historial como comportamiento operativo:
-     - servicios únicos y servicios repetitivos
-     - repetición del servicio, no asignación rígida de vehículo/chofer
-     - vehículo y chofer pueden variar por fecha
-     - una modificación puede aplicarse solo a un día sin alterar la serie
-     - el historial de 13 semanas se utiliza como base de análisis
--->
-
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Panel de Control</title>
 <style>
 :root{
-  --verde:#087a3d;
-  --verde-oscuro:#04552b;
-  --verde-claro:#e9f7ed;
-  --texto:#193329;
-  --gris:#728078;
-  --fondo:#f3f7f4;
-  --borde:#dce9e0;
-  --blanco:#fff;
-  --rojo:#b42318;
-  --amarillo:#c98500;
+  --verde:#087a3d;--verde-oscuro:#04552b;--verde-claro:#e9f7ed;
+  --texto:#193329;--gris:#728078;--fondo:#f3f7f4;--borde:#dce9e0;
+  --blanco:#fff;--rojo:#b42318;--amarillo:#c98500;--azul:#1769aa
 }
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fondo);color:var(--texto)}
-header{
-  background:linear-gradient(135deg,var(--verde-oscuro),var(--verde));
-  color:#fff;padding:20px 28px;box-shadow:0 4px 20px #0002;
-}
-.header-inner{max-width:1400px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:20px}
-.brand{display:flex;align-items:center;gap:15px}
-.logo{width:54px;height:54px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:27px}
-h1{margin:0;font-size:27px}.sub{margin-top:4px;font-size:14px;opacity:.92}
-.userbar{display:flex;align-items:center;gap:12px;font-size:13px}
-.userbar button{border:1px solid #ffffff66;background:#ffffff14;color:#fff;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer}
-.app{max-width:1400px;margin:auto;padding:20px;display:grid;grid-template-columns:235px 1fr;gap:18px}
-.sidebar{background:#fff;border:1px solid var(--borde);border-radius:18px;box-shadow:0 8px 30px #163a2614;padding:14px;height:max-content;position:sticky;top:15px}
-.menu-title{font-size:11px;font-weight:800;color:var(--verde);letter-spacing:1px;text-transform:uppercase;padding:8px 10px 10px}
-.nav button{width:100%;border:0;background:transparent;text-align:left;padding:12px 13px;border-radius:11px;color:var(--texto);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:4px}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fondo);color:var(--texto)}
+header{background:linear-gradient(135deg,var(--verde-oscuro),var(--verde));color:#fff;padding:18px 26px;box-shadow:0 4px 20px #0002}
+.header-inner{max-width:1500px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:18px}
+.brand{display:flex;align-items:center;gap:14px}.logo{width:52px;height:52px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:26px}
+h1{margin:0;font-size:26px}.sub{font-size:13px;opacity:.9;margin-top:3px}
+.connection{font-size:12px;font-weight:700}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#f5c542;margin-right:5px}.dot.ok{background:#64d88a}.dot.err{background:#ff7770}
+.app{max-width:1500px;margin:auto;padding:18px;display:grid;grid-template-columns:225px 1fr;gap:18px}
+.sidebar{background:#fff;border:1px solid var(--borde);border-radius:18px;padding:13px;height:max-content;position:sticky;top:14px;box-shadow:0 8px 30px #163a2614}
+.menu-title{font-size:11px;font-weight:800;color:var(--verde);letter-spacing:1px;text-transform:uppercase;padding:8px 10px}
+.nav button{width:100%;border:0;background:transparent;text-align:left;padding:11px 12px;border-radius:11px;color:var(--texto);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:3px}
 .nav button:hover,.nav button.active{background:var(--verde-claro);color:var(--verde)}
-.content{min-width:0}
-.page{display:none}.page.active{display:block}
-.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:15px;margin-bottom:17px}
-.page-head h2{margin:0;font-size:25px}.page-head p{margin:5px 0 0;color:var(--gris);font-size:13px}
-.actions{display:flex;gap:8px;flex-wrap:wrap}
-.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
+.content{min-width:0}.page{display:none}.page.active{display:block}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:15px;margin-bottom:15px}
+.page-head h2{margin:0;font-size:24px}.page-head p{margin:5px 0 0;color:var(--gris);font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
 .btn-primary{background:var(--verde);color:#fff}.btn-primary:hover{background:var(--verde-oscuro)}
 .btn-light{background:#fff;border:1px solid var(--borde);color:var(--texto)}
-.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:16px}
 .card{background:#fff;border:1px solid var(--borde);border-radius:17px;box-shadow:0 7px 25px #163a2610}
-.kpi{padding:18px;display:flex;justify-content:space-between;align-items:center}
-.kpi small{display:block;color:var(--gris);font-weight:700;font-size:12px;margin-bottom:7px}.kpi strong{font-size:27px}.kpi-icon{width:46px;height:46px;border-radius:13px;background:var(--verde-claro);display:grid;place-items:center;font-size:22px}
-.kpi.alert .kpi-icon{background:#fff4df}.kpi.alert strong{color:var(--amarillo)}
-.kpi.danger .kpi-icon{background:#fff0ef}.kpi.danger strong{color:var(--rojo)}
-.panel{padding:18px}.panel h3{margin:0 0 14px;font-size:18px}
-.two{display:grid;grid-template-columns:1.35fr 1fr;gap:14px}
-table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;color:var(--gris);font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:10px 9px;border-bottom:1px solid var(--borde)}td{padding:12px 9px;border-bottom:1px solid #edf2ee}tr:last-child td{border-bottom:0}
-.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;background:var(--verde-claro);color:var(--verde)}
-.badge.yellow{background:#fff4df;color:#9a6500}.badge.red{background:#fff0ef;color:var(--rojo)}.badge.gray{background:#eef1ef;color:#5f6963}
-.bar-row{margin:13px 0}.bar-top{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:6px}.bar{height:9px;background:#edf2ee;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--verde);border-radius:99px}
-.list-item{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #edf2ee;font-size:13px}.list-item:last-child{border-bottom:0}.muted{color:var(--gris)}
-.filters{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px}.filters input,.filters select{width:100%;height:43px;border:1px solid #d5e0d9;border-radius:10px;padding:8px 11px;background:#fff;color:var(--texto);outline:0}
-.vehicle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.vehicle{padding:15px}.vehicle-top{display:flex;justify-content:space-between;gap:10px}.vehicle h4{margin:0;font-size:15px}.vehicle p{margin:5px 0;color:var(--gris);font-size:12px}.vehicle-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.vehicle-info div{background:#f6faf7;border-radius:9px;padding:9px}.vehicle-info small{display:block;color:var(--gris);font-size:10px}.vehicle-info strong{font-size:13px}
-.empty{padding:35px;text-align:center;color:var(--gris)}
-footer{max-width:1400px;margin:0 auto;padding:5px 20px 25px;color:var(--gris);font-size:12px}
-@media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.vehicle-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:800px){.app{grid-template-columns:1fr}.sidebar{position:static}.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.nav button{margin:0}.filters{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){header{padding:16px}.header-inner{align-items:flex-start}.userbar{display:none}.app{padding:12px}.grid{grid-template-columns:1fr}.vehicle-grid{grid-template-columns:1fr}.filters{grid-template-columns:1fr}.page-head{align-items:flex-start;flex-direction:column}}
+.kpi{padding:17px;display:flex;justify-content:space-between;align-items:center}.kpi small{display:block;color:var(--gris);font-weight:700;font-size:12px;margin-bottom:6px}.kpi strong{font-size:27px}
+.kpi-icon{width:45px;height:45px;border-radius:13px;background:var(--verde-claro);display:grid;place-items:center;font-size:21px}
+.kpi.alert .kpi-icon{background:#fff4df}.kpi.alert strong{color:var(--amarillo)}.kpi.danger .kpi-icon{background:#fff0ef}.kpi.danger strong{color:var(--rojo)}
+.panel{padding:17px}.panel h3{margin:0 0 13px;font-size:17px}
+.two{display:grid;grid-template-columns:1.35fr 1fr;gap:13px}
+.filters{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:9px;margin-bottom:13px}
+.filters input,.filters select,.filters button{width:100%;height:41px;border:1px solid #d5e0d9;border-radius:10px;padding:8px 10px;background:#fff;color:var(--texto);outline:0}
+table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;color:var(--gris);font-size:10px;text-transform:uppercase;letter-spacing:.4px;padding:9px;border-bottom:1px solid var(--borde);white-space:nowrap}
+td{padding:10px 9px;border-bottom:1px solid #edf2ee;vertical-align:top}tr:last-child td{border-bottom:0}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800;background:var(--verde-claro);color:var(--verde)}
+.badge.yellow{background:#fff4df;color:#9a6500}.badge.red{background:#fff0ef;color:var(--rojo)}.badge.gray{background:#eef1ef;color:#5f6963}.badge.blue{background:#edf5ff;color:var(--azul)}
+.empty{padding:30px;text-align:center;color:var(--gris)}
+.bar-row{margin:12px 0}.bar-top{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px}.bar{height:8px;background:#edf2ee;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--verde);border-radius:99px}
+.list-item{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #edf2ee;font-size:13px}.list-item:last-child{border-bottom:0}
+.notice{padding:11px 13px;border-radius:11px;background:#f6faf7;border:1px solid var(--borde);font-size:12px;margin-bottom:12px}
+.notice.warn{background:#fff8e9;border-color:#f0dfb2}.notice.err{background:#fff0ef;border-color:#f2c9c6}
+.raw-wrap{overflow:auto;max-height:520px;border:1px solid var(--borde);border-radius:12px}
+.raw-wrap table{min-width:900px}.raw-wrap th{position:sticky;top:0;background:#f7faf8;z-index:1}
+.day-nav{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.day-nav button{border:1px solid var(--borde);background:#fff;border-radius:9px;padding:8px 10px;cursor:pointer;font-weight:800}.day-nav .current{background:var(--verde);color:#fff;border-color:var(--verde)}
+.modal{display:none;position:fixed;inset:0;background:#0007;z-index:20;padding:30px;align-items:center;justify-content:center}.modal.show{display:flex}
+.modal-box{background:#fff;width:min(720px,100%);max-height:90vh;overflow:auto;border-radius:18px;padding:20px;box-shadow:0 20px 70px #0005}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-grid label{font-size:11px;font-weight:800;color:var(--gris)}.form-grid input,.form-grid select,.form-grid textarea{width:100%;margin-top:5px;border:1px solid #d5e0d9;border-radius:9px;padding:9px;background:#fff}.form-grid textarea{min-height:80px;resize:vertical}.full{grid-column:1/-1}
+footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font-size:11px}
+@media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
+@media(max-width:800px){.app{grid-template-columns:1fr}.sidebar{position:static}.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.nav button{margin:0}.filters{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.grid{grid-template-columns:1fr}.nav{grid-template-columns:1fr 1fr}.filters{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}}
 </style>
 </head>
 <body>
 <header>
-  <div class="header-inner">
-    <div class="brand">
-      <div class="logo">📊</div>
-      <div>
-        <h1>PANEL DE CONTROL</h1>
-        <div class="sub">Centro de gestión logística</div>
-      </div>
-    </div>
-    <div class="userbar">● Sistema operativo <button>⚙ Configuración</button></div>
-  </div>
+ <div class="header-inner">
+  <div class="brand"><div class="logo">📊</div><div><h1>PANEL DE CONTROL</h1><div class="sub">Centro de gestión logística</div></div></div>
+  <div class="connection"><span id="connDot" class="dot"></span><span id="connText">Conectando con Google Sheets...</span></div>
+ </div>
 </header>
 
 <div class="app">
-  <aside class="sidebar">
-    <div class="menu-title">Menú principal</div>
-    <nav class="nav">
-      <button class="active" data-page="inicio">🏠 Inicio</button>
-      <button data-page="flota">🚛 Flota</button>
-      <button data-page="choferes">👤 Choferes</button>
-      <button data-page="servicios">📋 Servicios</button>
-      <button data-page="mantenimiento">🔧 Mantenimiento</button>
-      <button data-page="destinos">📍 Destinos</button>
-      <button data-page="reportes">📈 Reportes</button>
-    </nav>
-  </aside>
+ <aside class="sidebar">
+  <div class="menu-title">Menú principal</div>
+  <nav class="nav">
+   <button class="active" data-page="inicio">🏠 Inicio</button>
+   <button data-page="flota">🚛 Flota</button>
+   <button data-page="choferes">👤 Choferes</button>
+   <button data-page="servicios">📋 Servicios</button>
+   <button data-page="mantenimiento">🔧 Mantenimiento</button>
+   <button data-page="destinos">📍 Destinos</button>
+   <button data-page="reportes">📈 Reportes</button>
+   <button data-page="datos">🗂️ Datos fuente</button>
+  </nav>
+ </aside>
 
-  <main class="content">
-    <section id="inicio" class="page active">
-      <div class="page-head">
-        <div><h2>Inicio</h2><p>Vista general del estado de la operación.</p></div>
-        <div class="actions"><button class="btn btn-light" onclick="actualizar()">↻ Actualizar</button><button class="btn btn-primary">＋ Nuevo servicio</button></div>
-      </div>
-      <div class="grid">
-        <div class="card kpi"><div><small>Vehículos</small><strong>—</strong></div><div class="kpi-icon">🚛</div></div>
-        <div class="card kpi"><div><small>Choferes</small><strong>—</strong></div><div class="kpi-icon">👤</div></div>
-        <div class="card kpi alert"><div><small>En taller</small><strong>—</strong></div><div class="kpi-icon">🔧</div></div>
-        <div class="card kpi danger"><div><small>Alertas</small><strong>—</strong></div><div class="kpi-icon">⚠️</div></div>
-      </div>
-      <div class="two">
-        <div class="card panel">
-          <h3>Servicios de hoy</h3>
-          <table><thead><tr><th>Hora</th><th>Servicio</th><th>Dominio</th><th>Chofer</th><th>Estado</th></tr></thead>
-          <tbody><tr><td>—</td><td>Sin datos</td><td>—</td><td>—</td><td><span class="badge gray">Pendiente de conexión</span></td></tr></tbody></table>
-        </div>
-        <div class="card panel">
-          <h3>Estado de la flota</h3>
-          <div class="bar-row"><div class="bar-top"><span>Operativos</span><span>—</span></div><div class="bar"><i style="width:0%"></i></div></div>
-          <div class="bar-row"><div class="bar-top"><span>En taller</span><span>—</span></div><div class="bar"><i style="width:0%"></i></div></div>
-          <div class="bar-row"><div class="bar-top"><span>Fuera de servicio</span><span>—</span></div><div class="bar"><i style="width:0%"></i></div></div>
-        </div>
-      </div>
-    </section>
+ <main class="content">
+  <section id="inicio" class="page active">
+   <div class="page-head"><div><h2>Inicio</h2><p>Estado general de la operación.</p></div><div class="actions"><button class="btn btn-light" onclick="cargarTodo()">↻ Actualizar datos</button><button class="btn btn-primary" onclick="abrirServicio()">＋ Nuevo servicio</button></div></div>
+   <div class="grid">
+    <div class="card kpi"><div><small>Servicios cargados</small><strong id="kServicios">—</strong></div><div class="kpi-icon">📋</div></div>
+    <div class="card kpi"><div><small>Vehículos detectados</small><strong id="kVehiculos">—</strong></div><div class="kpi-icon">🚛</div></div>
+    <div class="card kpi alert"><div><small>En taller</small><strong id="kTaller">—</strong></div><div class="kpi-icon">🔧</div></div>
+    <div class="card kpi danger"><div><small>Alertas</small><strong id="kAlertas">—</strong></div><div class="kpi-icon">⚠️</div></div>
+   </div>
+   <div class="two">
+    <div class="card panel"><h3>Servicios de hoy</h3><div id="hoyBox"><div class="empty">Cargando...</div></div></div>
+    <div class="card panel"><h3>Fuentes de datos</h3><div id="fuentesBox"></div></div>
+   </div>
+  </section>
 
-    <section id="flota" class="page">
-      <div class="page-head"><div><h2>Flota</h2><p>Vehículos y estado operativo.</p></div><button class="btn btn-primary">＋ Nuevo vehículo</button></div>
-      <div class="card panel">
-        <div class="filters"><input placeholder="🔎 Buscar dominio o modelo"><select><option>Todos los estados</option><option>Operativo</option><option>En taller</option><option>Fuera de servicio</option></select><select><option>Todos los modelos</option></select><select><option>Todos</option></select></div>
-        <div class="vehicle-grid"><div class="empty">Los vehículos aparecerán acá al conectar la hoja <strong>Mantenimiento</strong>.</div></div>
-      </div>
-    </section>
+  <section id="flota" class="page">
+   <div class="page-head"><div><h2>Flota</h2><p>Vehículos detectados desde las fuentes conectadas.</p></div></div>
+   <div class="card panel">
+    <div class="filters"><input id="fFlota" placeholder="🔎 Buscar dominio, modelo o marca" oninput="renderFlota()"><select id="estadoFlota" onchange="renderFlota()"><option value="">Todos los estados</option><option>Operativo</option><option>En taller</option><option>Fuera de servicio</option></select><div></div><div></div></div>
+    <div id="flotaTable"></div>
+   </div>
+  </section>
 
-    <section id="choferes" class="page">
-      <div class="page-head"><div><h2>Choferes</h2><p>Asignaciones y disponibilidad.</p></div><button class="btn btn-primary">＋ Nuevo chofer</button></div>
-      <div class="card panel"><div class="empty">Los choferes se cargarán desde la información de servicios.</div></div>
-    </section>
+  <section id="choferes" class="page">
+   <div class="page-head"><div><h2>Choferes</h2><p>Choferes identificados en la planificación histórica/actual.</p></div></div>
+   <div class="card panel"><div class="filters"><input id="fChofer" placeholder="🔎 Buscar chofer" oninput="renderChoferes()"><div></div><div></div><div></div></div><div id="choferTable"></div></div>
+  </section>
 
-    <section id="servicios" class="page">
-      <div class="page-head"><div><h2>Servicios</h2><p>Programación, horarios, vehículos, choferes y destinos.</p></div><button class="btn btn-primary">＋ Nuevo servicio</button></div>
-      <div class="card panel">
-        <div class="filters"><input placeholder="🔎 Buscar servicio, dominio o chofer"><select><option>Todos los días</option></select><select><option>Todos los estados</option></select><select><option>Todos los destinos</option></select></div>
-        <table><thead><tr><th>Hora</th><th>Descripción</th><th>Primer destino</th><th>Dominio</th><th>Chofer</th><th>Estado</th></tr></thead>
-        <tbody><tr><td colspan="6" class="empty">Los servicios se cargarán desde la hoja <strong>2026</strong>.</td></tr></tbody></table>
-      </div>
-    </section>
+  <section id="servicios" class="page">
+   <div class="page-head">
+    <div><h2>Servicios</h2><p>Programación diaria sin asumir que todos los días son iguales.</p></div>
+    <div class="actions"><button class="btn btn-light" onclick="cambiarDia(-1)">← Día anterior</button><button class="btn btn-light" onclick="irHoy()">Hoy</button><button class="btn btn-light" onclick="cambiarDia(1)">Día siguiente →</button><button class="btn btn-primary" onclick="abrirServicio()">＋ Nuevo servicio</button></div>
+   </div>
+   <div class="card panel">
+    <div class="day-nav" style="margin-bottom:12px"><strong id="fechaTitulo"></strong><span class="muted" id="fechaSub"></span></div>
+    <div class="filters"><input id="fServicio" placeholder="🔎 Servicio, dominio, chofer o destino" oninput="renderServicios()"><select id="fEstado" onchange="renderServicios()"><option value="">Todos los estados</option><option>Programado</option><option>En curso</option><option>Finalizado</option><option>Suspendido</option></select><select id="fVehiculo" onchange="renderServicios()"><option value="">Todos los vehículos</option></select><select id="fChoferServ" onchange="renderServicios()"><option value="">Todos los choferes</option></select></div>
+    <div id="serviciosTable"></div>
+   </div>
+  </section>
 
-    <section id="mantenimiento" class="page">
-      <div class="page-head"><div><h2>Mantenimiento</h2><p>Seguimiento de service y controles de cada vehículo.</p></div><button class="btn btn-primary">＋ Registrar mantenimiento</button></div>
-      <div class="card panel"><div class="filters"><input placeholder="🔎 Buscar dominio o modelo"><select><option>Estado del service</option></select><select><option>VTV</option></select><select><option>Todos</option></select></div>
-        <table><thead><tr><th>Modelo</th><th>Dominio</th><th>Km actual</th><th>Fecha</th><th>Service</th><th>Estado</th><th>VTV</th></tr></thead>
-        <tbody><tr><td colspan="7" class="empty">La información se cargará desde <strong>Mantenimiento</strong>.</td></tr></tbody></table>
-      </div>
-    </section>
+  <section id="mantenimiento" class="page">
+   <div class="page-head"><div><h2>Mantenimiento</h2><p>Lectura de la hoja de mantenimiento, sin modificar su estructura original.</p></div></div>
+   <div class="card panel">
+    <div class="filters"><input id="fMant" placeholder="🔎 Buscar dominio, modelo o dato" oninput="renderMantenimiento()"><select id="fMantEstado" onchange="renderMantenimiento()"><option value="">Todos</option><option>Operativo</option><option>En taller</option><option>Fuera de servicio</option></select><div></div><div></div></div>
+    <div id="mantTable"></div>
+   </div>
+  </section>
 
-    <section id="destinos" class="page">
-      <div class="page-head"><div><h2>Destinos</h2><p>Destinos, recorridos y puntos de servicio.</p></div><button class="btn btn-primary">＋ Nuevo destino</button></div>
-      <div class="two">
-        <div class="card panel"><h3>Destinos programados</h3><div class="empty">Se cargarán desde la planificación.</div></div>
-        <div class="card panel"><h3>Resumen</h3><div class="list-item"><span>Destinos registrados</span><strong>—</strong></div><div class="list-item"><span>Servicios programados</span><strong>—</strong></div></div>
-      </div>
-    </section>
+  <section id="destinos" class="page">
+   <div class="page-head"><div><h2>Destinos</h2><p>Destinos encontrados en la planificación de servicios.</p></div></div>
+   <div class="card panel"><div class="filters"><input id="fDestino" placeholder="🔎 Buscar destino" oninput="renderDestinos()"><div></div><div></div><div></div></div><div id="destinoTable"></div></div>
+  </section>
 
-    <section id="reportes" class="page">
-      <div class="page-head"><div><h2>Reportes</h2><p>Indicadores para seguimiento y toma de decisiones.</p></div><button class="btn btn-primary">⬇ Exportar</button></div>
-      <div class="grid"><div class="card kpi"><div><small>Servicios realizados</small><strong>—</strong></div><div class="kpi-icon">✓</div></div><div class="card kpi"><div><small>Km recorridos</small><strong>—</strong></div><div class="kpi-icon">🛣️</div></div><div class="card kpi"><div><small>Disponibilidad</small><strong>—</strong></div><div class="kpi-icon">📊</div></div><div class="card kpi"><div><small>Incidencias</small><strong>—</strong></div><div class="kpi-icon">⚠️</div></div></div>
-      <div class="card panel"><h3>Reportes disponibles</h3><div class="list-item"><span>Estado diario de la flota</span><span class="badge">Próximamente</span></div><div class="list-item"><span>Servicios por chofer</span><span class="badge">Próximamente</span></div><div class="list-item"><span>Mantenimiento por vehículo</span><span class="badge">Próximamente</span></div></div>
-    </section>
-  </main>
+  <section id="reportes" class="page">
+   <div class="page-head"><div><h2>Reportes</h2><p>Indicadores construidos a partir de los datos leídos.</p></div></div>
+   <div class="grid">
+    <div class="card kpi"><div><small>Servicios repetitivos detectados</small><strong id="rRepetidos">—</strong></div><div class="kpi-icon">🔁</div></div>
+    <div class="card kpi"><div><small>Servicios únicos detectados</small><strong id="rUnicos">—</strong></div><div class="kpi-icon">1️⃣</div></div>
+    <div class="card kpi"><div><small>Dominios usados</small><strong id="rDominios">—</strong></div><div class="kpi-icon">🚚</div></div>
+    <div class="card kpi"><div><small>Destinos distintos</small><strong id="rDestinos">—</strong></div><div class="kpi-icon">📍</div></div>
+   </div>
+   <div class="card panel"><h3>Repetición de servicios</h3><div id="repetidosTable"></div></div>
+  </section>
+
+  <section id="datos" class="page">
+   <div class="page-head"><div><h2>Datos fuente</h2><p>Vista técnica para comprobar qué está leyendo el Panel.</p></div><button class="btn btn-light" onclick="cargarTodo()">↻ Volver a leer hojas</button></div>
+   <div id="dataSourceTabs"></div>
+   <div id="rawData"></div>
+  </section>
+ </main>
 </div>
-<footer>Panel de Control · Centro de gestión logística</footer>
+<footer>Panel de Control · Lectura pública de Google Sheets · El Panel no modifica las hojas todavía.</footer>
+
+<div id="modal" class="modal">
+ <div class="modal-box">
+  <div class="page-head"><div><h2>Nuevo servicio</h2><p>Alta local del servicio. La escritura en Google Sheets se habilitará después de definir la estructura de guardado.</p></div><button class="btn btn-light" onclick="cerrarModal()">✕</button></div>
+  <div class="notice warn">Por ahora este formulario sirve para validar el modelo. No escribe sobre la hoja original.</div>
+  <div class="form-grid">
+   <label>Fecha<input id="mFecha" type="date"></label>
+   <label>Hora<input id="mHora" type="time"></label>
+   <label>Descripción<input id="mDesc"></label>
+   <label>Vehículo<input id="mVeh"></label>
+   <label>Chofer<input id="mChofer"></label>
+   <label>Estado<select id="mEstado"><option>Programado</option><option>En curso</option><option>Finalizado</option><option>Suspendido</option></select></label>
+   <label class="full">Destino(s)<textarea id="mDestino"></textarea></label>
+   <label>Repetición<select id="mRep"><option>Ninguna</option><option>Diaria</option><option>Días hábiles</option><option>Semanal</option><option>Personalizada</option></select></label>
+   <label>Serie<input id="mSerie" placeholder="Ej. Jovenes-Progreso-13hs"></label>
+  </div>
+  <div class="actions" style="justify-content:flex-end;margin-top:15px"><button class="btn btn-light" onclick="cerrarModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarLocal()">Guardar prueba</button></div>
+ </div>
+</div>
 
 <script>
-document.querySelectorAll('.nav button').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(btn.dataset.page).classList.add('active');
+const CONFIG={
+  spreadsheetId:'1ysCEVN9PljeIcIFxvBsoxL9iXOdWbVTjm4mn8GcPkK8',
+  sheets:{
+    '2026':'2026',
+    'Mantenimiento':'Mantenimiento',
+    'direccions dia verde':'direccions dia verde'
+  }
+};
+
+const state={
+  fuentes:{},
+  servicios:[],
+  flota:[],
+  choferes:[],
+  destinos:[],
+  mantenimiento:[],
+  fecha:new Date()
+};
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function norm(v){return String(v??'').trim().replace(/\s+/g,' ').toLowerCase();}
+function clean(v){return String(v??'').trim().replace(/\s+/g,' ');}
+function fmtDate(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});}
+function dateKey(d){return d.toISOString().slice(0,10);}
+function parseDateAny(v){
+  if(v instanceof Date && !isNaN(v)) return v;
+  const s=clean(v); if(!s)return null;
+  let m=s.match(/^(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{2,4})$/);
+  if(m){let y=+m[3];if(y<100)y+=2000;return new Date(y,+m[2]-1,+m[1]);}
+  const d=new Date(s); return isNaN(d)?null:d;
+}
+function csvParse(text){
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i],n=text[i+1];
+    if(c==='"'){if(q&&n==='"'){cell+='"';i++;}else q=!q;}
+    else if(c===','&&!q){row.push(cell);cell='';}
+    else if((c==='\\n'||c==='\\r')&&!q){if(c==='\\r'&&n==='\\n')i++;row.push(cell);cell='';if(row.some(x=>clean(x)!==''))rows.push(row);row=[];}
+    else cell+=c;
+  }
+  row.push(cell);if(row.some(x=>clean(x)!==''))rows.push(row);
+  return rows;
+}
+async function leerHoja(nombre){
+  const url='https://docs.google.com/spreadsheets/d/'+CONFIG.spreadsheetId+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(nombre);
+  const res=await fetch(url,{cache:'no-store'});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const text=await res.text();
+  if(text.includes('<!DOCTYPE html>'))throw new Error('Google no devolvió CSV');
+  const rows=csvParse(text);
+  return {nombre,url,rows,fecha:new Date()};
+}
+function headerIndex(rows){
+  let best=0,bestScore=-Infinity;
+  const keys=['descripcion','descripción','servicio','viaje','hora de salida','hora','destino','primer destino','dominio','chofer','presentismo','finalizacion','finalización','km','kilometraje','patente','modelo','vtv'];
+  rows.slice(0,12).forEach((r,i)=>{
+    const text=r.map(clean).join(' | ');
+    const low=norm(text);
+    let score=0;
+    keys.forEach(k=>{if(low.includes(norm(k)))score+=8;});
+    score+=Math.min(r.reduce((a,v)=>a+(clean(v)?1:0),0),20)*0.15;
+    if(score>bestScore){bestScore=score;best=i;}
   });
-});
-function actualizar(){ alert('Actualización preparada para conectar con Google Sheets.'); }
+  return best;
+}
+function rowObjects(rows){
+  if(!rows.length)return [];
+  const hi=headerIndex(rows), rawHead=rows[hi]||[];
+  const heads=rawHead.map((h,i)=>clean(h)||('Columna '+(i+1)));
+  const out=[];
+  for(let r=hi+1;r<rows.length;r++){
+    const obj={};
+    let has=false;
+    heads.forEach((h,c)=>{obj[h]=clean(rows[r]?.[c]);if(obj[h])has=true;});
+    if(has)out.push(obj);
+  }
+  return {heads,items:out,headerRow:hi};
+}
+function findCol(heads,terms){
+  for(const term of terms){const i=heads.findIndex(h=>norm(h).includes(norm(term)));if(i>=0)return i;}
+  return -1;
+}
+function normalize2026(source){
+  const rows=source.rows;if(!rows.length)return [];
+  const hi=headerIndex(rows), heads=rows[hi]||[];
+  const iDesc=findCol(heads,['descripcion','descripción','servicio','viaje']);
+  const iHora=findCol(heads,['hora de salida','hora','salida']);
+  const iDestino=findCol(heads,['primer destino','destino']);
+  const services=[];
+  for(let r=hi+1;r<rows.length;r++){
+    const row=rows[r]||[];
+    const desc=clean(iDesc>=0?row[iDesc]:row[0]);
+    const hora=clean(iHora>=0?row[iHora]:row[1]);
+    const destino=clean(iDestino>=0?row[iDestino]:row[2]);
+    if(!desc&&!hora&&!destino)continue;
+    // The 2026 sheet is historically organized in repeated blocks.
+    // We deliberately detect each block by header keywords instead of fixed column numbers.
+    for(let c=0;c<heads.length;c++){
+      const h=norm(heads[c]);
+      if(!h||!h.includes('dominio'))continue;
+      const dominio=clean(row[c]);
+      const chofer=clean(row[c+1]);
+      const presentismo=clean(row[c+2]);
+      const finalizacion=clean(row[c+3]);
+      if(!dominio&&!chofer&&!presentismo&&!finalizacion)continue;
+      const fechaDetectada=detectBlockDate(heads,c);
+      services.push({fecha:fechaDetectada,descripcion:desc,hora,destino,dominio,chofer,presentismo,finalizacion,origen:'2026'});
+    }
+  }
+  // If the sheet has no explicit date information in headers, retain rows as undated.
+  if(!services.length){
+    for(let r=hi+1;r<rows.length;r++){
+      const row=rows[r]||[];const desc=clean(iDesc>=0?row[iDesc]:row[0]);
+      if(desc)services.push({fecha:null,descripcion:desc,hora:clean(iHora>=0?row[iHora]:row[1]),destino:clean(iDestino>=0?row[iDestino]:row[2]),dominio:'',chofer:'',origen:'2026'});
+    }
+  }
+  return services;
+}
+function detectBlockDate(heads,c){
+  // Looks left from a block for a date/week label. Merged Google Sheet headers
+  // may appear only once, so we accept the nearest date-like header.
+  for(let j=c;j>=0;j--){
+    const d=parseDateAny(heads[j]);if(d)return dateKey(d);
+    const s=clean(heads[j]);
+    const m=s.match(/(\\d{1,2})[\\/\\-](\\d{1,2})(?:[\\/\\-](\\d{2,4}))?/);
+    if(m){let y=m[3]?+m[3]:new Date().getFullYear();if(y<100)y+=2000;return dateKey(new Date(y,+m[2]-1,+m[1]));}
+  }
+  return null;
+}
+function uniqueSorted(arr){return [...new Set(arr.filter(Boolean).map(clean))].sort((a,b)=>a.localeCompare(b,'es'));}
+function buildEntities(){
+  const s=state.servicios;
+  state.flota=uniqueSorted(s.map(x=>x.dominio)).map(d=>({dominio:d}));
+  state.choferes=uniqueSorted(s.map(x=>x.chofer)).map(n=>({nombre:n}));
+  state.destinos=uniqueSorted(s.map(x=>x.destino)).map(n=>({destino:n}));
+  state.flota.forEach(v=>{
+    const m=state.mantenimiento.find(x=>norm(x.dominio)===norm(v.dominio));
+    v.estado=m?.estado||'Operativo';
+    v.modelo=m?.modelo||'';
+  });
+}
+function estadoClase(e){const n=norm(e);if(n.includes('taller'))return'yellow';if(n.includes('fuera')||n.includes('suspend'))return'red';if(n.includes('final'))return'blue';return'gray';}
+function servicesForDate(){
+  const key=dateKey(state.fecha);
+  const exact=state.servicios.filter(s=>s.fecha===key);
+  if(exact.length)return exact;
+  // Undated records are shown only when no dated records exist for that day.
+  return state.servicios.filter(s=>!s.fecha);
+}
+function renderInicio(){
+  const hoy=servicesForDate();
+  document.getElementById('kServicios').textContent=state.servicios.length||0;
+  document.getElementById('kVehiculos').textContent=state.flota.length||0;
+  const taller=state.flota.filter(v=>norm(v.estado).includes('taller')).length;
+  document.getElementById('kTaller').textContent=taller;
+  const alertas=state.servicios.filter(s=>!s.dominio||!s.chofer).length;
+  document.getElementById('kAlertas').textContent=alertas;
+  document.getElementById('hoyBox').innerHTML=renderServicesTable(hoy.slice(0,20),true);
+  const f=state.fuentes;
+  document.getElementById('fuentesBox').innerHTML=Object.keys(f).map(k=>`<div class="list-item"><span>${esc(k)}</span><strong>${f[k].rows?.length||0} filas</strong></div>`).join('')||'<div class="empty">Sin datos</div>';
+}
+function renderServicesTable(list,compact=false){
+  if(!list.length)return'<div class="empty">No hay servicios detectados para este día.</div>';
+  return `<div style="overflow:auto"><table><thead><tr><th>Hora</th><th>Servicio</th><th>Destino</th><th>Dominio</th><th>Chofer</th><th>Estado</th></tr></thead><tbody>${list.map(s=>{
+    const estado=s.estado||'Programado';
+    return `<tr><td>${esc(s.hora||'—')}</td><td><strong>${esc(s.descripcion||'Sin descripción')}</strong></td><td>${esc(s.destino||'—')}</td><td>${esc(s.dominio||'—')}</td><td>${esc(s.chofer||'—')}</td><td><span class="badge ${estadoClase(estado)}">${esc(estado)}</span></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function renderServicios(){
+  document.getElementById('fechaTitulo').textContent=fmtDate(state.fecha);
+  document.getElementById('fechaSub').textContent='· '+servicesForDate().length+' servicios visibles';
+  const q=norm(document.getElementById('fServicio').value);
+  const est=document.getElementById('fEstado').value, veh=document.getElementById('fVehiculo').value, ch=document.getElementById('fChoferServ').value;
+  let list=servicesForDate().filter(s=>{
+    const blob=norm([s.descripcion,s.dominio,s.chofer,s.destino].join(' '));
+    return (!q||blob.includes(q))&&(!est||(s.estado||'Programado')===est)&&(!veh||s.dominio===veh)&&(!ch||s.chofer===ch);
+  });
+  document.getElementById('serviciosTable').innerHTML=renderServicesTable(list);
+}
+function fillServiceFilters(){
+  const vs=uniqueSorted(servicesForDate().map(x=>x.dominio)), cs=uniqueSorted(servicesForDate().map(x=>x.chofer));
+  const v=document.getElementById('fVehiculo'),c=document.getElementById('fChoferServ'),ov=v.value,oc=c.value;
+  v.innerHTML='<option value="">Todos los vehículos</option>'+vs.map(x=>`<option>${esc(x)}</option>`).join('');
+  c.innerHTML='<option value="">Todos los choferes</option>'+cs.map(x=>`<option>${esc(x)}</option>`).join('');
+  if(vs.includes(ov))v.value=ov;if(cs.includes(oc))c.value=oc;
+}
+function renderFlota(){
+  const q=norm(document.getElementById('fFlota').value),e=document.getElementById('estadoFlota').value;
+  let list=state.flota.filter(v=>(!q||norm([v.dominio,v.modelo,v.estado].join(' ')).includes(q))&&(!e||v.estado===e));
+  document.getElementById('flotaTable').innerHTML=list.length?`<div style="overflow:auto"><table><thead><tr><th>Dominio</th><th>Modelo</th><th>Estado</th><th>Servicios</th></tr></thead><tbody>${list.map(v=>`<tr><td><strong>${esc(v.dominio)}</strong></td><td>${esc(v.modelo||'—')}</td><td><span class="badge ${estadoClase(v.estado)}">${esc(v.estado)}</span></td><td>${state.servicios.filter(s=>s.dominio===v.dominio).length}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No hay vehículos detectados.</div>';
+}
+function renderChoferes(){
+  const q=norm(document.getElementById('fChofer').value);
+  const list=state.choferes.filter(x=>!q||norm(x.nombre).includes(q));
+  document.getElementById('choferTable').innerHTML=list.length?`<div style="overflow:auto"><table><thead><tr><th>Chofer</th><th>Servicios</th><th>Vehículos utilizados</th></tr></thead><tbody>${list.map(x=>{
+    const ss=state.servicios.filter(s=>s.chofer===x.nombre);const vv=uniqueSorted(ss.map(s=>s.dominio)).join(', ');
+    return `<tr><td><strong>${esc(x.nombre)}</strong></td><td>${ss.length}</td><td>${esc(vv||'—')}</td></tr>`;
+  }).join('')}</tbody></table></div>`:'<div class="empty">No hay choferes detectados.</div>';
+}
+function renderMantenimiento(){
+  const q=norm(document.getElementById('fMant').value),e=document.getElementById('fMantEstado').value;
+  const list=state.mantenimiento.filter(x=>(!q||norm(Object.values(x).join(' ')).includes(q))&&(!e||x.estado===e));
+  document.getElementById('mantTable').innerHTML=list.length?`<div style="overflow:auto"><table><thead><tr><th>Modelo</th><th>Dominio</th><th>Km</th><th>Fecha</th><th>Service</th><th>Estado</th><th>VTV</th></tr></thead><tbody>${list.slice(0,500).map(x=>`<tr><td>${esc(x.modelo||'—')}</td><td><strong>${esc(x.dominio||'—')}</strong></td><td>${esc(x.km||'—')}</td><td>${esc(x.fecha||'—')}</td><td>${esc(x.service||'—')}</td><td><span class="badge ${estadoClase(x.estado||'')}">${esc(x.estado||'—')}</span></td><td>${esc(x.vtv||'—')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No se detectaron registros de mantenimiento.</div>';
+}
+function renderDestinos(){
+  const q=norm(document.getElementById('fDestino').value);
+  const list=state.destinos.filter(x=>!q||norm(x.destino).includes(q));
+  document.getElementById('destinoTable').innerHTML=list.length?`<div style="overflow:auto"><table><thead><tr><th>Destino</th><th>Servicios</th><th>Vehículos</th><th>Choferes</th></tr></thead><tbody>${list.map(x=>{
+    const ss=state.servicios.filter(s=>s.destino===x.destino);return `<tr><td><strong>${esc(x.destino)}</strong></td><td>${ss.length}</td><td>${uniqueSorted(ss.map(s=>s.dominio)).length}</td><td>${uniqueSorted(ss.map(s=>s.chofer)).length}</td></tr>`;
+  }).join('')}</tbody></table></div>`:'<div class="empty">No hay destinos detectados.</div>';
+}
+function renderReportes(){
+  const count={};state.servicios.forEach(s=>{const k=norm([s.descripcion,s.hora,s.destino].join('|'));if(k)count[k]=(count[k]||0)+1;});
+  const reps=Object.entries(count).filter(([,n])=>n>1).sort((a,b)=>b[1]-a[1]);
+  const unicos=Object.values(count).filter(n=>n===1).length;
+  document.getElementById('rRepetidos').textContent=reps.length;
+  document.getElementById('rUnicos').textContent=unicos;
+  document.getElementById('rDominios').textContent=state.flota.length;
+  document.getElementById('rDestinos').textContent=state.destinos.length;
+  document.getElementById('repetidosTable').innerHTML=reps.length?`<div style="overflow:auto"><table><thead><tr><th>Servicio / hora / destino</th><th>Repeticiones</th></tr></thead><tbody>${reps.slice(0,100).map(([k,n])=>`<tr><td>${esc(k.replace(/\\|/g,' · '))}</td><td><span class="badge blue">${n}</span></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Todavía no hay suficientes datos para detectar repeticiones.</div>';
+}
+function renderRaw(name){
+  const f=state.fuentes[name];if(!f){document.getElementById('rawData').innerHTML='<div class="empty">Sin fuente.</div>';return;}
+  const rows=f.rows||[];if(!rows.length){document.getElementById('rawData').innerHTML='<div class="empty">La hoja está vacía o no fue leída.</div>';return;}
+  document.getElementById('rawData').innerHTML='<div class="raw-wrap"><table><tbody>'+rows.slice(0,250).map((r,i)=>`<tr>${r.map((v,c)=>`<${i===0?'th':'td'}>${esc(v)}</${i===0?'th':'td'}>`).join('')}</tr>`).join('')+'</tbody></table></div>';
+}
+function renderDataTabs(){
+  const names=Object.keys(state.fuentes);
+  document.getElementById('dataSourceTabs').innerHTML='<div class="actions" style="margin-bottom:12px">'+names.map((n,i)=>`<button class="btn ${i===0?'btn-primary':'btn-light'}" onclick="seleccionarFuente('${n.replace(/'/g,"\\\\'")}',this)">${esc(n)}</button>`).join('')+'</div>';
+  if(names[0])renderRaw(names[0]);
+}
+function seleccionarFuente(n,btn){document.querySelectorAll('#dataSourceTabs .btn').forEach(x=>x.classList.remove('btn-primary'));btn.classList.add('btn-primary');renderRaw(n);}
+function cambiarDia(n){state.fecha.setDate(state.fecha.getDate()+n);fillServiceFilters();renderServicios();renderInicio();}
+function irHoy(){state.fecha=new Date();fillServiceFilters();renderServicios();renderInicio();}
+function abrirServicio(){document.getElementById('mFecha').value=dateKey(state.fecha);document.getElementById('modal').classList.add('show');}
+function cerrarModal(){document.getElementById('modal').classList.remove('show');}
+function guardarLocal(){
+  const s={fecha:document.getElementById('mFecha').value,hora:document.getElementById('mHora').value,descripcion:document.getElementById('mDesc').value,dominio:document.getElementById('mVeh').value,chofer:document.getElementById('mChofer').value,destino:document.getElementById('mDestino').value,estado:document.getElementById('mEstado').value,origen:'local'};
+  if(!s.descripcion){alert('Ingresá una descripción del servicio.');return;}
+  state.servicios.push(s);buildEntities();cerrarModal();fillServiceFilters();renderAll();alert('Servicio agregado a la prueba local. Todavía no se escribió en Google Sheets.');
+}
+function renderAll(){renderInicio();renderServicios();renderFlota();renderChoferes();renderMantenimiento();renderDestinos();renderReportes();renderDataTabs();}
+async function cargarTodo(){
+  document.getElementById('connText').textContent='Leyendo Google Sheets...';document.getElementById('connDot').className='dot';
+  const fuentes={};
+  try{
+    for(const n of Object.keys(CONFIG.sheets)){
+      try{fuentes[n]=await leerHoja(CONFIG.sheets[n]);}
+      catch(e){fuentes[n]={rows:[],error:e.message,fecha:new Date()};}
+    }
+    state.fuentes=fuentes;
+    const f2026=fuentes['2026'];
+    state.servicios=f2026?.rows?.length?normalize2026(f2026):[];
+    // Generic maintenance mapping. It does not require fixed column positions.
+    const mf=fuentes['Mantenimiento'];
+    if(mf?.rows?.length){
+      const ro=rowObjects(mf.rows);const h=ro.heads;
+      const pick=(o,terms)=>{const i=findCol(h,terms);return i>=0?clean(mf.rows[ro.headerRow+1]?.[i]):''};
+      state.mantenimiento=ro.items.map(o=>{
+        const get=terms=>{const k=h.find(x=>terms.some(t=>norm(x).includes(norm(t))));return k?clean(o[k]):''};
+        return {modelo:get(['modelo','marca']),dominio:get(['dominio','patente']),km:get(['km','kilometraje']),fecha:get(['fecha']),service:get(['service','mantenimiento']),estado:get(['estado','situacion']),vtv:get(['vtv'])};
+      }).filter(x=>Object.values(x).some(Boolean));
+    }else state.mantenimiento=[];
+    buildEntities();renderAll();
+    const ok=Object.values(fuentes).filter(x=>x.rows?.length).length;
+    document.getElementById('connText').textContent=ok?'Google Sheets conectado · '+ok+'/3 hojas leídas':'No se pudieron leer las hojas';
+    document.getElementById('connDot').className='dot '+(ok?'ok':'err');
+  }catch(e){
+    document.getElementById('connText').textContent='Error de lectura: '+e.message;document.getElementById('connDot').className='dot err';
+  }
+}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+ document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active');
+}));
+window.addEventListener('load',()=>{state.fecha=new Date();cargarTodo();});
 </script>
 </body>
 </html>
