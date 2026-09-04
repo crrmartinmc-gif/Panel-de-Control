@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Panel de Control · V23</title>
+<title>Panel de Control</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap');
 :root{
@@ -212,7 +212,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 </div>
 
 <script>
-// V23: lectura de colores mediante JSONP con etiqueta <script> fija. Sin iframe, postMessage ni scripts dinámicos.
+// V24: mantenimiento sincronizado a una hoja auxiliar; sin iframe, postMessage ni JSONP.
 const CONFIG={
   spreadsheetId:'1ysCEVN9PljeIcIFxvBsoxL9iXOdWbVTjm4mn8GcPkK8',
   sheets:{
@@ -222,8 +222,7 @@ const CONFIG={
     'Salida del Partido':'Salida del Partido',
     'Mantenimiento':'Mantenimiento'
   },
-  // URL del Web App de Apps Script V23. Debe estar desplegado para acceso público.
-  mantenimientoColorApi:'https://script.google.com/macros/s/AKfycbwCYctsbDVX3Vypjo69LCk9JU91uH9iADYcKjgd9QyFdfsnBDnKCdmsQJgHaNdprow/exec'
+  mantenimientoEstadoSheet:'Panel_Mantenimiento',
 };
 
 const state={
@@ -236,20 +235,6 @@ const state={
   fecha:new Date()
 };
 
-/* ============================================================
-   V23 — JSONP FIJO PARA MANTENIMIENTO
-   El callback queda definido antes de cargar el <script src>.
-   No se crean scripts desde JavaScript.
-   ============================================================ */
-window.__panelMantenimientoData = null;
-window.panelMantenimientoCallback = function(data){
-  window.__panelMantenimientoData = data || {ok:false,error:'Respuesta vacía'};
-};
-
-</script>
-<!-- V23: etiqueta SCRIPT FIJA; no se crea desde JavaScript. -->
-<script src="https://script.google.com/macros/s/AKfycbwCYctsbDVX3Vypjo69LCk9JU91uH9iADYcKjgd9QyFdfsnBDnKCdmsQJgHaNdprow/exec?callback=panelMantenimientoCallback"></script>
-<script>
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function norm(v){return String(v??'').trim().replace(/\s+/g,' ').toLowerCase();}
 function clean(v){return String(v??'').trim().replace(/\s+/g,' ');}
@@ -643,40 +628,28 @@ function irHoy(){state.fecha=new Date();fillServiceFilters();renderServicios();r
 function abrirServicio(){document.getElementById('mFecha').value=dateKey(state.fecha);document.getElementById('modal').classList.add('show');}
 function cerrarModal(){document.getElementById('modal').classList.remove('show');}
 function normalizarColor(c){return String(c||'').toLowerCase().replace(/\s+/g,'');}
-function estadoPorColor(c){
-  const x=normalizarColor(c);
-  if(x==='#ff0000'||x==='#f00') return 'En taller';
-  if(x==='#ffa500'||x==='#ff9900'||x==='#f90'||x==='#999900') return 'Condicional';
-  if(x==='#ffffff'||x==='#fff') return 'Operativo';
-  // Tolerancia para tonos equivalentes o colores personalizados.
+function estadoPorColor(color){
+  const x=normalizarColor(color);
+  if(x==='#ff0000'||x==='#ea4335'||x==='#f44336'||x==='#ff4d4d') return 'En taller';
+  if(x==='#ffa500'||x==='#ff9900'||x==='#f6b26b'||x==='#f9cb9c'||x==='#999900') return 'Condicional';
+  if(x==='#ffffff'||x==='#fff'||x===''||x==='#fefefe') return 'Operativo';
   const m=x.match(/^#([0-9a-f]{6})$/i);
   if(m){
     const h=m[1],r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
-    if(r>220&&g<90&&b<90) return 'En taller';
-    if(r>220&&g>120&&g<210&&b<100) return 'Condicional';
+    if(r>220&&g<100&&b<100) return 'En taller';
+    if(r>220&&g>120&&g<210&&b<110) return 'Condicional';
     if(r>235&&g>235&&b>235) return 'Operativo';
   }
   return 'Sin estado';
 }
-function leerColoresMantenimiento(){
-  return new Promise((resolve,reject)=>{
-    const data=window.__panelMantenimientoData;
-    if(data && data.ok){
-      const items=Array.isArray(data.items)
-        ? data.items
-        : (Array.isArray(data.vehiculos)?data.vehiculos:[]);
-      resolve(items);
-      return;
-    }
-    reject(new Error(data?.error||'No se recibieron datos de Mantenimiento'));
+function leerEstadoMantenimiento(){
+  return leerHoja(CONFIG.mantenimientoEstadoSheet).then(data=>{
+    if(!data || !data.rows || !data.rows.length) throw new Error('La hoja auxiliar Panel_Mantenimiento está vacía');
+    return data.rows.slice(1).filter(r=>clean(r?.[0])).map(r=>({
+      dominio:clean(r?.[0]), color:normalizarColor(r?.[1]||''), estado:clean(r?.[2]||'Sin estado'), fila:Number(r?.[3]||0)
+    }));
   });
 }
-function guardarLocal(){
-  const s={fecha:document.getElementById('mFecha').value,hora:document.getElementById('mHora').value,descripcion:document.getElementById('mDesc').value,dominio:document.getElementById('mVeh').value,chofer:document.getElementById('mChofer').value,destino:document.getElementById('mDestino').value,estado:document.getElementById('mEstado').value,origen:'local'};
-  if(!s.descripcion){alert('Ingresá una descripción del servicio.');return;}
-  state.servicios.push(s);buildEntities();cerrarModal();fillServiceFilters();renderAll();alert('Servicio agregado a la prueba local. Todavía no se escribió en Google Sheets.');
-}
-function renderAll(){renderInicio();renderServicios();renderFlota();renderChoferes();renderMantenimiento();renderDestinos();renderReportes();renderDataTabs();}
 async function cargarTodo(){
   document.getElementById('connText').textContent='Leyendo Google Sheets...';document.getElementById('connDot').className='dot';
   const fuentes={};
@@ -688,30 +661,23 @@ async function cargarTodo(){
     state.fuentes=fuentes;
     const f2026=fuentes['2026'];
     state.servicios=f2026?.rows?.length?normalize2026(f2026):[];
-    // Mantenimiento: B2:B30 contiene las patentes. El color de fondo de B define el estado.
-    // El CSV no conserva formatos, por eso el color se obtiene desde el Web App de Apps Script.
-    const mf=fuentes['Mantenimiento'];
+    // Mantenimiento: se lee una hoja auxiliar generada por Apps Script.
+    // Esto evita iframes, postMessage, JSONP y cualquier pedido de permisos desde el navegador.
     state.mantenimiento=[];
-    if(mf?.rows?.length){
-      const rows=mf.rows.slice(1,30); // filas 2 a 30 inclusive
-      for(let i=0;i<rows.length;i++){
-        const dominio=clean(rows[i]?.[1]||'');
-        if(!dominio) continue;
-        state.mantenimiento.push({dominio,estado:'Sin estado',color:'',fila:i+2});
+    try{
+      const estados=await leerEstadoMantenimiento();
+      estados.forEach(item=>state.mantenimiento.push(item));
+    }catch(e){
+      console.warn('No se pudo leer Panel_Mantenimiento:',e);
+      const mf=fuentes['Mantenimiento'];
+      if(mf?.rows?.length){
+        const rows=mf.rows.slice(1,30);
+        for(let i=0;i<rows.length;i++){
+          const dominio=clean(rows[i]?.[1]||'');
+          if(!dominio) continue;
+          state.mantenimiento.push({dominio,estado:'Sin estado',color:'',fila:i+2});
+        }
       }
-    }
-    // V23: los colores ya fueron cargados por la etiqueta <script> fija.
-    // No se crea iframe, no se usa postMessage y no se inyecta ningún script.
-    if(CONFIG.mantenimientoColorApi){
-      try{
-        const colorData=await leerColoresMantenimiento();
-        colorData.forEach(item=>{
-          const m=state.mantenimiento.find(x=>x.fila===item.fila);
-          if(!m) return;
-          m.color=normalizarColor(item.color||'');
-          m.estado=estadoPorColor(m.color);
-        });
-      }catch(e){ console.warn('No se pudo leer colores de Mantenimiento:',e); }
     }
     buildEntities();renderAll();
     const ok=Object.values(fuentes).filter(x=>x.rows?.length).length;
