@@ -306,8 +306,9 @@ function extractDateLabel(v){
   const d=parseDateAny(s);return d?dateKey(d):null;
 }
 function detectColumnDate(rows,col){
-  const max=Math.min(rows.length,18), radius=5;
-  for(let r=0;r<max;r++){
+  const radius=8;
+  // Prefer the nearest date/range in the header area above the data.
+  for(let r=0;r<Math.min(rows.length,12);r++){
     for(let c=Math.max(0,col-radius);c<=Math.min((rows[r]||[]).length-1,col+radius);c++){
       const d=extractDateLabel(rows[r]?.[c]);if(d)return d;
     }
@@ -342,30 +343,73 @@ function findBaseColumns(rows,hi){
   return {desc:pick(['descripcion','descripción','servicio','viaje'],0),hora:pick(['hora de salida','hora'],1),destino:pick(['primer destino','destino'],2)};
 }
 function normalize2026(source){
-  const rows=source.rows;if(!rows.length)return [];
-  const hi=headerIndex(rows), base=findBaseColumns(rows,hi), domains=detectDomainColumns(rows,hi);
+  const rows=source.rows;
+  if(!rows.length)return [];
+
+  const hi=headerIndex(rows);
+  const base=findBaseColumns(rows,hi);
+  const domainCols=detectDomainColumns(rows,hi)
+    .filter(x=>x.plateCount>0)
+    .sort((a,b)=>a.col-b.col);
+
   const services=[];
+  const seen=new Set();
+
+  // The 2026 sheet has a fixed service area (description/hour/destination)
+  // and repeated weekly assignment blocks. A vehicle dropdown is recognized
+  // by the actual patent value in its cell; the driver is normally the cell
+  // immediately to the right.
   for(let r=hi+1;r<rows.length;r++){
     const row=rows[r]||[];
-    const desc=clean(row[base.desc]), hora=clean(row[base.hora]), destino=clean(row[base.destino]);
+    const desc=clean(row[base.desc]);
+    const hora=clean(row[base.hora]);
+    const destino=clean(row[base.destino]);
+
     if(!desc&&!hora&&!destino)continue;
-    for(const dc of domains){
+
+    domainCols.forEach(dc=>{
       const dominio=clean(row[dc.col]);
-      if(!looksLikePlate(dominio) && !domainHeaderInColumn(rows,dc.col))continue;
+      if(!looksLikePlate(dominio))return;
+
       const chofer=clean(row[dc.col+1]);
       const presentismo=clean(row[dc.col+2]);
       const finalizacion=clean(row[dc.col+3]);
-      if(!dominio&&!chofer&&!presentismo&&!finalizacion)continue;
-      services.push({fecha:dc.date,descripcion:desc,hora,destino,dominio,chofer,presentismo,finalizacion,origen:'2026'});
-    }
+
+      const key=[r,dc.col,dominio,chofer,desc,hora,destino].join('|');
+      if(seen.has(key))return;
+      seen.add(key);
+
+      services.push({
+        fecha:dc.date,
+        descripcion:desc,
+        hora,
+        destino,
+        dominio:dominio.toUpperCase(),
+        chofer,
+        presentismo,
+        finalizacion,
+        origen:'2026',
+        filaSheets:r+1,
+        columnaSheets:dc.col+1
+      });
+    });
   }
-  if(!services.length){
-    for(let r=hi+1;r<rows.length;r++){
-      const row=rows[r]||[];const desc=clean(row[base.desc]);
-      if(desc)services.push({fecha:null,descripcion:desc,hora:clean(row[base.hora]),destino:clean(row[base.destino]),dominio:'',chofer:'',origen:'2026'});
-    }
-  }
-  source.diagnostics={headerRow:hi+1,baseColumns:base,domainColumns:domains.map(x=>({col:x.col+1,plateCount:x.plateCount,headerHits:x.headerHits,date:x.date})),rows:rows.length,maxCols:Math.max(0,...rows.map(r=>r.length))};
+
+  // If a block has no explicit date near its vehicle column, keep it visible
+  // but mark it undated; we will resolve its date from the block header later.
+  source.diagnostics={
+    headerRow:hi+1,
+    baseColumns:{desc:base.desc+1,hora:base.hora+1,destino:base.destino+1},
+    domainColumns:domainCols.map(x=>({
+      col:x.col+1,
+      plateCount:x.plateCount,
+      date:x.date
+    })),
+    servicesFound:services.length,
+    rows:rows.length,
+    maxCols:Math.max(0,...rows.map(r=>r.length))
+  };
+
   return services;
 }
 function domainHeaderInColumn(rows,col){
