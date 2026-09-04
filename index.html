@@ -212,7 +212,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 </div>
 
 <script>
-// V24: mantenimiento sincronizado a una hoja auxiliar; sin iframe, postMessage ni JSONP.
+// V25: Mantenimiento usa directamente la columna B=Estado y C=Dominio.
 const CONFIG={
   spreadsheetId:'1ysCEVN9PljeIcIFxvBsoxL9iXOdWbVTjm4mn8GcPkK8',
   sheets:{
@@ -222,7 +222,7 @@ const CONFIG={
     'Salida del Partido':'Salida del Partido',
     'Mantenimiento':'Mantenimiento'
   },
-  mantenimientoEstadoSheet:'Panel_Mantenimiento',
+  // V25: la hoja Mantenimiento ahora usa B=Estado y C=Dominio.
 };
 
 const state={
@@ -617,6 +617,7 @@ function renderRaw(name){
   }
   document.getElementById('rawData').innerHTML=html;
 }
+function renderAll(){renderInicio();fillServiceFilters();renderServicios();renderFlota();renderChoferes();renderMantenimiento();renderDestinos();renderReportes();renderDataTabs();}
 function renderDataTabs(){
   const names=Object.keys(state.fuentes);
   document.getElementById('dataSourceTabs').innerHTML='<div class="actions" style="margin-bottom:12px">'+names.map((n,i)=>`<button class="btn ${i===0?'btn-primary':'btn-light'}" onclick="seleccionarFuente('${n.replace(/'/g,"\\\\'")}',this)">${esc(n)}</button>`).join('')+'</div>';
@@ -642,13 +643,19 @@ function estadoPorColor(color){
   }
   return 'Sin estado';
 }
-function leerEstadoMantenimiento(){
-  return leerHoja(CONFIG.mantenimientoEstadoSheet).then(data=>{
-    if(!data || !data.rows || !data.rows.length) throw new Error('La hoja auxiliar Panel_Mantenimiento está vacía');
-    return data.rows.slice(1).filter(r=>clean(r?.[0])).map(r=>({
-      dominio:clean(r?.[0]), color:normalizarColor(r?.[1]||''), estado:clean(r?.[2]||'Sin estado'), fila:Number(r?.[3]||0)
-    }));
-  });
+function leerEstadoMantenimientoDesdeHoja(data){
+  const rows=data?.rows||[];
+  if(!rows.length) return [];
+  return rows.slice(1).map((r,i)=>({
+    modelo:clean(r?.[0]||''),
+    estado:clean(r?.[1]||'Sin estado') || 'Sin estado',
+    dominio:clean(r?.[2]||'').toUpperCase().replace(/\\s+/g,''),
+    km:clean(r?.[3]||''),
+    fecha:clean(r?.[4]||''),
+    service:clean(r?.[5]||''),
+    vtv:clean(r?.[6]||''),
+    fila:i+2
+  })).filter(x=>x.dominio);
 }
 async function cargarTodo(){
   document.getElementById('connText').textContent='Leyendo Google Sheets...';document.getElementById('connDot').className='dot';
@@ -661,25 +668,11 @@ async function cargarTodo(){
     state.fuentes=fuentes;
     const f2026=fuentes['2026'];
     state.servicios=f2026?.rows?.length?normalize2026(f2026):[];
-    // Mantenimiento: se lee una hoja auxiliar generada por Apps Script.
-    // Esto evita iframes, postMessage, JSONP y cualquier pedido de permisos desde el navegador.
-    state.mantenimiento=[];
-    try{
-      const estados=await leerEstadoMantenimiento();
-      estados.forEach(item=>state.mantenimiento.push(item));
-    }catch(e){
-      console.warn('No se pudo leer Panel_Mantenimiento:',e);
-      const mf=fuentes['Mantenimiento'];
-      if(mf?.rows?.length){
-        const rows=mf.rows.slice(1,30);
-        for(let i=0;i<rows.length;i++){
-          const dominio=clean(rows[i]?.[1]||'');
-          if(!dominio) continue;
-          state.mantenimiento.push({dominio,estado:'Sin estado',color:'',fila:i+2});
-        }
-      }
-    }
-    buildEntities();renderAll();
+    // Mantenimiento V25: lectura directa de la hoja.
+    // Estructura fija: A=Modelo, B=Estado, C=Dominio, D=KM, E=Fecha, F=Service, G=VTV.
+    state.mantenimiento=leerEstadoMantenimientoDesdeHoja(fuentes['Mantenimiento']);
+    buildEntities();
+    renderAll();
     const ok=Object.values(fuentes).filter(x=>x.rows?.length).length;
     document.getElementById('connText').textContent=ok?'Google Sheets conectado · '+ok+'/'+Object.keys(CONFIG.sheets).length+' hojas leídas':'No se pudieron leer las hojas';
     document.getElementById('connDot').className='dot '+(ok?'ok':'err');
