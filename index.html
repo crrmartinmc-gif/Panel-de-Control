@@ -251,7 +251,7 @@ function csvParse(text){
     const c=text[i],n=text[i+1];
     if(c==='"'){if(q&&n==='"'){cell+='"';i++;}else q=!q;}
     else if(c===','&&!q){row.push(cell);cell='';}
-    else if((c==='\\n'||c==='\\r')&&!q){if(c==='\\r'&&n==='\\n')i++;row.push(cell);cell='';if(row.some(x=>clean(x)!==''))rows.push(row);row=[];}
+    else if((c==='\n'||c==='\r')&&!q){if(c==='\r'&&n==='\n')i++;row.push(cell);cell='';if(row.some(x=>clean(x)!==''))rows.push(row);row=[];}
     else cell+=c;
   }
   row.push(cell);if(row.some(x=>clean(x)!==''))rows.push(row);
