@@ -5,16 +5,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Panel de Control</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap');
 :root{
   --verde:#087a3d;--verde-oscuro:#04552b;--verde-claro:#e9f7ed;
   --texto:#193329;--gris:#728078;--fondo:#f3f7f4;--borde:#dce9e0;
   --blanco:#fff;--rojo:#b42318;--amarillo:#c98500;--azul:#1769aa
 }
-*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fondo);color:var(--texto)}
+*{box-sizing:border-box} body{margin:0;font-family:'Nunito Sans',Arial,Helvetica,sans-serif;letter-spacing:.05px;background:var(--fondo);color:var(--texto)}
 header{background:linear-gradient(135deg,var(--verde-oscuro),var(--verde));color:#fff;padding:18px 26px;box-shadow:0 4px 20px #0002}
 .header-inner{max-width:1500px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:18px}
 .brand{display:flex;align-items:center;gap:14px}.logo{width:52px;height:52px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:26px}
-h1{margin:0;font-size:26px}.sub{font-size:13px;opacity:.9;margin-top:3px}
+h1{margin:0;font-size:27px;font-weight:800;letter-spacing:-.45px}.sub{font-size:13px;opacity:.92;margin-top:4px;font-weight:500;letter-spacing:.1px}
 .connection{font-size:12px;font-weight:700}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#f5c542;margin-right:5px}.dot.ok{background:#64d88a}.dot.err{background:#ff7770}
 .app{max-width:1500px;margin:auto;padding:18px;display:grid;grid-template-columns:225px 1fr;gap:18px}
 .sidebar{background:#fff;border:1px solid var(--borde);border-radius:18px;padding:13px;height:max-content;position:sticky;top:14px;box-shadow:0 8px 30px #163a2614}
@@ -23,22 +24,22 @@ h1{margin:0;font-size:26px}.sub{font-size:13px;opacity:.9;margin-top:3px}
 .nav button:hover,.nav button.active{background:var(--verde-claro);color:var(--verde)}
 .content{min-width:0}.page{display:none}.page.active{display:block}
 .page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:15px;margin-bottom:15px}
-.page-head h2{margin:0;font-size:24px}.page-head p{margin:5px 0 0;color:var(--gris);font-size:13px}
-.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
+.page-head h2{margin:0;font-size:25px;font-weight:800;letter-spacing:-.5px}.page-head p{margin:5px 0 0;color:var(--gris);font-size:13px;font-weight:500}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:0;border-radius:12px;padding:10px 15px;font-weight:800;cursor:pointer;letter-spacing:.05px;font-family:inherit}
 .btn-primary{background:var(--verde);color:#fff}.btn-primary:hover{background:var(--verde-oscuro)}
 .btn-light{background:#fff;border:1px solid var(--borde);color:var(--texto)}
 .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:16px}
 .card{background:#fff;border:1px solid var(--borde);border-radius:17px;box-shadow:0 7px 25px #163a2610}
-.kpi{padding:17px;display:flex;justify-content:space-between;align-items:center}.kpi small{display:block;color:var(--gris);font-weight:700;font-size:12px;margin-bottom:6px}.kpi strong{font-size:27px}
+.kpi{padding:17px;display:flex;justify-content:space-between;align-items:center}.kpi small{display:block;color:var(--gris);font-weight:700;font-size:12px;margin-bottom:6px}.kpi strong{font-size:28px;font-weight:800;letter-spacing:-.7px}
 .kpi-icon{width:45px;height:45px;border-radius:13px;background:var(--verde-claro);display:grid;place-items:center;font-size:21px}
 .kpi.alert .kpi-icon{background:#fff4df}.kpi.alert strong{color:var(--amarillo)}.kpi.danger .kpi-icon{background:#fff0ef}.kpi.danger strong{color:var(--rojo)}
-.panel{padding:17px}.panel h3{margin:0 0 13px;font-size:17px}
+.panel{padding:17px}.panel h3{margin:0 0 13px;font-size:17px;font-weight:800;letter-spacing:-.2px}
 .two{display:grid;grid-template-columns:1.35fr 1fr;gap:13px}
 .filters{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:9px;margin-bottom:13px}
 .filters input,.filters select,.filters button{width:100%;height:41px;border:1px solid #d5e0d9;border-radius:10px;padding:8px 10px;background:#fff;color:var(--texto);outline:0}
-table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;color:var(--gris);font-size:10px;text-transform:uppercase;letter-spacing:.4px;padding:9px;border-bottom:1px solid var(--borde);white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13px;font-weight:500}th{text-align:left;color:var(--gris);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:9px;border-bottom:1px solid var(--borde);white-space:nowrap}
 td{padding:10px 9px;border-bottom:1px solid #edf2ee;vertical-align:top}tr:last-child td{border-bottom:0}
-.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:800;background:var(--verde-claro);color:var(--verde)}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.05px;background:var(--verde-claro);color:var(--verde)}
 .badge.yellow{background:#fff4df;color:#9a6500}.badge.red{background:#fff0ef;color:var(--rojo)}.badge.gray{background:#eef1ef;color:#5f6963}.badge.blue{background:#edf5ff;color:var(--azul)}
 .empty{padding:30px;text-align:center;color:var(--gris)}
 .bar-row{margin:12px 0}.bar-top{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px}.bar{height:8px;background:#edf2ee;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--verde);border-radius:99px}
@@ -47,7 +48,7 @@ td{padding:10px 9px;border-bottom:1px solid #edf2ee;vertical-align:top}tr:last-c
 .notice.warn{background:#fff8e9;border-color:#f0dfb2}.notice.err{background:#fff0ef;border-color:#f2c9c6}
 .raw-wrap{overflow:auto;max-height:520px;border:1px solid var(--borde);border-radius:12px}
 .raw-wrap table{min-width:900px}.raw-wrap th{position:sticky;top:0;background:#f7faf8;z-index:1}
-.day-nav{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.day-nav button{border:1px solid var(--borde);background:#fff;border-radius:9px;padding:8px 10px;cursor:pointer;font-weight:800}.day-nav .current{background:var(--verde);color:#fff;border-color:var(--verde)}
+.day-nav{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.day-nav button{border:1px solid var(--borde);background:#fff;border-radius:11px;padding:8px 11px;cursor:pointer;font-weight:800;font-family:inherit}.day-nav .current{background:var(--verde);color:#fff;border-color:var(--verde)}
 .modal{display:none;position:fixed;inset:0;background:#0007;z-index:20;padding:30px;align-items:center;justify-content:center}.modal.show{display:flex}
 .modal-box{background:#fff;width:min(720px,100%);max-height:90vh;overflow:auto;border-radius:18px;padding:20px;box-shadow:0 20px 70px #0005}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-grid label{font-size:11px;font-weight:800;color:var(--gris)}.form-grid input,.form-grid select,.form-grid textarea{width:100%;margin-top:5px;border:1px solid #d5e0d9;border-radius:9px;padding:9px;background:#fff}.form-grid textarea{min-height:80px;resize:vertical}.full{grid-column:1/-1}
@@ -55,12 +56,18 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
 @media(max-width:800px){.app{grid-template-columns:1fr}.sidebar{position:static}.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.nav button{margin:0}.filters{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.grid{grid-template-columns:1fr}.nav{grid-template-columns:1fr 1fr}.filters{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}}
+
+.nav button{display:flex;align-items:center;gap:10px}
+.nav button svg{width:18px;height:18px;stroke-width:2.2;flex:none}
+.logo svg{width:27px;height:27px;stroke-width:2}
+.kpi-icon svg{width:22px;height:22px;stroke-width:2.1}
 </style>
+<script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 <header>
  <div class="header-inner">
-  <div class="brand"><div class="logo">📊</div><div><h1>PANEL DE CONTROL</h1><div class="sub">Centro de gestión logística</div></div></div>
+  <div class="brand"><div class="logo"><i data-lucide="layout-dashboard"></i></div><div><h1>PANEL DE CONTROL</h1><div class="sub">Centro de gestión logística</div></div></div>
   <div class="connection"><span id="connDot" class="dot"></span><span id="connText">Conectando con Google Sheets...</span></div>
  </div>
 </header>
@@ -69,14 +76,14 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
  <aside class="sidebar">
   <div class="menu-title">Menú principal</div>
   <nav class="nav">
-   <button class="active" data-page="inicio">🏠 Inicio</button>
-   <button data-page="flota">🚛 Flota</button>
-   <button data-page="choferes">👤 Choferes</button>
-   <button data-page="servicios">📋 Servicios</button>
-   <button data-page="mantenimiento">🔧 Mantenimiento</button>
-   <button data-page="destinos">📍 Destinos</button>
-   <button data-page="reportes">📈 Reportes</button>
-   <button data-page="datos">🗂️ Datos fuente</button>
+   <button class="active" data-page="inicio"><i data-lucide="house"></i><span>Inicio</span></button>
+   <button data-page="flota"><i data-lucide="truck"></i><span>Flota</span></button>
+   <button data-page="choferes"><i data-lucide="users"></i><span>Choferes</span></button>
+   <button data-page="servicios"><i data-lucide="clipboard-list"></i><span>Servicios</span></button>
+   <button data-page="mantenimiento"><i data-lucide="wrench"></i><span>Mantenimiento</span></button>
+   <button data-page="destinos"><i data-lucide="map-pin"></i><span>Destinos</span></button>
+   <button data-page="reportes"><i data-lucide="chart-no-axes-combined"></i><span>Reportes</span></button>
+   <button data-page="datos"><i data-lucide="database"></i><span>Datos fuente</span></button>
   </nav>
  </aside>
 
@@ -84,10 +91,10 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
   <section id="inicio" class="page active">
    <div class="page-head"><div><h2>Inicio</h2><p>Estado general de la operación.</p></div><div class="actions"><button class="btn btn-light" onclick="cargarTodo()">↻ Actualizar datos</button><button class="btn btn-primary" onclick="abrirServicio()">＋ Nuevo servicio</button></div></div>
    <div class="grid">
-    <div class="card kpi"><div><small>Servicios cargados</small><strong id="kServicios">—</strong></div><div class="kpi-icon">📋</div></div>
-    <div class="card kpi"><div><small>Vehículos detectados</small><strong id="kVehiculos">—</strong></div><div class="kpi-icon">🚛</div></div>
-    <div class="card kpi alert"><div><small>En taller</small><strong id="kTaller">—</strong></div><div class="kpi-icon">🔧</div></div>
-    <div class="card kpi danger"><div><small>Alertas</small><strong id="kAlertas">—</strong></div><div class="kpi-icon">⚠️</div></div>
+    <div class="card kpi"><div><small>Servicios cargados</small><strong id="kServicios">—</strong></div><div class="kpi-icon"> <i data-lucide="clipboard-list"></i></div></div>
+    <div class="card kpi"><div><small>Vehículos detectados</small><strong id="kVehiculos">—</strong></div><div class="kpi-icon"> <i data-lucide="truck"></i></div></div>
+    <div class="card kpi alert"><div><small>En taller</small><strong id="kTaller">—</strong></div><div class="kpi-icon"> <i data-lucide="wrench"></i></div></div>
+    <div class="card kpi danger"><div><small>Alertas</small><strong id="kAlertas">—</strong></div><div class="kpi-icon"> <i data-lucide="triangle-alert"></i></div></div>
    </div>
    <div class="two">
     <div class="card panel"><h3>Servicios de hoy</h3><div id="hoyBox"><div class="empty">Cargando...</div></div></div>
@@ -95,13 +102,45 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
    </div>
   </section>
 
+  
   <section id="flota" class="page">
-   <div class="page-head"><div><h2>Flota</h2><p>Vehículos detectados desde las fuentes conectadas.</p></div></div>
+   <div class="page-head">
+    <div><h2>Flota</h2><p>Maestro de vehículos construido a partir de la planificación y mantenimiento.</p></div>
+    <div class="actions"><button class="btn btn-light" onclick="cargarTodo()">↻ Actualizar flota</button></div>
+   </div>
+
+   <div class="grid">
+    <div class="card kpi"><div><small>Vehículos detectados</small><strong id="fTotal">—</strong></div><div class="kpi-icon"><i data-lucide="truck"></i></div></div>
+    <div class="card kpi"><div><small>Con servicios</small><strong id="fConServicios">—</strong></div><div class="kpi-icon"><i data-lucide="route"></i></div></div>
+    <div class="card kpi alert"><div><small>En mantenimiento</small><strong id="fEnTaller">—</strong></div><div class="kpi-icon"><i data-lucide="wrench"></i></div></div>
+    <div class="card kpi"><div><small>Sin actividad detectada</small><strong id="fSinActividad">—</strong></div><div class="kpi-icon"><i data-lucide="circle-off"></i></div></div>
+   </div>
+
    <div class="card panel">
-    <div class="filters"><input id="fFlota" placeholder="🔎 Buscar dominio, modelo o marca" oninput="renderFlota()"><select id="estadoFlota" onchange="renderFlota()"><option value="">Todos los estados</option><option>Operativo</option><option>En taller</option><option>Fuera de servicio</option></select><div></div><div></div></div>
+    <div class="notice">
+      <strong>Cómo estamos construyendo la flota:</strong>
+      se toma la patente como identificador único y se cruzan sus apariciones en servicios con la información disponible de mantenimiento.
+      No se modifica ninguna hoja de Google Sheets.
+    </div>
+    <div class="filters">
+      <input id="fFlota" placeholder="🔎 Buscar dominio, modelo o marca" oninput="renderFlota()">
+      <select id="estadoFlota" onchange="renderFlota()">
+       <option value="">Todos los estados</option>
+       <option value="Operativo">Operativo</option>
+       <option value="En taller">En taller</option>
+       <option value="Sin actividad">Sin actividad</option>
+      </select>
+      <select id="fActividadFlota" onchange="renderFlota()">
+       <option value="">Toda actividad</option>
+       <option value="Con servicios">Con servicios</option>
+       <option value="Sin servicios">Sin servicios</option>
+      </select>
+      <button class="btn btn-light" onclick="limpiarFiltrosFlota()">Limpiar filtros</button>
+    </div>
     <div id="flotaTable"></div>
    </div>
   </section>
+
 
   <section id="choferes" class="page">
    <div class="page-head"><div><h2>Choferes</h2><p>Choferes identificados en la planificación histórica/actual.</p></div></div>
@@ -177,8 +216,10 @@ const CONFIG={
   spreadsheetId:'1ysCEVN9PljeIcIFxvBsoxL9iXOdWbVTjm4mn8GcPkK8',
   sheets:{
     '2026':'2026',
-    'Mantenimiento':'Mantenimiento',
-    'direccions dia verde':'direccions dia verde'
+    'Semana siguiente':'Semana siguiente',
+    'Direcciones Día Verde CGM':'Direcciones Día Verde CGM',
+    'Salida del Partido':'Salida del Partido',
+    'Mantenimiento':'Mantenimiento'
   }
 };
 
@@ -227,25 +268,24 @@ async function leerHoja(nombre){
 }
 function headerIndex(rows){
   let best=0,bestScore=-Infinity;
-  const keys=['descripcion','descripción','servicio','viaje','hora de salida','hora','destino','primer destino','dominio','chofer','presentismo','finalizacion','finalización','km','kilometraje','patente','modelo','vtv'];
-  rows.slice(0,12).forEach((r,i)=>{
-    const text=r.map(clean).join(' | ');
-    const low=norm(text);
+  const keys=['descripcion','descripción','servicio','viaje','hora de salida','hora','destino','primer destino','dominio','chofer','presentismo','finalizacion','finalización','km','kilometraje','patente','modelo','vtv','fecha'];
+  rows.slice(0,18).forEach((r,i)=>{
+    const text=r.map(clean).join(' | '), low=norm(text);
     let score=0;
-    keys.forEach(k=>{if(low.includes(norm(k)))score+=8;});
-    score+=Math.min(r.reduce((a,v)=>a+(clean(v)?1:0),0),20)*0.15;
+    keys.forEach(k=>{if(low.includes(norm(k)))score+=10;});
+    score+=Math.min(r.reduce((a,v)=>a+(clean(v)?1:0),0),25)*0.2;
+    if(i===0)score+=1;
     if(score>bestScore){bestScore=score;best=i;}
   });
   return best;
 }
 function rowObjects(rows){
-  if(!rows.length)return [];
+  if(!rows.length)return {heads:[],items:[],headerRow:0};
   const hi=headerIndex(rows), rawHead=rows[hi]||[];
   const heads=rawHead.map((h,i)=>clean(h)||('Columna '+(i+1)));
   const out=[];
   for(let r=hi+1;r<rows.length;r++){
-    const obj={};
-    let has=false;
+    const obj={};let has=false;
     heads.forEach((h,c)=>{obj[h]=clean(rows[r]?.[c]);if(obj[h])has=true;});
     if(has)out.push(obj);
   }
@@ -255,52 +295,82 @@ function findCol(heads,terms){
   for(const term of terms){const i=heads.findIndex(h=>norm(h).includes(norm(term)));if(i>=0)return i;}
   return -1;
 }
+function looksLikePlate(v){
+  const x=clean(v).toUpperCase().replace(/\s+/g,'');
+  return /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(x) || /^[A-Z]{2}\d{3}[A-Z]$/.test(x);
+}
+function extractDateLabel(v){
+  const s=clean(v);if(!s)return null;
+  const range=s.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\s*(?:al|a|hasta|–|-)\s*(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/i);
+  if(range){let y=range[3]?+range[3]:new Date().getFullYear();if(y<100)y+=2000;return dateKey(new Date(y,+range[2]-1,+range[1]));}
+  const d=parseDateAny(s);return d?dateKey(d):null;
+}
+function detectColumnDate(rows,col){
+  const max=Math.min(rows.length,18), radius=5;
+  for(let r=0;r<max;r++){
+    for(let c=Math.max(0,col-radius);c<=Math.min((rows[r]||[]).length-1,col+radius);c++){
+      const d=extractDateLabel(rows[r]?.[c]);if(d)return d;
+    }
+  }
+  return null;
+}
+function detectDomainColumns(rows,hi){
+  const candidates=[];
+  const maxCols=Math.max(0,...rows.slice(0,Math.min(rows.length,250)).map(r=>r.length));
+  for(let c=0;c<maxCols;c++){
+    let plateCount=0, nonEmpty=0, headerHits=0;
+    for(let r=hi+1;r<Math.min(rows.length,hi+250);r++){
+      const v=clean(rows[r]?.[c]);if(v){nonEmpty++;if(looksLikePlate(v))plateCount++;}
+    }
+    for(let r=0;r<=Math.min(hi,17);r++){
+      const v=norm(rows[r]?.[c]);if(v.includes('dominio')||v.includes('patente'))headerHits++;
+    }
+    if(plateCount>0 || headerHits>0){
+      candidates.push({col:c,plateCount,nonEmpty,headerHits,date:detectColumnDate(rows,c)});
+    }
+  }
+  return candidates.filter(x=>x.plateCount>0 || x.headerHits>0);
+}
+function findBaseColumns(rows,hi){
+  const maxCols=Math.max(0,...rows.slice(0,Math.min(rows.length,40)).map(r=>r.length));
+  const heads=[];
+  for(let c=0;c<maxCols;c++){
+    let text='';for(let r=0;r<=Math.min(hi,12);r++)text+=' '+clean(rows[r]?.[c]);
+    heads.push(norm(text));
+  }
+  const pick=(terms,fallback)=>{for(const t of terms){const i=heads.findIndex(h=>h.includes(norm(t)));if(i>=0)return i;}return fallback;};
+  return {desc:pick(['descripcion','descripción','servicio','viaje'],0),hora:pick(['hora de salida','hora'],1),destino:pick(['primer destino','destino'],2)};
+}
 function normalize2026(source){
   const rows=source.rows;if(!rows.length)return [];
-  const hi=headerIndex(rows), heads=rows[hi]||[];
-  const iDesc=findCol(heads,['descripcion','descripción','servicio','viaje']);
-  const iHora=findCol(heads,['hora de salida','hora','salida']);
-  const iDestino=findCol(heads,['primer destino','destino']);
+  const hi=headerIndex(rows), base=findBaseColumns(rows,hi), domains=detectDomainColumns(rows,hi);
   const services=[];
   for(let r=hi+1;r<rows.length;r++){
     const row=rows[r]||[];
-    const desc=clean(iDesc>=0?row[iDesc]:row[0]);
-    const hora=clean(iHora>=0?row[iHora]:row[1]);
-    const destino=clean(iDestino>=0?row[iDestino]:row[2]);
+    const desc=clean(row[base.desc]), hora=clean(row[base.hora]), destino=clean(row[base.destino]);
     if(!desc&&!hora&&!destino)continue;
-    // The 2026 sheet is historically organized in repeated blocks.
-    // We deliberately detect each block by header keywords instead of fixed column numbers.
-    for(let c=0;c<heads.length;c++){
-      const h=norm(heads[c]);
-      if(!h||!h.includes('dominio'))continue;
-      const dominio=clean(row[c]);
-      const chofer=clean(row[c+1]);
-      const presentismo=clean(row[c+2]);
-      const finalizacion=clean(row[c+3]);
+    for(const dc of domains){
+      const dominio=clean(row[dc.col]);
+      if(!looksLikePlate(dominio) && !domainHeaderInColumn(rows,dc.col))continue;
+      const chofer=clean(row[dc.col+1]);
+      const presentismo=clean(row[dc.col+2]);
+      const finalizacion=clean(row[dc.col+3]);
       if(!dominio&&!chofer&&!presentismo&&!finalizacion)continue;
-      const fechaDetectada=detectBlockDate(heads,c);
-      services.push({fecha:fechaDetectada,descripcion:desc,hora,destino,dominio,chofer,presentismo,finalizacion,origen:'2026'});
+      services.push({fecha:dc.date,descripcion:desc,hora,destino,dominio,chofer,presentismo,finalizacion,origen:'2026'});
     }
   }
-  // If the sheet has no explicit date information in headers, retain rows as undated.
   if(!services.length){
     for(let r=hi+1;r<rows.length;r++){
-      const row=rows[r]||[];const desc=clean(iDesc>=0?row[iDesc]:row[0]);
-      if(desc)services.push({fecha:null,descripcion:desc,hora:clean(iHora>=0?row[iHora]:row[1]),destino:clean(iDestino>=0?row[iDestino]:row[2]),dominio:'',chofer:'',origen:'2026'});
+      const row=rows[r]||[];const desc=clean(row[base.desc]);
+      if(desc)services.push({fecha:null,descripcion:desc,hora:clean(row[base.hora]),destino:clean(row[base.destino]),dominio:'',chofer:'',origen:'2026'});
     }
   }
+  source.diagnostics={headerRow:hi+1,baseColumns:base,domainColumns:domains.map(x=>({col:x.col+1,plateCount:x.plateCount,headerHits:x.headerHits,date:x.date})),rows:rows.length,maxCols:Math.max(0,...rows.map(r=>r.length))};
   return services;
 }
-function detectBlockDate(heads,c){
-  // Looks left from a block for a date/week label. Merged Google Sheet headers
-  // may appear only once, so we accept the nearest date-like header.
-  for(let j=c;j>=0;j--){
-    const d=parseDateAny(heads[j]);if(d)return dateKey(d);
-    const s=clean(heads[j]);
-    const m=s.match(/(\\d{1,2})[\\/\\-](\\d{1,2})(?:[\\/\\-](\\d{2,4}))?/);
-    if(m){let y=m[3]?+m[3]:new Date().getFullYear();if(y<100)y+=2000;return dateKey(new Date(y,+m[2]-1,+m[1]));}
-  }
-  return null;
+function domainHeaderInColumn(rows,col){
+  for(let r=0;r<Math.min(rows.length,18);r++){const x=norm(rows[r]?.[col]);if(x.includes('dominio')||x.includes('patente'))return true;}
+  return false;
 }
 function uniqueSorted(arr){return [...new Set(arr.filter(Boolean).map(clean))].sort((a,b)=>a.localeCompare(b,'es'));}
 function buildEntities(){
@@ -396,8 +466,23 @@ function renderReportes(){
 }
 function renderRaw(name){
   const f=state.fuentes[name];if(!f){document.getElementById('rawData').innerHTML='<div class="empty">Sin fuente.</div>';return;}
-  const rows=f.rows||[];if(!rows.length){document.getElementById('rawData').innerHTML='<div class="empty">La hoja está vacía o no fue leída.</div>';return;}
-  document.getElementById('rawData').innerHTML='<div class="raw-wrap"><table><tbody>'+rows.slice(0,250).map((r,i)=>`<tr>${r.map((v,c)=>`<${i===0?'th':'td'}>${esc(v)}</${i===0?'th':'td'}>`).join('')}</tr>`).join('')+'</tbody></table></div>';
+  const rows=f.rows||[];
+  if(!rows.length){document.getElementById('rawData').innerHTML='<div class="empty">La hoja está vacía o no fue leída.<br><small>'+esc(f.error||'Sin filas devueltas')+'</small></div>';return;}
+  const hi=headerIndex(rows), ro=rowObjects(rows);
+  const diag=f.diagnostics||{};
+  let html='<div class="notice"><strong>'+esc(name)+'</strong> · '+rows.length+' filas · '+Math.max(0,...rows.map(r=>r.length))+' columnas · encabezado estimado: fila '+(hi+1)+'</div>';
+  if(f.error)html+='<div class="notice err">Error: '+esc(f.error)+'</div>';
+  html+='<div class="card panel" style="margin-bottom:12px"><h3>Diagnóstico automático</h3><div class="list-item"><span>Encabezado detectado</span><strong>Fila '+(diag.headerRow||hi+1)+'</strong></div>';
+  if(diag.baseColumns)html+='<div class="list-item"><span>Columnas base</span><strong>Descripción '+(diag.baseColumns.desc+1)+' · Hora '+(diag.baseColumns.hora+1)+' · Destino '+(diag.baseColumns.destino+1)+'</strong></div>';
+  if(diag.domainColumns)html+='<div class="list-item"><span>Columnas de dominio detectadas</span><strong>'+diag.domainColumns.map(x=>'C'+x.col+(x.date?' · '+x.date:'')).join(' | ')+'</strong></div>';
+  html+='</div>';
+  html+='<div class="card panel" style="margin-bottom:12px"><h3>Encabezados / primeras filas</h3><div class="raw-wrap"><table><tbody>';
+  rows.slice(0,25).map((r,i)=>{html+='<tr><th style="position:sticky;left:0;background:#f7faf8">'+(i+1)+'</th>'+r.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>';});
+  html+='</tbody></table></div></div>';
+  if(name==='2026' && state.servicios.length){
+    html+='<div class="card panel"><h3>Servicios normalizados encontrados</h3>'+renderServicesTable(state.servicios.slice(0,100))+'</div>';
+  }
+  document.getElementById('rawData').innerHTML=html;
 }
 function renderDataTabs(){
   const names=Object.keys(state.fuentes);
@@ -438,7 +523,7 @@ async function cargarTodo(){
     }else state.mantenimiento=[];
     buildEntities();renderAll();
     const ok=Object.values(fuentes).filter(x=>x.rows?.length).length;
-    document.getElementById('connText').textContent=ok?'Google Sheets conectado · '+ok+'/3 hojas leídas':'No se pudieron leer las hojas';
+    document.getElementById('connText').textContent=ok?'Google Sheets conectado · '+ok+'/'+Object.keys(CONFIG.sheets).length+' hojas leídas':'No se pudieron leer las hojas';
     document.getElementById('connDot').className='dot '+(ok?'ok':'err');
   }catch(e){
     document.getElementById('connText').textContent='Error de lectura: '+e.message;document.getElementById('connDot').className='dot err';
@@ -450,5 +535,134 @@ document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',(
 }));
 window.addEventListener('load',()=>{state.fecha=new Date();cargarTodo();});
 </script>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{ if(window.lucide) lucide.createIcons(); });
+</script>
+
+<script>
+/* ===== FLOTA V6 ===== */
+function normFleet(v){
+  return String(v ?? '').trim().replace(/\s+/g,' ');
+}
+function patenteFleet(v){
+  const s=normFleet(v).toUpperCase();
+  if(!s) return '';
+  // Accept Argentine patent formats commonly found in the sheet.
+  if(/^[A-Z]{3}\d{3}$/.test(s) || /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(s) || /^[A-Z]{2}\d{3}[A-Z]$/.test(s)) return s;
+  return '';
+}
+function collectFleetFromServices(){
+  const arr = Array.isArray(window.servicios) ? window.servicios :
+              Array.isArray(window.services) ? window.services :
+              Array.isArray(window.todosLosServicios) ? window.todosLosServicios : [];
+  const map = new Map();
+  arr.forEach(s=>{
+    const raw = s.dominio ?? s.vehiculo ?? s.patente ?? s.vehicle ?? '';
+    const p = patenteFleet(raw);
+    if(!p) return;
+    if(!map.has(p)) map.set(p,{dominio:p,servicios:0,choferes:new Set(),ultimaFecha:'',modelo:''});
+    const x=map.get(p);
+    x.servicios++;
+    const ch=normFleet(s.chofer ?? s.driver ?? '');
+    if(ch) x.choferes.add(ch);
+    const fecha=normFleet(s.fecha ?? s.date ?? '');
+    if(fecha) x.ultimaFecha=fecha;
+  });
+  return map;
+}
+function collectFleetFromRaw(){
+  const out = new Map();
+  // Search every raw sheet row already loaded by the diagnostic reader.
+  const sources = Array.isArray(window.fuentes) ? window.fuentes :
+                  Array.isArray(window.sheetData) ? window.sheetData :
+                  Array.isArray(window.datosHojas) ? window.datosHojas : [];
+  function walk(rows){
+    if(!Array.isArray(rows)) return;
+    rows.forEach(r=>{
+      if(!Array.isArray(r)) return;
+      r.forEach(cell=>{
+        const p=patenteFleet(cell);
+        if(p && !out.has(p)) out.set(p,{dominio:p,servicios:0,choferes:new Set(),ultimaFecha:'',modelo:''});
+      });
+    });
+  }
+  sources.forEach(src=>{
+    if(Array.isArray(src?.rows)) walk(src.rows);
+    else if(Array.isArray(src?.data)) walk(src.data);
+    else walk(src);
+  });
+  return out;
+}
+function getFleetMap(){
+  const m=collectFleetFromRaw();
+  const s=collectFleetFromServices();
+  s.forEach((v,k)=>{
+    if(!m.has(k)) m.set(k,v);
+    else {
+      const x=m.get(k);
+      x.servicios=v.servicios;
+      v.choferes.forEach(c=>x.choferes.add(c));
+      if(v.ultimaFecha) x.ultimaFecha=v.ultimaFecha;
+    }
+  });
+  return m;
+}
+function limpiarFiltrosFlota(){
+  const a=document.getElementById('fFlota'),b=document.getElementById('estadoFlota'),c=document.getElementById('fActividadFlota');
+  if(a)a.value=''; if(b)b.value=''; if(c)c.value='';
+  renderFlota();
+}
+function renderFlota(){
+  const map=getFleetMap();
+  const q=normFleet(document.getElementById('fFlota')?.value).toLowerCase();
+  const estado=document.getElementById('estadoFlota')?.value||'';
+  const actividad=document.getElementById('fActividadFlota')?.value||'';
+
+  let rows=[...map.values()].map(x=>{
+    const enTaller = typeof window.esVehiculoEnTaller==='function' ? !!window.esVehiculoEnTaller(x.dominio) : false;
+    const estadoReal=enTaller?'En taller':(x.servicios?'Operativo':'Sin actividad');
+    return {...x,enTaller,estadoReal};
+  });
+
+  rows=rows.filter(x=>{
+    const texto=[x.dominio,x.modelo,[...x.choferes].join(' ')].join(' ').toLowerCase();
+    if(q && !texto.includes(q)) return false;
+    if(estado && x.estadoReal!==estado) return false;
+    if(actividad==='Con servicios' && !x.servicios) return false;
+    if(actividad==='Sin servicios' && x.servicios) return false;
+    return true;
+  }).sort((a,b)=>b.servicios-a.servicios || a.dominio.localeCompare(b.dominio));
+
+  const total=map.size;
+  const con=rows.length ? [...map.values()].filter(x=>x.servicios>0).length : [...map.values()].filter(x=>x.servicios>0).length;
+  const taller=[...map.values()].filter(x=>typeof window.esVehiculoEnTaller==='function' && window.esVehiculoEnTaller(x.dominio)).length;
+  const sin=total-con;
+  document.getElementById('fTotal').textContent=total||'0';
+  document.getElementById('fConServicios').textContent=con||'0';
+  document.getElementById('fEnTaller').textContent=taller||'0';
+  document.getElementById('fSinActividad').textContent=sin||'0';
+
+  const box=document.getElementById('flotaTable');
+  if(!rows.length){
+    box.innerHTML='<div class="empty">No hay vehículos que coincidan con los filtros.</div>';
+    return;
+  }
+  box.innerHTML='<div class="raw-wrap"><table><thead><tr>'+
+    '<th>Dominio</th><th>Estado</th><th>Servicios</th><th>Choferes detectados</th><th>Última fecha</th>'+
+    '</tr></thead><tbody>'+
+    rows.map(x=>{
+      const badge=x.estadoReal==='En taller'?'yellow':(x.estadoReal==='Sin actividad'?'gray':'');
+      const ch=[...x.choferes].slice(0,3).join(', ') || '—';
+      return `<tr><td><strong>${escapeFleet(x.dominio)}</strong></td><td><span class="badge ${badge}">${escapeFleet(x.estadoReal)}</span></td><td>${x.servicios}</td><td>${escapeFleet(ch)}</td><td>${escapeFleet(x.ultimaFecha||'—')}</td></tr>`;
+    }).join('')+'</tbody></table></div>';
+}
+function escapeFleet(v){
+  return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{try{renderFlota(); if(window.lucide)lucide.createIcons();}catch(e){console.warn('Flota V6:',e)}},500);
+});
+</script>
+
 </body>
 </html>
