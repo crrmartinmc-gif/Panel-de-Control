@@ -6,7 +6,7 @@
 <title>Panel de Control</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap');
-@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+@import url('https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css');
 :root{
   --verde:#087a3d;--verde-oscuro:#04552b;--verde-claro:#e9f7ed;
   --texto:#193329;--gris:#728078;--fondo:#f3f7f4;--borde:#dce9e0;
@@ -89,7 +89,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 .kpi-icon svg{width:22px;height:22px;stroke-width:2.1}
 </style>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 </head>
 <body>
 <header>
@@ -818,8 +818,7 @@ document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',(
 window.addEventListener('load',()=>{state.fecha=new Date();cargarTodo();});
 </script>
 
-<script>
-/* ===== MAPA OPERATIVO DÍA VERDE ===== */
+</* ===== MAPA OPERATIVO DÍA VERDE · MAPLIBRE V35 ===== */
 const DV_MAP_COLORS=['#087a3d','#1769aa','#c98500','#8e44ad'];
 let dvOperationalMap=null;
 let dvMapReady=false;
@@ -827,11 +826,15 @@ let dvMapLayers={};
 let dvMapFilter='todos';
 let dvGpsRows=[];
 let dvEvidenceRows=[];
-let dvMapTimer=null;let dvMapLoading=false;
-// V29: El GPS y el histórico de Día Verde están en la planilla maestra de Día Verde,
-// distinta de la planilla principal del Panel. No se modifica CONFIG.spreadsheetId,
-// porque el resto del Panel continúa leyendo sus 7 hojas desde la planilla principal.
+let dvMapTimer=null;
+let dvMapLoading=false;
+let dvMapPendingRender=false;
+let dvEvidenceSignature='';
+
+// La fuente GPS de Día Verde está en la planilla maestra de Día Verde.
+// El resto del Panel conserva su CONFIG.spreadsheetId original.
 const DV_APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbyLa6dr_bfxG8UKJoTbA69q6nShN8r4fmdy862KzqW7fqxrCyKy-D5q7zA02BjPtzdvYw/exec';
+
 function dvJsonpMapa(){
  return new Promise((resolve,reject)=>{
   const cb='dvMapaCB_'+Date.now()+'_'+Math.random().toString(36).slice(2);
@@ -844,156 +847,406 @@ function dvJsonpMapa(){
   document.head.appendChild(s);
  });
 }
-function dvFindHeader(rows,terms){if(!rows.length)return 0;let best=0,score=-1;rows.slice(0,5).forEach((r,i)=>{const x=r.map(clean).join(' | ').toLowerCase();let s=0;terms.forEach(t=>{if(x.includes(t.toLowerCase()))s+=10});if(s>score){score=s;best=i;}});return best;}
-function dvDateToday(){const d=new Date();return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
-function dvFindHeader(rows,terms){if(!rows.length)return 0;let best=0,score=-1;rows.slice(0,5).forEach((r,i)=>{const x=r.map(clean).join(' | ').toLowerCase();let s=0;terms.forEach(t=>{if(x.includes(t.toLowerCase()))s+=10});if(s>score){score=s;best=i}});return best;}
-function dvObjRows(rows){const hi=dvFindHeader(rows,['usuario','lat','long','fecha','direccion','estado']);const h=(rows[hi]||[]).map(clean);return rows.slice(hi+1).map(r=>Object.fromEntries(h.map((k,i)=>[k,clean(r[i]||'')]))).filter(o=>Object.values(o).some(Boolean));}
-function dvPick(o,terms){const k=Object.keys(o).find(x=>terms.some(t=>norm(x).includes(norm(t))));return k?clean(o[k]):'';}
-function dvNum(v){const n=Number(String(v).replace(',','.'));return Number.isFinite(n)?n:null;}
+
+function dvFindHeader(rows,terms){
+ if(!rows.length)return 0;
+ let best=0,score=-1;
+ rows.slice(0,5).forEach((r,i)=>{
+   const x=r.map(clean).join(' | ').toLowerCase();
+   let s=0;
+   terms.forEach(t=>{if(x.includes(t.toLowerCase()))s+=10;});
+   if(s>score){score=s;best=i;}
+ });
+ return best;
+}
+
+function dvDateToday(){
+ const d=new Date();
+ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+}
+
+function dvObjRows(rows){
+ const hi=dvFindHeader(rows,['usuario','lat','long','fecha','direccion','estado']);
+ const h=(rows[hi]||[]).map(clean);
+ return rows.slice(hi+1).map(r=>Object.fromEntries(h.map((k,i)=>[k,clean(r[i]||'')]))).filter(o=>Object.values(o).some(Boolean));
+}
+
+function dvPick(o,terms){
+ const k=Object.keys(o).find(x=>terms.some(t=>norm(x).includes(norm(t))));
+ return k?clean(o[k]):'';
+}
+
+function dvNum(v){
+ const n=Number(String(v).replace(',','.'));
+ return Number.isFinite(n)?n:null;
+}
+
 function dvEnsureMap(){
  if(dvOperationalMap)return;
- dvOperationalMap=L.map('dvOperationalMap',{zoomControl:true,preferCanvas:true}).setView([-34.76,-58.40],12);
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(dvOperationalMap);
- dvMapReady=true;
 
- // El mapa puede inicializarse antes de que el panel termine de tomar su tamaño.
- // Recalculamos el viewport varias veces para evitar el típico bloque gris de Leaflet.
- const fixSize=()=>{
-   if(dvOperationalMap){
-     dvOperationalMap.invalidateSize({pan:false,animate:false});
+ dvOperationalMap=new maplibregl.Map({
+   container:'dvOperationalMap',
+   style:'https://tiles.openfreemap.org/styles/liberty',
+   center:[-58.40,-34.76],
+   zoom:12,
+   pitch:0,
+   bearing:0,
+   antialias:true,
+   attributionControl:true
+ });
+
+ dvOperationalMap.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-left');
+
+ dvOperationalMap.on('load',()=>{
+   dvMapReady=true;
+   if(dvMapPendingRender){
+     dvMapPendingRender=false;
+     dvRenderMap();
    }
+ });
+
+ const fixSize=()=>{
+   if(dvOperationalMap)dvOperationalMap.resize();
  };
  setTimeout(fixSize,100);
  setTimeout(fixSize,400);
  setTimeout(fixSize,1000);
  window.addEventListener('resize',fixSize);
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(fixSize,120);});
+ document.addEventListener('visibilitychange',()=>{
+   if(!document.hidden)setTimeout(fixSize,120);
+ });
 }
-function dvVehicleIcon(color){return L.divIcon({className:'',html:'<div class="dv-vehicle-marker" style="background:'+color+'">🚛</div>',iconSize:[34,34],iconAnchor:[17,17]});}
-function dvEvidenceIcon(){return L.divIcon({className:'',html:'<div class="dv-reclamo-marker">✓</div>',iconSize:[24,24],iconAnchor:[12,12]});}
-function dvTimeAge(ts){const t=Date.parse(ts);if(!Number.isFinite(t))return 999999;return Math.max(0,(Date.now()-t)/1000);}
-function dvGroupGps(rows){const out={};rows.forEach(o=>{const lat=dvNum(dvPick(o,['latitud','lat'])),lng=dvNum(dvPick(o,['longitud','lng','lon']));if(lat===null||lng===null)return;const usuario=dvPick(o,['usuario','chofer','user'])||'sin_usuario';const item={usuario,nombre:dvPick(o,['nombre','chofer']),lat,lng,precision:dvNum(dvPick(o,['precision','accuracy'])),heading:dvNum(dvPick(o,['rumbo','heading','bearing'])),hora:dvPick(o,['timestamp','fecha_hora','hora','fecha'])};(out[usuario] ||= []).push(item)});Object.values(out).forEach(a=>a.sort((x,y)=>Date.parse(x.hora||0)-Date.parse(y.hora||0)));return out;}
-function dvClearLayerGroup(key){if(dvMapLayers[key]){dvMapLayers[key].forEach(x=>dvOperationalMap.removeLayer(x));}dvMapLayers[key]=[];}
+
+function dvVehicleElement(color){
+ const el=document.createElement('div');
+ el.className='dv-vehicle-marker';
+ el.style.background=color;
+ el.textContent='🚛';
+ el.style.width='34px';
+ el.style.height='34px';
+ el.style.display='flex';
+ el.style.alignItems='center';
+ el.style.justifyContent='center';
+ el.style.borderRadius='50%';
+ el.style.border='3px solid #fff';
+ el.style.boxShadow='0 2px 8px rgba(0,0,0,.30)';
+ el.style.fontSize='19px';
+ el.style.lineHeight='1';
+ el.style.willChange='transform';
+ return el;
+}
+
+function dvEvidenceElement(){
+ const el=document.createElement('div');
+ el.className='dv-reclamo-marker';
+ el.textContent='✓';
+ el.style.width='24px';
+ el.style.height='24px';
+ el.style.display='flex';
+ el.style.alignItems='center';
+ el.style.justifyContent='center';
+ el.style.borderRadius='50%';
+ el.style.background='#b42318';
+ el.style.color='#fff';
+ el.style.fontWeight='900';
+ el.style.border='2px solid #fff';
+ el.style.boxShadow='0 2px 7px rgba(0,0,0,.25)';
+ return el;
+}
+
+function dvTimeAge(ts){
+ const t=Date.parse(ts);
+ if(!Number.isFinite(t))return 999999;
+ return Math.max(0,(Date.now()-t)/1000);
+}
+
+function dvGroupGps(rows){
+ const out={};
+ rows.forEach(o=>{
+   const lat=dvNum(dvPick(o,['latitud','lat']));
+   const lng=dvNum(dvPick(o,['longitud','lng','lon']));
+   if(lat===null||lng===null)return;
+   const usuario=dvPick(o,['usuario','chofer','user'])||'sin_usuario';
+   const item={
+     usuario,
+     nombre:dvPick(o,['nombre','chofer']),
+     lat,lng,
+     precision:dvNum(dvPick(o,['precision','accuracy'])),
+     heading:dvNum(dvPick(o,['rumbo','heading','bearing'])),
+     hora:dvPick(o,['timestamp','fecha_hora','hora','fecha'])
+   };
+   (out[usuario] ||= []).push(item);
+ });
+ Object.values(out).forEach(a=>a.sort((x,y)=>Date.parse(x.hora||0)-Date.parse(y.hora||0)));
+ return out;
+}
+
+function dvSetLine(u,pts,color){
+ if(!dvOperationalMap||!dvMapReady)return;
+
+ const sourceId='dv-route-'+btoa(unescape(encodeURIComponent(u))).replace(/[^A-Za-z0-9_-]/g,'').slice(0,35);
+ const layerId=sourceId+'-line';
+ const coords=pts.map(p=>[p.lng,p.lat]);
+
+ if(!dvMapLayers[u])dvMapLayers[u]={sourceId,layerId,line:true,marker:null};
+
+ const feature={
+   type:'Feature',
+   geometry:{type:'LineString',coordinates:coords},
+   properties:{}
+ };
+
+ const source=dvOperationalMap.getSource(sourceId);
+ if(source){
+   source.setData({type:'FeatureCollection',features:coords.length>1?[feature]:[]});
+ }else{
+   dvOperationalMap.addSource(sourceId,{
+     type:'geojson',
+     data:{type:'FeatureCollection',features:coords.length>1?[feature]:[]}
+   });
+   dvOperationalMap.addLayer({
+     id:layerId,
+     type:'line',
+     source:sourceId,
+     layout:{'line-cap':'round','line-join':'round'},
+     paint:{
+       'line-color':color,
+       'line-width':4,
+       'line-opacity':0.78
+     }
+   });
+ }
+}
+
+function dvRemoveVehicleLayer(u){
+ const x=dvMapLayers[u];
+ if(!x||!dvOperationalMap)return;
+ try{
+   if(x.layerId&&dvOperationalMap.getLayer(x.layerId))dvOperationalMap.removeLayer(x.layerId);
+   if(x.sourceId&&dvOperationalMap.getSource(x.sourceId))dvOperationalMap.removeSource(x.sourceId);
+   if(x.marker)x.marker.remove();
+ }catch(e){}
+ delete dvMapLayers[u];
+}
+
+function dvRenderEvidence(){
+ if(!dvOperationalMap||!dvMapReady)return;
+
+ const today=dvDateToday();
+ const signature=JSON.stringify(dvEvidenceRows.map(o=>[
+   dvPick(o,['latitud','lat']),
+   dvPick(o,['longitud','lng','lon']),
+   dvPick(o,['fecha']),
+   dvPick(o,['hora']),
+   dvPick(o,['direccion'])
+ ]));
+ if(signature===dvEvidenceSignature)return;
+
+ if(Array.isArray(dvMapLayers.evidencias)){
+   dvMapLayers.evidencias.forEach(m=>{try{m.remove();}catch(e){}});
+ }
+ dvMapLayers.evidencias=[];
+ dvEvidenceSignature=signature;
+
+ dvEvidenceRows.forEach(o=>{
+   const lat=dvNum(dvPick(o,['latitud','lat']));
+   const lng=dvNum(dvPick(o,['longitud','lng','lon']));
+   if(lat===null||lng===null)return;
+   const fecha=dvPick(o,['fecha']);
+   if(fecha&&fecha!==today)return;
+
+   const popup=new maplibregl.Popup({offset:18,maxWidth:'300px'})
+     .setHTML(
+       '<strong>📍 Reclamo realizado</strong><br>'+
+       esc(dvPick(o,['direccion'])||'Sin dirección')+
+       '<br>Zona: '+esc(dvPick(o,['zona'])||'—')+
+       '<br>Hora: '+esc(dvPick(o,['hora'])||'—')
+     );
+
+   const marker=new maplibregl.Marker({element:dvEvidenceElement(),anchor:'center'})
+     .setLngLat([lng,lat])
+     .setPopup(popup)
+     .addTo(dvOperationalMap);
+
+   dvMapLayers.evidencias.push(marker);
+ });
+}
+
 function dvRenderMap(){
  dvEnsureMap();
 
+ if(!dvMapReady){
+   dvMapPendingRender=true;
+   return;
+ }
+
  const groups=dvGroupGps(dvGpsRows);
  const users=Object.keys(groups).sort();
- const bounds=[];
  const visibleUsers=[];
+ const bounds=[];
 
  users.forEach((u,i)=>{
    if(dvMapFilter!=='todos'&&dvMapFilter!==u)return;
-   visibleUsers.push(u);
 
+   visibleUsers.push(u);
    const pts=groups[u]||[];
    const color=DV_MAP_COLORS[i%DV_MAP_COLORS.length];
-   const latlngs=pts.map(p=>[p.lat,p.lng]);
 
-   if(!dvMapLayers[u])dvMapLayers[u]={line:null,marker:null};
+   dvSetLine(u,pts,color);
 
-   // Actualiza la línea existente en vez de destruirla y crearla de nuevo.
-   if(latlngs.length>1){
-     if(!dvMapLayers[u].line){
-       dvMapLayers[u].line=L.polyline(latlngs,{color,weight:4,opacity:.72,smoothFactor:1.2}).addTo(dvOperationalMap);
-     }else{
-       dvMapLayers[u].line.setLatLngs(latlngs);
-     }
-   }else if(dvMapLayers[u].line){
-     dvOperationalMap.removeLayer(dvMapLayers[u].line);
-     dvMapLayers[u].line=null;
-   }
+   if(!dvMapLayers[u])dvMapLayers[u]={sourceId:null,layerId:null,line:false,marker:null};
 
    const last=pts[pts.length-1];
    if(last){
-     const pos=[last.lat,last.lng];
-
-     // Un solo marcador por recorrido: solo se mueve.
-     if(!dvMapLayers[u].marker){
-       const marker=L.marker(pos,{icon:dvVehicleIcon(color),title:last.nombre||u}).addTo(dvOperationalMap);
-       marker.bindPopup('<strong>🚛 '+esc(last.nombre||u)+'</strong><br>📍 Última posición GPS<br>🕐 '+esc(last.hora||'—')+(last.precision!==null?'<br>📡 ±'+Math.round(last.precision)+' m':'')+'<br>🧭 '+(last.heading!==null?Math.round(last.heading)+'°':'—'));
-       dvMapLayers[u].marker=marker;
-     }else{
-       dvMapLayers[u].marker.setLatLng(pos);
-     }
-
+     const pos=[last.lng,last.lat];
      bounds.push(pos);
+
+     const popupHtml=
+       '<strong>🚛 '+esc(last.nombre||u)+'</strong>'+
+       '<br>📍 Última posición GPS'+
+       '<br>🕐 '+esc(last.hora||'—')+
+       (last.precision!==null?'<br>📡 ±'+Math.round(last.precision)+' m':'')+
+       '<br>🧭 '+(last.heading!==null?Math.round(last.heading)+'°':'—');
+
+     if(!dvMapLayers[u].marker){
+       const popup=new maplibregl.Popup({offset:24,maxWidth:'300px'}).setHTML(popupHtml);
+       dvMapLayers[u].marker=new maplibregl.Marker({
+         element:dvVehicleElement(color),
+         anchor:'center'
+       }).setLngLat(pos).setPopup(popup).addTo(dvOperationalMap);
+     }else{
+       dvMapLayers[u].marker.setLngLat(pos);
+     }
    }
  });
 
- // Elimina solamente los recorridos que dejaron de estar visibles.
  Object.keys(dvMapLayers).forEach(u=>{
    if(u==='evidencias')return;
-   if(!visibleUsers.includes(u)){
-     if(dvMapLayers[u]?.line)dvOperationalMap.removeLayer(dvMapLayers[u].line);
-     if(dvMapLayers[u]?.marker)dvOperationalMap.removeLayer(dvMapLayers[u].marker);
-     delete dvMapLayers[u];
-   }
+   if(!visibleUsers.includes(u))dvRemoveVehicleLayer(u);
  });
 
- // Evidencias: se reconstruyen solo cuando cambia la jornada/datos,
- // no en cada movimiento GPS.
- if(!dvMapLayers.evidenciasRendered){
-   const evMarkers=[];
-   const today=dvDateToday();
+ dvRenderEvidence();
 
-   dvEvidenceRows.forEach(o=>{
-     const lat=dvNum(dvPick(o,['latitud','lat'])),lng=dvNum(dvPick(o,['longitud','lng','lon']));
-     if(lat===null||lng===null)return;
-     const fecha=dvPick(o,['fecha']);
-     if(fecha&&fecha!==today)return;
-
-     const m=L.marker([lat,lng],{icon:dvEvidenceIcon()}).addTo(dvOperationalMap);
-     m.bindPopup('<strong>📍 Reclamo realizado</strong><br>'+esc(dvPick(o,['direccion'])||'Sin dirección')+'<br>Zona: '+esc(dvPick(o,['zona'])||'—')+'<br>Hora: '+esc(dvPick(o,['hora'])||'—'));
-     evMarkers.push(m);
-   });
-
-   dvMapLayers.evidencias=evMarkers;
-   dvMapLayers.evidenciasRendered=true;
- }
-
- // Solo hacemos fitBounds en la primera carga. No movemos el mapa cada 20 segundos.
  if(bounds.length&&!window.__dvMapInitialFitDone){
-   dvOperationalMap.fitBounds(bounds,{padding:[30,30],maxZoom:15});
+   dvOperationalMap.fitBounds(bounds,{padding:40,maxZoom:15,duration:0});
    window.__dvMapInitialFitDone=true;
  }
 
  renderDvDriverPanel(groups);
 }
 
-function renderDvDriverPanel(groups){
- const users=Object.keys(groups).sort();const panel=document.getElementById('dvDriverPanel');
- const names=users.map(u=>groups[u][groups[u].length-1]?.nombre||u);const all=[...users];
- document.getElementById('dvKpiActivos').textContent=users.filter(u=>dvTimeAge(groups[u].at(-1)?.hora)<90).length;
- document.getElementById('dvKpiVehiculos').textContent=users.length;
- document.getElementById('dvKpiReclamos').textContent=dvEvidenceRows.filter(o=>!dvPick(o,['fecha'])||dvPick(o,['fecha'])===dvDateToday()).length;
- document.getElementById('dvKpiSinSenal').textContent=users.filter(u=>dvTimeAge(groups[u].at(-1)?.hora)>=180).length;
- document.getElementById('dvMapFilters').innerHTML='<button class="dv-map-filter '+(dvMapFilter==='todos'?'active':'')+'" onclick="dvSetMapFilter(\'todos\')">Todos</button>'+users.map(u=>'<button class="dv-map-filter '+(dvMapFilter===u?'active':'')+'" onclick="dvSetMapFilter(\''+String(u).replace(/'/g,"\\'")+'\')">'+esc(groups[u][0]?.nombre||u)+'</button>').join('');
- panel.innerHTML=users.length?users.map((u,i)=>{const a=groups[u],last=a.at(-1),age=dvTimeAge(last?.hora);const state=age<90?'live':age<180?'stale':'off';const label=state==='live'?'EN VIVO':state==='stale'?'RECIENTE':'SIN SEÑAL';return '<div class="dv-driver-card" onclick="dvFocusDriver(\''+String(u).replace(/'/g,"\\'")+'\')"><div class="dv-driver-head"><span class="dv-driver-dot" style="background:'+DV_MAP_COLORS[i%DV_MAP_COLORS.length]+'"></span><span class="dv-driver-name">'+esc(last?.nombre||u)+'</span><span class="dv-driver-state '+state+'">'+label+'</span></div><div class="dv-driver-meta"><div>📍 Puntos<strong>'+a.length+'</strong></div><div>🕐 Última señal<strong>'+esc(last?.hora||'—')+'</strong></div><div>🌐 Lat<strong>'+esc(last?.lat?.toFixed(5)||'—')+'</strong></div><div>🌐 Lng<strong>'+esc(last?.lng?.toFixed(5)||'—')+'</strong></div></div></div>'}).join(''):'<div class="empty">Todavía no hay posiciones GPS publicadas.<br><small>La app Día Verde deberá publicar el GPS del recorrido.</small></div>';
- document.getElementById('dvMapStatus').textContent=users.length?(users.length+' recorrido(s) · actualizado '+new Date().toLocaleTimeString('es-AR')):'Esperando GPS...';
+function dvFitCurrent(){
+ const groups=dvGroupGps(dvGpsRows);
+ const points=[];
+ Object.keys(groups).forEach(u=>{
+   if(dvMapFilter!=='todos'&&dvMapFilter!==u)return;
+   const last=groups[u]?.at(-1);
+   if(last)points.push([last.lng,last.lat]);
+ });
+ if(!points.length||!dvOperationalMap)return;
+ if(points.length===1){
+   dvOperationalMap.easeTo({center:points[0],zoom:16,duration:450});
+ }else{
+   dvOperationalMap.fitBounds(points,{padding:50,maxZoom:15,duration:450});
+ }
+ window.__dvMapInitialFitDone=true;
 }
-function dvSetMapFilter(v){dvMapFilter=v;dvRenderMap();}
-function dvFocusDriver(u){const groups=dvGroupGps(dvGpsRows),p=groups[u]?.at(-1);if(p){window.__dvMapUserMoved=true;dvOperationalMap.setView([p.lat,p.lng],16,{animate:true});}}
-function centrarTodosLosVehiculos(){window.__dvMapUserMoved=false;dvRenderMap();}
+
+function renderDvDriverPanel(groups){
+ const users=Object.keys(groups).sort();
+ const panel=document.getElementById('dvDriverPanel');
+
+ document.getElementById('dvKpiActivos').textContent=
+   users.filter(u=>dvTimeAge(groups[u].at(-1)?.hora)<90).length;
+ document.getElementById('dvKpiVehiculos').textContent=users.length;
+ document.getElementById('dvKpiReclamos').textContent=
+   dvEvidenceRows.filter(o=>!dvPick(o,['fecha'])||dvPick(o,['fecha'])===dvDateToday()).length;
+ document.getElementById('dvKpiSinSenal').textContent=
+   users.filter(u=>dvTimeAge(groups[u].at(-1)?.hora)>=180).length;
+
+ document.getElementById('dvMapFilters').innerHTML=
+   '<button class="dv-map-filter '+(dvMapFilter==='todos'?'active':'')+'" onclick="dvSetMapFilter(\'todos\')">Todos</button>'+
+   users.map(u=>
+     '<button class="dv-map-filter '+(dvMapFilter===u?'active':'')+'" onclick="dvSetMapFilter(\''+
+     String(u).replace(/'/g,"\\'")+'\')">'+
+     esc(groups[u][0]?.nombre||u)+'</button>'
+   ).join('');
+
+ panel.innerHTML=users.length?users.map((u,i)=>{
+   const a=groups[u],last=a.at(-1),age=dvTimeAge(last?.hora);
+   const state=age<90?'live':age<180?'stale':'off';
+   const label=state==='live'?'EN VIVO':state==='stale'?'RECIENTE':'SIN SEÑAL';
+
+   return '<div class="dv-driver-card" onclick="dvFocusDriver(\''+
+     String(u).replace(/'/g,"\\'")+'\')">'+
+     '<div class="dv-driver-head">'+
+     '<span class="dv-driver-dot" style="background:'+DV_MAP_COLORS[i%DV_MAP_COLORS.length]+'"></span>'+
+     '<span class="dv-driver-name">'+esc(last?.nombre||u)+'</span>'+
+     '<span class="dv-driver-state '+state+'">'+label+'</span>'+
+     '</div>'+
+     '<div class="dv-driver-meta">'+
+     '<div>📍 Puntos<strong>'+a.length+'</strong></div>'+
+     '<div>🕐 Última señal<strong>'+esc(last?.hora||'—')+'</strong></div>'+
+     '<div>🌐 Lat<strong>'+esc(last?.lat?.toFixed(5)||'—')+'</strong></div>'+
+     '<div>🌐 Lng<strong>'+esc(last?.lng?.toFixed(5)||'—')+'</strong></div>'+
+     '</div></div>';
+ }).join(''):
+ '<div class="empty">Todavía no hay posiciones GPS publicadas.<br><small>La app Día Verde deberá publicar el GPS del recorrido.</small></div>';
+
+ document.getElementById('dvMapStatus').textContent=
+   users.length?(users.length+' recorrido(s) · actualizado '+new Date().toLocaleTimeString('es-AR')):'Esperando GPS...';
+}
+
+function dvSetMapFilter(v){
+ dvMapFilter=v;
+ window.__dvMapInitialFitDone=false;
+ dvRenderMap();
+}
+
+function dvFocusDriver(u){
+ const groups=dvGroupGps(dvGpsRows);
+ const p=groups[u]?.at(-1);
+ if(p&&dvOperationalMap){
+   dvOperationalMap.easeTo({center:[p.lng,p.lat],zoom:16,duration:500});
+ }
+}
+
+function centrarTodosLosVehiculos(){
+ window.__dvMapInitialFitDone=false;
+ dvFitCurrent();
+}
+
 async function actualizarMapaOperativo(manual=false){
  if(dvMapLoading)return;
  dvMapLoading=true;
+
  try{
-  dvEnsureMap();
-  const data=await dvJsonpMapa();
-  dvGpsRows=Array.isArray(data.gps)?data.gps:[];
-  dvEvidenceRows=Array.isArray(data.evidencias)?dvObjRows(data.evidencias):[];
-  dvRenderMap();
+   dvEnsureMap();
+   const data=await dvJsonpMapa();
+   dvGpsRows=Array.isArray(data.gps)?data.gps:[];
+   dvEvidenceRows=Array.isArray(data.evidencias)?dvObjRows(data.evidencias):[];
+   dvRenderMap();
  }catch(e){
-  console.warn('Mapa Día Verde:',e);
-  document.getElementById('dvMapStatus').textContent='Error GPS: '+(e?.message||e);
-  const panel=document.getElementById('dvDriverPanel');
-  if(panel)panel.innerHTML='<div class="empty"><strong>No se pudo leer el GPS.</strong><br><small>'+esc(e?.message||e)+'</small></div>';
- } finally { dvMapLoading=false; }
+   console.warn('Mapa Día Verde:',e);
+   document.getElementById('dvMapStatus').textContent='Error GPS: '+(e?.message||e);
+   const panel=document.getElementById('dvDriverPanel');
+   if(panel)panel.innerHTML='<div class="empty"><strong>No se pudo leer el GPS.</strong><br><small>'+esc(e?.message||e)+'</small></div>';
+ }finally{
+   dvMapLoading=false;
+ }
 }
-function initMapaOperativo(){if(dvMapTimer)clearInterval(dvMapTimer);actualizarMapaOperativo();dvMapTimer=setInterval(actualizarMapaOperativo,20000);}
-const __oldRenderAll=window.renderAll;window.renderAll=function(){__oldRenderAll();if(document.getElementById('dvOperationalMap'))setTimeout(initMapaOperativo,80);};
-document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{if(document.getElementById('dvOperationalMap'))initMapaOperativo();},250);});
+
+function initMapaOperativo(){
+ dvEnsureMap();
+ actualizarMapaOperativo(true);
+ if(dvMapTimer)clearInterval(dvMapTimer);
+ dvMapTimer=setInterval(actualizarMapaOperativo,20000);
+}
+
+window.addEventListener('load',()=>{
+ if(typeof maplibregl!=='undefined')setTimeout(initMapaOperativo,80);
+});
+50);});
 </script>
 <script>
 document.addEventListener('DOMContentLoaded',()=>{ if(window.lucide) lucide.createIcons(); });
