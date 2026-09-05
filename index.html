@@ -850,7 +850,25 @@ function dvFindHeader(rows,terms){if(!rows.length)return 0;let best=0,score=-1;r
 function dvObjRows(rows){const hi=dvFindHeader(rows,['usuario','lat','long','fecha','direccion','estado']);const h=(rows[hi]||[]).map(clean);return rows.slice(hi+1).map(r=>Object.fromEntries(h.map((k,i)=>[k,clean(r[i]||'')]))).filter(o=>Object.values(o).some(Boolean));}
 function dvPick(o,terms){const k=Object.keys(o).find(x=>terms.some(t=>norm(x).includes(norm(t))));return k?clean(o[k]):'';}
 function dvNum(v){const n=Number(String(v).replace(',','.'));return Number.isFinite(n)?n:null;}
-function dvEnsureMap(){if(dvOperationalMap)return;dvOperationalMap=L.map('dvOperationalMap',{zoomControl:true}).setView([-34.76,-58.40],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(dvOperationalMap);dvMapReady=true;setTimeout(()=>dvOperationalMap.invalidateSize(),150);}
+function dvEnsureMap(){
+ if(dvOperationalMap)return;
+ dvOperationalMap=L.map('dvOperationalMap',{zoomControl:true,preferCanvas:true}).setView([-34.76,-58.40],12);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(dvOperationalMap);
+ dvMapReady=true;
+
+ // El mapa puede inicializarse antes de que el panel termine de tomar su tamaño.
+ // Recalculamos el viewport varias veces para evitar el típico bloque gris de Leaflet.
+ const fixSize=()=>{
+   if(dvOperationalMap){
+     dvOperationalMap.invalidateSize({pan:false,animate:false});
+   }
+ };
+ setTimeout(fixSize,100);
+ setTimeout(fixSize,400);
+ setTimeout(fixSize,1000);
+ window.addEventListener('resize',fixSize);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(fixSize,120);});
+}
 function dvVehicleIcon(color){return L.divIcon({className:'',html:'<div class="dv-vehicle-marker" style="background:'+color+'">🚛</div>',iconSize:[34,34],iconAnchor:[17,17]});}
 function dvEvidenceIcon(){return L.divIcon({className:'',html:'<div class="dv-reclamo-marker">✓</div>',iconSize:[24,24],iconAnchor:[12,12]});}
 function dvTimeAge(ts){const t=Date.parse(ts);if(!Number.isFinite(t))return 999999;return Math.max(0,(Date.now()-t)/1000);}
