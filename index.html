@@ -858,14 +858,91 @@ function dvGroupGps(rows){const out={};rows.forEach(o=>{const lat=dvNum(dvPick(o
 function dvClearLayerGroup(key){if(dvMapLayers[key]){dvMapLayers[key].forEach(x=>dvOperationalMap.removeLayer(x));}dvMapLayers[key]=[];}
 function dvRenderMap(){
  dvEnsureMap();
- Object.keys(dvMapLayers).forEach(k=>dvClearLayerGroup(k));
- const groups=dvGroupGps(dvGpsRows);const users=Object.keys(groups).sort();const bounds=[];
- users.forEach((u,i)=>{if(dvMapFilter!=='todos'&&dvMapFilter!==u)return;const pts=groups[u];const color=DV_MAP_COLORS[i%DV_MAP_COLORS.length];const latlngs=pts.map(p=>[p.lat,p.lng]);if(latlngs.length>1){const line=L.polyline(latlngs,{color,weight:5,opacity:.75});line.addTo(dvOperationalMap);dvMapLayers[u]=(dvMapLayers[u]||[]).concat([line]);latlngs.forEach(x=>bounds.push(x));}const last=pts[pts.length-1];if(last){const marker=L.marker([last.lat,last.lng],{icon:dvVehicleIcon(color),title:last.nombre||u}).addTo(dvOperationalMap);marker.bindPopup('<strong>🚛 '+esc(last.nombre||u)+'</strong><br>📍 Última posición GPS<br>🕐 '+esc(last.hora||'—')+(last.precision!==null?'<br>📡 ±'+Math.round(last.precision)+' m':'')+'<br>🧭 '+(last.heading!==null?Math.round(last.heading)+'°':'—'));dvMapLayers[u]=(dvMapLayers[u]||[]).concat([marker]);bounds.push([last.lat,last.lng]);}});
- const today=dvDateToday();
- dvEvidenceRows.forEach(o=>{const lat=dvNum(dvPick(o,['latitud','lat'])),lng=dvNum(dvPick(o,['longitud','lng','lon']));if(lat===null||lng===null)return;const fecha=dvPick(o,['fecha']);if(fecha&&fecha!==today)return;const m=L.marker([lat,lng],{icon:dvEvidenceIcon()}).addTo(dvOperationalMap);m.bindPopup('<strong>📍 Reclamo realizado</strong><br>'+esc(dvPick(o,['direccion'])||'Sin dirección')+'<br>Zona: '+esc(dvPick(o,['zona'])||'—')+'<br>Hora: '+esc(dvPick(o,['hora'])||'—'));dvMapLayers.evidencias=(dvMapLayers.evidencias||[]).concat([m]);bounds.push([lat,lng]);});
- if(bounds.length&&!window.__dvMapUserMoved)dvOperationalMap.fitBounds(bounds,{padding:[30,30],maxZoom:15});
+
+ const groups=dvGroupGps(dvGpsRows);
+ const users=Object.keys(groups).sort();
+ const bounds=[];
+ const visibleUsers=[];
+
+ users.forEach((u,i)=>{
+   if(dvMapFilter!=='todos'&&dvMapFilter!==u)return;
+   visibleUsers.push(u);
+
+   const pts=groups[u]||[];
+   const color=DV_MAP_COLORS[i%DV_MAP_COLORS.length];
+   const latlngs=pts.map(p=>[p.lat,p.lng]);
+
+   if(!dvMapLayers[u])dvMapLayers[u]={line:null,marker:null};
+
+   // Actualiza la línea existente en vez de destruirla y crearla de nuevo.
+   if(latlngs.length>1){
+     if(!dvMapLayers[u].line){
+       dvMapLayers[u].line=L.polyline(latlngs,{color,weight:4,opacity:.72,smoothFactor:1.2}).addTo(dvOperationalMap);
+     }else{
+       dvMapLayers[u].line.setLatLngs(latlngs);
+     }
+   }else if(dvMapLayers[u].line){
+     dvOperationalMap.removeLayer(dvMapLayers[u].line);
+     dvMapLayers[u].line=null;
+   }
+
+   const last=pts[pts.length-1];
+   if(last){
+     const pos=[last.lat,last.lng];
+
+     // Un solo marcador por recorrido: solo se mueve.
+     if(!dvMapLayers[u].marker){
+       const marker=L.marker(pos,{icon:dvVehicleIcon(color),title:last.nombre||u}).addTo(dvOperationalMap);
+       marker.bindPopup('<strong>🚛 '+esc(last.nombre||u)+'</strong><br>📍 Última posición GPS<br>🕐 '+esc(last.hora||'—')+(last.precision!==null?'<br>📡 ±'+Math.round(last.precision)+' m':'')+'<br>🧭 '+(last.heading!==null?Math.round(last.heading)+'°':'—'));
+       dvMapLayers[u].marker=marker;
+     }else{
+       dvMapLayers[u].marker.setLatLng(pos);
+     }
+
+     bounds.push(pos);
+   }
+ });
+
+ // Elimina solamente los recorridos que dejaron de estar visibles.
+ Object.keys(dvMapLayers).forEach(u=>{
+   if(u==='evidencias')return;
+   if(!visibleUsers.includes(u)){
+     if(dvMapLayers[u]?.line)dvOperationalMap.removeLayer(dvMapLayers[u].line);
+     if(dvMapLayers[u]?.marker)dvOperationalMap.removeLayer(dvMapLayers[u].marker);
+     delete dvMapLayers[u];
+   }
+ });
+
+ // Evidencias: se reconstruyen solo cuando cambia la jornada/datos,
+ // no en cada movimiento GPS.
+ if(!dvMapLayers.evidenciasRendered){
+   const evMarkers=[];
+   const today=dvDateToday();
+
+   dvEvidenceRows.forEach(o=>{
+     const lat=dvNum(dvPick(o,['latitud','lat'])),lng=dvNum(dvPick(o,['longitud','lng','lon']));
+     if(lat===null||lng===null)return;
+     const fecha=dvPick(o,['fecha']);
+     if(fecha&&fecha!==today)return;
+
+     const m=L.marker([lat,lng],{icon:dvEvidenceIcon()}).addTo(dvOperationalMap);
+     m.bindPopup('<strong>📍 Reclamo realizado</strong><br>'+esc(dvPick(o,['direccion'])||'Sin dirección')+'<br>Zona: '+esc(dvPick(o,['zona'])||'—')+'<br>Hora: '+esc(dvPick(o,['hora'])||'—'));
+     evMarkers.push(m);
+   });
+
+   dvMapLayers.evidencias=evMarkers;
+   dvMapLayers.evidenciasRendered=true;
+ }
+
+ // Solo hacemos fitBounds en la primera carga. No movemos el mapa cada 20 segundos.
+ if(bounds.length&&!window.__dvMapInitialFitDone){
+   dvOperationalMap.fitBounds(bounds,{padding:[30,30],maxZoom:15});
+   window.__dvMapInitialFitDone=true;
+ }
+
  renderDvDriverPanel(groups);
 }
+
 function renderDvDriverPanel(groups){
  const users=Object.keys(groups).sort();const panel=document.getElementById('dvDriverPanel');
  const names=users.map(u=>groups[u][groups[u].length-1]?.nombre||u);const all=[...users];
