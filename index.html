@@ -814,6 +814,12 @@ async function cargarTodo(){
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active');
+ if(b.dataset.page==='mapa' && typeof initMapaOperativo==='function'){
+   setTimeout(()=>{
+     initMapaOperativo();
+     if(dvOperationalMap)dvOperationalMap.resize();
+   },80);
+ }
 }));
 window.addEventListener('load',()=>{state.fecha=new Date();cargarTodo();});
 </script>
@@ -1238,24 +1244,22 @@ async function actualizarMapaOperativo(manual=false){
 }
 
 function initMapaOperativo(){
+ if(typeof maplibregl==='undefined')return;
  dvEnsureMap();
+ setTimeout(()=>{if(dvOperationalMap)dvOperationalMap.resize();},60);
  actualizarMapaOperativo(true);
  if(dvMapTimer)clearInterval(dvMapTimer);
  dvMapTimer=setInterval(actualizarMapaOperativo,20000);
 }
 
 window.addEventListener('load',()=>{
- if(typeof maplibregl!=='undefined'){
-   setTimeout(initMapaOperativo,80);
- }else{
+ if(typeof maplibregl==='undefined'){
    const st=document.getElementById('dvMapStatus');
    if(st)st.textContent='Error mapa: no se pudo cargar MapLibre';
    const panel=document.getElementById('dvDriverPanel');
    if(panel)panel.innerHTML='<div class="empty"><strong>No se pudo cargar el motor del mapa.</strong><br><small>Verificá la conexión y recargá la página.</small></div>';
  }
 });
-50);});
-
 </script>
 <script>
 document.addEventListener('DOMContentLoaded',()=>{ if(window.lucide) lucide.createIcons(); });
