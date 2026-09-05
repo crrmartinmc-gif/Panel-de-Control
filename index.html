@@ -827,7 +827,11 @@ let dvMapFilter='todos';
 let dvGpsRows=[];
 let dvEvidenceRows=[];
 let dvMapTimer=null;
-function dvCsvUrl(sheet){return 'https://docs.google.com/spreadsheets/d/'+CONFIG.spreadsheetId+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(sheet)+'&tq='+encodeURIComponent('select *');}
+// V29: El GPS y el histórico de Día Verde están en la planilla maestra de Día Verde,
+// distinta de la planilla principal del Panel. No se modifica CONFIG.spreadsheetId,
+// porque el resto del Panel continúa leyendo sus 7 hojas desde la planilla principal.
+const DV_GPS_SPREADSHEET_ID='1yt7JqSWUjybFodTFUr94-788RvvlxIsHeI-j0U7B0L0';
+function dvCsvUrl(sheet){return 'https://docs.google.com/spreadsheets/d/'+DV_GPS_SPREADSHEET_ID+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(sheet)+'&tq='+encodeURIComponent('select *');}
 function dvParseCsv(text){return csvParse(text);}
 async function dvReadSheet(sheet){const r=await fetch(dvCsvUrl(sheet),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);return dvParseCsv(await r.text());}
 function dvDateToday(){const d=new Date();return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
