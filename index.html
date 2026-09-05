@@ -1200,8 +1200,9 @@ function renderDvDriverPanel(groups){
  }).join(''):
  '<div class="empty">Todavía no hay posiciones GPS publicadas.<br><small>La app Día Verde deberá publicar el GPS del recorrido.</small></div>';
 
+ const totalGpsPuntos=Object.values(groups).reduce((n,a)=>n+a.length,0);
  document.getElementById('dvMapStatus').textContent=
-   users.length?(users.length+' recorrido(s) · actualizado '+new Date().toLocaleTimeString('es-AR')):'Esperando GPS...';
+   users.length?(users.length+' recorrido(s) · '+totalGpsPuntos+' puntos GPS · actualizado '+new Date().toLocaleTimeString('es-AR')):'Esperando GPS...';
 }
 
 function dvSetMapFilter(v){
