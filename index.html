@@ -830,10 +830,20 @@ let dvMapTimer=null;
 // V29: El GPS y el histórico de Día Verde están en la planilla maestra de Día Verde,
 // distinta de la planilla principal del Panel. No se modifica CONFIG.spreadsheetId,
 // porque el resto del Panel continúa leyendo sus 7 hojas desde la planilla principal.
-const DV_GPS_SPREADSHEET_ID='1yt7JqSWUjybFodTFUr94-788RvvlxIsHeI-j0U7B0L0';
-function dvCsvUrl(sheet){return 'https://docs.google.com/spreadsheets/d/'+DV_GPS_SPREADSHEET_ID+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(sheet)+'&tq='+encodeURIComponent('select *');}
-function dvParseCsv(text){return csvParse(text);}
-async function dvReadSheet(sheet){const r=await fetch(dvCsvUrl(sheet),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);return dvParseCsv(await r.text());}
+const DV_APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbyLa6dr_bfxG8UKJoTbA69q6nShN8r4fmdy862KzqW7fqxrCyKy-D5q7zA02BjPtzdvYw/exec';
+function dvJsonpMapa(){
+ return new Promise((resolve,reject)=>{
+  const cb='dvMapaCB_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+  const s=document.createElement('script');
+  const cleanup=()=>{try{delete window[cb];}catch(e){window[cb]=undefined;}if(s.parentNode)s.parentNode.removeChild(s);};
+  const timer=setTimeout(()=>{cleanup();reject(new Error('Tiempo agotado leyendo Apps Script'));},12000);
+  window[cb]=(data)=>{clearTimeout(timer);cleanup();if(data&&data.ok)resolve(data);else reject(new Error(data?.error||'Apps Script devolvió un error'));};
+  s.onerror=()=>{clearTimeout(timer);cleanup();reject(new Error('No se pudo cargar la respuesta de Apps Script'));};
+  s.src=DV_APPS_SCRIPT_URL+'?accion=mapaOperativo&callback='+encodeURIComponent(cb)+'&_='+Date.now();
+  document.head.appendChild(s);
+ });
+}
+function dvFindHeader(rows,terms){if(!rows.length)return 0;let best=0,score=-1;rows.slice(0,5).forEach((r,i)=>{const x=r.map(clean).join(' | ').toLowerCase();let s=0;terms.forEach(t=>{if(x.includes(t.toLowerCase()))s+=10});if(s>score){score=s;best=i;}});return best;}
 function dvDateToday(){const d=new Date();return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
 function dvFindHeader(rows,terms){if(!rows.length)return 0;let best=0,score=-1;rows.slice(0,5).forEach((r,i)=>{const x=r.map(clean).join(' | ').toLowerCase();let s=0;terms.forEach(t=>{if(x.includes(t.toLowerCase()))s+=10});if(s>score){score=s;best=i}});return best;}
 function dvObjRows(rows){const hi=dvFindHeader(rows,['usuario','lat','long','fecha','direccion','estado']);const h=(rows[hi]||[]).map(clean);return rows.slice(hi+1).map(r=>Object.fromEntries(h.map((k,i)=>[k,clean(r[i]||'')]))).filter(o=>Object.values(o).some(Boolean));}
@@ -870,7 +880,18 @@ function dvSetMapFilter(v){dvMapFilter=v;dvRenderMap();}
 function dvFocusDriver(u){const groups=dvGroupGps(dvGpsRows),p=groups[u]?.at(-1);if(p){window.__dvMapUserMoved=true;dvOperationalMap.setView([p.lat,p.lng],16,{animate:true});}}
 function centrarTodosLosVehiculos(){window.__dvMapUserMoved=false;dvRenderMap();}
 async function actualizarMapaOperativo(manual=false){
- try{dvEnsureMap();const gps=await dvReadSheet('GPS Día Verde').catch(()=>[]);const ev=await dvReadSheet('Hoja 1').catch(()=>[]);dvGpsRows=dvObjRows(gps);dvEvidenceRows=dvObjRows(ev);dvRenderMap();}catch(e){console.warn('Mapa Día Verde:',e);document.getElementById('dvMapStatus').textContent='No se pudieron leer los datos GPS';}
+ try{
+  dvEnsureMap();
+  const data=await dvJsonpMapa();
+  dvGpsRows=Array.isArray(data.gps)?data.gps:[];
+  dvEvidenceRows=Array.isArray(data.evidencias)?dvObjRows(data.evidencias):[];
+  dvRenderMap();
+ }catch(e){
+  console.warn('Mapa Día Verde:',e);
+  document.getElementById('dvMapStatus').textContent='Error GPS: '+(e?.message||e);
+  const panel=document.getElementById('dvDriverPanel');
+  if(panel)panel.innerHTML='<div class="empty"><strong>No se pudo leer el GPS.</strong><br><small>'+esc(e?.message||e)+'</small></div>';
+ }
 }
 function initMapaOperativo(){if(dvMapTimer)clearInterval(dvMapTimer);actualizarMapaOperativo();dvMapTimer=setInterval(actualizarMapaOperativo,15000);}
 const __oldRenderAll=window.renderAll;window.renderAll=function(){__oldRenderAll();if(document.getElementById('dvOperationalMap'))setTimeout(initMapaOperativo,80);};
