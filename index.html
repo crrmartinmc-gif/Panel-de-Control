@@ -6,7 +6,7 @@
 <title>Panel de Control</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800;900&display=swap');
-@import url('https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css');
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
 :root{
   --verde:#087a3d;--verde-oscuro:#04552b;--verde-claro:#e9f7ed;
   --texto:#193329;--gris:#728078;--fondo:#f3f7f4;--borde:#dce9e0;
@@ -89,7 +89,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 .kpi-icon svg{width:22px;height:22px;stroke-width:2.1}
 </style>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <header>
@@ -818,7 +818,8 @@ document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',(
 window.addEventListener('load',()=>{state.fecha=new Date();cargarTodo();});
 </script>
 
-</* ===== MAPA OPERATIVO DÍA VERDE · MAPLIBRE V35 ===== */
+<script>
+/* ===== MAPA OPERATIVO DÍA VERDE · MAPLIBRE V35 ===== */
 const DV_MAP_COLORS=['#087a3d','#1769aa','#c98500','#8e44ad'];
 let dvOperationalMap=null;
 let dvMapReady=false;
@@ -1247,6 +1248,7 @@ window.addEventListener('load',()=>{
  if(typeof maplibregl!=='undefined')setTimeout(initMapaOperativo,80);
 });
 50);});
+
 </script>
 <script>
 document.addEventListener('DOMContentLoaded',()=>{ if(window.lucide) lucide.createIcons(); });
