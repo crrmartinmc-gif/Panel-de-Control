@@ -1357,6 +1357,522 @@ document.addEventListener('DOMContentLoaded',()=>{
   setTimeout(()=>{try{renderFlota();if(window.lucide)lucide.createIcons();}catch(e){console.warn('Flota V7:',e)}},700);
 });
 </script>
+/*
+ * PANEL DE CONTROL V40 — INTEGRACION SERVICIOS + ZONAS + RECLAMOS
+ *
+ * Este bloque se agrega AL FINAL de index.html, antes de </body>.
+ * No reemplaza el mapa ni los módulos existentes: sobrescribe solamente
+ * la fuente de SERVICIOS y amplía el Mapa Operativo.
+ *
+ * Fuente nueva de servicios:
+ *   Día Verde Apps Script -> SERVICIOS / EVENTOS_SERVICIO
+ *
+ * El viejo sheet 2026 / Semana siguiente deja de alimentar SERVICIOS.
+ */
+
+(function(){
+  'use strict';
+
+  const V40 = {
+    API: 'https://script.google.com/macros/s/AKfycbyLa6dr_bfxG8UKJoTbA69q6nShN8r4fmdy862KzqW7fqxrCyKy-D5q7zA02BjPtzdvYw/exec',
+    GEOJSON: 'zonas.geojson',
+    zoneVisible: true,
+    claimsVisible: true,
+    zonesLoaded: false,
+    zonesGeo: null,
+    backendLoaded: false,
+    backend: {choferes:[], vehiculos:[], serviciosConfig:[], rutas:[], servicios:[]}
+  };
+
+  /* =====================================================
+     1. EL SHEET 2026 DEJA DE SER FUENTE DE SERVICIOS
+     ===================================================== */
+  try{
+    if(window.CONFIG && CONFIG.sheets){
+      delete CONFIG.sheets['2026'];
+      delete CONFIG.sheets['Semana siguiente'];
+    }
+  }catch(e){ console.warn('V40: no se pudo retirar fuente 2026',e); }
+
+  /* =====================================================
+     2. JSONP PARA LEER EL BACKEND DE DÍA VERDE
+     ===================================================== */
+  function apiGet(params){
+    return new Promise((resolve,reject)=>{
+      const cb='panelV40_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+      const script=document.createElement('script');
+      const query=new URLSearchParams(Object.assign({},params,{callback:cb,_:Date.now()}));
+      let done=false;
+      const finish=(fn,value)=>{
+        if(done)return;
+        done=true;
+        clearTimeout(timer);
+        try{delete window[cb];}catch(e){window[cb]=undefined;}
+        script.remove();
+        fn(value);
+      };
+      window[cb]=(data)=>{
+        if(data && data.ok)finish(resolve,data);
+        else finish(reject,new Error(data?.error||'Backend Día Verde devolvió un error.'));
+      };
+      script.onerror=()=>finish(reject,new Error('No se pudo conectar con el backend de Día Verde.'));
+      const timer=setTimeout(()=>finish(reject,new Error('Tiempo agotado consultando Día Verde.')),18000);
+      script.src=V40.API+'?'+query.toString();
+      document.head.appendChild(script);
+    });
+  }
+
+  async function cargarBackendServicios(){
+    const data=await apiGet({accion:'panelServicios'});
+    V40.backend={
+      choferes:Array.isArray(data.choferes)?data.choferes:[],
+      vehiculos:Array.isArray(data.vehiculos)?data.vehiculos:[],
+      serviciosConfig:Array.isArray(data.serviciosConfig)?data.serviciosConfig:[],
+      rutas:Array.isArray(data.rutas)?data.rutas:[],
+      servicios:Array.isArray(data.servicios)?data.servicios:[]
+    };
+    V40.backendLoaded=true;
+
+    /* SERVICIOS pasa definitivamente al backend nuevo. */
+    state.servicios=V40.backend.servicios.map(s=>({
+      ...s,
+      fecha:normalizarFechaServicio(s.fecha),
+      fechaFin:normalizarFechaServicio(s.fecha),
+      hora:s.horaProgramada||'',
+      descripcion:s.descripcion||s.nombreServicio||'Sin descripción',
+      destino:[s.destinoInicial,s.destinoFinal].filter(Boolean).join(' → '),
+      estado:mapearEstadoPanel(s.estado),
+      dominio:(s.dominio||'').toUpperCase(),
+      chofer:s.chofer||''
+    }));
+
+    /* Flota y choferes pasan a sus hojas maestras nuevas. */
+    state.flota=V40.backend.vehiculos.map(v=>({
+      dominio:(v.dominio||'').toUpperCase(),
+      modelo:[v.marca,v.modelo].filter(Boolean).join(' '),
+      estado:mapearEstadoVehiculo(v.estadoOperativo),
+      idUnidad:v.idUnidad,
+      numeroInterno:v.numeroInterno,
+      fotoUrl:v.fotoUrl||'',
+      silueta:v.silueta||'',
+      fuentes:['VEHICULOS']
+    })).filter(v=>v.dominio||v.idUnidad);
+
+    state.choferes=V40.backend.choferes.map(c=>({
+      nombre:c.nombre||c.idChofer||'',
+      idChofer:c.idChofer||''
+    })).filter(c=>c.nombre);
+
+    state.destinos=uniqueSorted(
+      V40.backend.rutas.flatMap(r=>[r.destinoInicial,r.destinoFinal])
+    ).map(destino=>({destino}));
+
+    actualizarFiltrosEstadoServicio();
+  }
+
+  function normalizarFechaServicio(v){
+    if(!v)return '';
+    const s=String(v).trim();
+    let m=s.match(/^(\d{1,2})[\\/\-](\d{1,2})[\\/\-](\d{2,4})/);
+    if(m){
+      let y=Number(m[3]); if(y<100)y+=2000;
+      return y+'-'+String(Number(m[2])).padStart(2,'0')+'-'+String(Number(m[1])).padStart(2,'0');
+    }
+    const d=new Date(s);
+    return Number.isNaN(d.getTime())?'':d.toISOString().slice(0,10);
+  }
+
+  function mapearEstadoPanel(e){
+    const n=String(e||'').trim().toUpperCase();
+    if(n==='PROGRAMADO')return'Programado';
+    if(n==='INSPECCIONANDO')return'Inspeccionando';
+    if(n==='LISTO PARA SALIR')return'Listo para salir';
+    if(n==='EN VIAJE')return'En viaje';
+    if(n==='FINALIZADO')return'Finalizado';
+    if(n==='SUSPENDIDO')return'Suspendido';
+    return e||'Programado';
+  }
+
+  function mapearEstadoVehiculo(e){
+    const n=String(e||'').trim().toUpperCase();
+    if(n.includes('TALLER')||n.includes('MANTEN'))return'En taller';
+    if(n.includes('BAJA')||n.includes('RADIADO')||n.includes('FUERA'))return'Fuera de servicio';
+    if(n.includes('CONDIC'))return'Condicional';
+    return'Operativo';
+  }
+
+  function actualizarFiltrosEstadoServicio(){
+    const sel=document.getElementById('fEstado');
+    if(!sel)return;
+    const valor=sel.value;
+    sel.innerHTML=[
+      ['','Todos los estados'],
+      ['Programado','Programado'],
+      ['Inspeccionando','Inspeccionando'],
+      ['Listo para salir','Listo para salir'],
+      ['En viaje','En viaje'],
+      ['Finalizado','Finalizado'],
+      ['Suspendido','Suspendido']
+    ].map(x=>'<option value="'+esc(x[0])+'">'+esc(x[1])+'</option>').join('');
+    if([...sel.options].some(o=>o.value===valor))sel.value=valor;
+  }
+
+  /* =====================================================
+     3. RECARGA GENERAL: EL PANEL YA NO TOMA SERVICIOS DEL 2026
+     ===================================================== */
+  const cargarTodoAnterior=window.cargarTodo;
+  window.cargarTodo=async function(){
+    try{
+      if(typeof cargarTodoAnterior==='function') await cargarTodoAnterior();
+      await cargarBackendServicios();
+      if(typeof renderAll==='function')renderAll();
+      if(window.lucide)lucide.createIcons();
+      const txt=document.getElementById('connText');
+      if(txt)txt.textContent='Google Sheets conectado · fuentes maestras + Día Verde';
+      const dot=document.getElementById('connDot');
+      if(dot)dot.className='dot ok';
+    }catch(error){
+      console.error('Panel V40:',error);
+      const txt=document.getElementById('connText');
+      if(txt)txt.textContent='Error backend servicios: '+error.message;
+      const dot=document.getElementById('connDot');
+      if(dot)dot.className='dot err';
+    }
+  };
+
+  /* =====================================================
+     4. NUEVO SERVICIO: MISMO BOTÓN, NUEVO BACKEND
+     ===================================================== */
+  window.abrirServicio=async function(){
+    const modal=document.getElementById('modal');
+    if(!modal)return;
+
+    if(!V40.backendLoaded){
+      try{await cargarBackendServicios();}
+      catch(e){alert('No se pudo cargar la configuración de servicios: '+e.message);return;}
+    }
+
+    const fecha=dateKey(state.fecha||new Date());
+    modal.innerHTML=`
+      <div class="modal-box">
+        <div class="page-head">
+          <div><h2>Nuevo servicio</h2><p>Alta real en la plataforma de servicios de Día Verde.</p></div>
+          <button class="btn btn-light" type="button" onclick="cerrarModal()">✕</button>
+        </div>
+
+        <div class="notice">
+          <strong>Fuente:</strong> SERVICIOS_CONFIG + RUTAS_CONFIG + CHOFER + VEHICULOS.
+          El alta genera SERVICIO_CREADO automáticamente.
+        </div>
+
+        <form id="v40ServicioForm" class="form-grid" method="POST" target="v40PostFrame" action="${esc(V40.API)}">
+          <input type="hidden" name="accion" value="crearServicio">
+
+          <label>Fecha<input name="fecha" id="v40Fecha" type="date" value="${esc(fecha)}" required></label>
+          <label>Hora programada<input name="horaProgramada" id="v40Hora" type="time" required></label>
+
+          <label>Tipo de servicio
+            <select name="tipo" id="v40Tipo">
+              <option value="REPETITIVO">Repetitivo</option>
+              <option value="EXTRAORDINARIO">Extraordinario</option>
+            </select>
+          </label>
+
+          <label>Servicio configurado
+            <select name="idServicioConfig" id="v40ServicioConfig">
+              <option value="">— Seleccionar servicio —</option>
+              ${V40.backend.serviciosConfig.map(s=>
+                '<option value="'+esc(s.idServicioConfig)+'" data-hora="'+esc(s.horaInicio||'')+'">'+
+                esc(s.nombreServicio||s.idServicioConfig)+' · '+esc(s.frecuencia||'')+
+                '</option>'
+              ).join('')}
+            </select>
+          </label>
+
+          <label class="full">Ruta
+            <select name="idRuta" id="v40Ruta" required>
+              <option value="">— Seleccionar ruta —</option>
+              ${V40.backend.rutas.map(r=>
+                '<option value="'+esc(r.idRuta)+'" data-config="'+esc(r.idServicioConfig||'')+'">'+
+                esc([r.destinoInicial,r.destinoFinal].filter(Boolean).join(' → '))+
+                '</option>'
+              ).join('')}
+            </select>
+          </label>
+
+          <label>Chofer
+            <select name="idChofer" id="v40Chofer" required>
+              <option value="">— Seleccionar chofer —</option>
+              ${V40.backend.choferes.map(c=>
+                '<option value="'+esc(c.idChofer)+'">'+esc(c.nombre||c.idChofer)+'</option>'
+              ).join('')}
+            </select>
+          </label>
+
+          <label>Vehículo
+            <select name="idUnidad" id="v40Vehiculo" required>
+              <option value="">— Seleccionar vehículo —</option>
+              ${V40.backend.vehiculos.map(v=>
+                '<option value="'+esc(v.idUnidad)+'">'+
+                esc([v.numeroInterno,v.dominio,v.marca,v.modelo].filter(Boolean).join(' · '))+
+                '</option>'
+              ).join('')}
+            </select>
+          </label>
+
+          <label class="full">Descripción / motivo
+            <textarea name="descripcion" id="v40Descripcion" placeholder="Descripción del servicio"></textarea>
+          </label>
+
+          <label class="full">Observaciones
+            <textarea name="observaciones" id="v40Observaciones" placeholder="Observaciones adicionales"></textarea>
+          </label>
+
+          <div class="actions full" style="justify-content:flex-end;margin-top:5px">
+            <button class="btn btn-light" type="button" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn btn-primary" type="submit">Guardar servicio</button>
+          </div>
+        </form>
+
+        <iframe name="v40PostFrame" id="v40PostFrame" style="display:none"></iframe>
+        <div id="v40SaveStatus" class="notice" style="display:none;margin-top:12px"></div>
+      </div>`;
+
+    modal.classList.add('show');
+
+    const tipo=document.getElementById('v40Tipo');
+    const config=document.getElementById('v40ServicioConfig');
+    const ruta=document.getElementById('v40Ruta');
+    const hora=document.getElementById('v40Hora');
+
+    function filtrarRutas(){
+      const cfg=config.value;
+      [...ruta.options].forEach((o,i)=>{
+        if(i===0){o.hidden=false;return;}
+        const rc=o.dataset.config||'';
+        o.hidden=!!cfg && rc!==cfg;
+      });
+      if(ruta.selectedOptions[0]?.hidden)ruta.value='';
+    }
+
+    function completarHora(){
+      const o=config.selectedOptions[0];
+      if(o?.dataset?.hora && !hora.value)hora.value=String(o.dataset.hora).slice(0,5);
+    }
+
+    tipo.addEventListener('change',()=>{
+      const extra=tipo.value==='EXTRAORDINARIO';
+      config.disabled=extra;
+      if(extra){config.value='';[...ruta.options].forEach(o=>o.hidden=false);}
+      else filtrarRutas();
+    });
+    config.addEventListener('change',()=>{filtrarRutas();completarHora();});
+    filtrarRutas();
+
+    document.getElementById('v40ServicioForm').addEventListener('submit',()=>{
+      const st=document.getElementById('v40SaveStatus');
+      st.style.display='block';
+      st.textContent='Guardando servicio en Día Verde...';
+      setTimeout(async()=>{
+        try{
+          await cargarBackendServicios();
+          renderAll();
+          cerrarModal();
+          alert('Servicio enviado. Se actualizó la programación desde SERVICIOS.');
+        }catch(e){
+          st.className='notice err';
+          st.textContent='Se envió el alta, pero no se pudo refrescar la lista: '+e.message;
+        }
+      },1200);
+    });
+  };
+
+  window.cerrarModal=function(){
+    const m=document.getElementById('modal');
+    if(m)m.classList.remove('show');
+  };
+
+  /* =====================================================
+     5. MAPA: ZONAS REALES + RECLAMOS
+     ===================================================== */
+  function cargarZonasMapa(){
+    if(V40.zonesLoaded)return Promise.resolve();
+    return fetch(V40.GEOJSON+'?t='+Date.now(),{cache:'no-store'})
+      .then(r=>{if(!r.ok)throw new Error('No se pudo cargar zonas.geojson');return r.json();})
+      .then(g=>{V40.zonesGeo=g;V40.zonesLoaded=true;dvRenderZones();})
+      .catch(e=>console.warn('V40 zonas:',e));
+  }
+
+  function dvRenderZones(){
+    if(!!dvOperationalMap || !dvMapReady || !V40.zonesGeo)return;
+    const map=dvOperationalMap;
+    const sourceId='v40-zonas';
+    const fillId='v40-zonas-fill';
+    const lineId='v40-zonas-line';
+    const labelId='v40-zonas-label';
+
+    if(!map.getSource(sourceId)){
+      map.addSource(sourceId,{type:'geojson',data:V40.zonesGeo});
+      map.addLayer({
+        id:fillId,type:'fill',source:sourceId,
+        paint:{'fill-color':'#087a3d','fill-opacity':0.09}
+      });
+      map.addLayer({
+        id:lineId,type:'line',source:sourceId,
+        paint:{'line-color':'#087a3d','line-width':2,'line-opacity':0.65}
+      });
+      map.addLayer({
+        id:labelId,type:'symbol',source:sourceId,
+        layout:{
+          'text-field':['coalesce',['get','name'],'Zona'],
+          'text-size':11,
+          'text-offset':[0,0]
+        },
+        paint:{'text-color':'#04552b','text-halo-color':'#ffffff','text-halo-width':1.5}
+      });
+      if(!map.__v40ZoneClick){
+        map.__v40ZoneClick=true;
+        map.on('click',fillId,(ev)=>{
+          const f=ev.features && ev.features[0];
+          const nombre=f?.properties?.name||'Zona';
+          new maplibregl.Popup({closeButton:true,offset:8})
+            .setLngLat(ev.lngLat)
+            .setHTML('<strong>🟩 ZONA DÍA VERDE</strong><br>'+esc(nombre))
+            .addTo(map);
+        });
+        map.on('mouseenter',fillId,()=>{map.getCanvas().style.cursor='pointer';});
+        map.on('mouseleave',fillId,()=>{map.getCanvas().style.cursor='';});
+      }
+    }
+
+    const visible=V40.zoneVisible?'visible':'none';
+    [fillId,lineId,labelId].forEach(id=>{
+      if(map.getLayer(id))map.setLayoutProperty(id,'visibility',visible);
+    });
+  }
+
+  function dvSetZonesVisible(v){
+    V40.zoneVisible=!!v;
+    dvRenderZones();
+    actualizarBotonesMapaV40();
+  }
+
+  function v40RenderClaims(){
+    if(!dvOperationalMap || !dvMapReady)return;
+    if(Array.isArray(dvMapLayers.evidencias)){
+      dvMapLayers.evidencias.forEach(m=>{try{m.remove();}catch(e){}});
+    }
+    dvMapLayers.evidencias=[];
+
+    (Array.isArray(dvEvidenceRows)?dvEvidenceRows:[]).forEach(o=>{
+      const lat=dvNum(dvPick(o,['latitud','lat','latitude']));
+      const lng=dvNum(dvPick(o,['longitud','lng','lon','longitude']));
+      if(lat===null||lng===null)return;
+
+      const direccion=dvPick(o,['calle','direccion','domicilio'])||'Sin dirección';
+      const zona=dvPick(o,['zona'])||'—';
+      const estado=dvPick(o,['estado','situacion','resultado'])||'—';
+      const fecha=dvPick(o,['fecha'])||'—';
+      const hora=dvPick(o,['hora'])||'—';
+
+      const popup=new maplibregl.Popup({offset:18,maxWidth:'320px'}).setHTML(
+        '<strong>📍 RECLAMO DÍA VERDE</strong><br>'+        '📌 <strong>'+esc(direccion)+'</strong><br>'+        '🟢 Estado: '+esc(estado)+'<br>'+        '🗺️ Zona: '+esc(zona)+'<br>'+        '📅 '+esc(fecha)+' · '+esc(hora)
+      );
+
+      const marker=new maplibregl.Marker({element:dvEvidenceElement(),anchor:'center'})
+        .setLngLat([lng,lat])
+        .setPopup(popup)
+        .addTo(dvOperationalMap);
+
+      dvMapLayers.evidencias.push(marker);
+    });
+
+    dvSetClaimsVisible(V40.claimsVisible);
+  }
+
+  function dvSetClaimsVisible(v){
+    V40.claimsVisible=!!v;
+    if(Array.isArray(dvMapLayers.evidencias)){
+      dvMapLayers.evidencias.forEach(m=>{
+        try{m.getElement().style.display=V40.claimsVisible?'':'none';}catch(e){}
+      });
+    }
+    actualizarBotonesMapaV40();
+  }
+
+  function actualizarBotonesMapaV40(){
+    const host=document.getElementById('dvMapFilters');
+    if(!host)return;
+    if(!host.dataset.v40){
+      const wrap=document.createElement('span');
+      wrap.id='v40MapToggles';
+      wrap.style.display='inline-flex';
+      wrap.style.gap='6px';
+      wrap.style.marginLeft='4px';
+      host.appendChild(wrap);
+      host.dataset.v40='1';
+    }
+    const wrap=document.getElementById('v40MapToggles');
+    wrap.innerHTML=
+      '<button class="dv-map-filter '+(V40.zoneVisible?'active':'')+'" onclick="window.__v40Zones()">🟩 Zonas</button>'+
+      '<button class="dv-map-filter '+(V40.claimsVisible?'active':'')+'" onclick="window.__v40Claims()">📍 Reclamos</button>';
+  }
+
+  window.__v40Zones=()=>dvSetZonesVisible(!V40.zoneVisible);
+  window.__v40Claims=()=>dvSetClaimsVisible(!V40.claimsVisible);
+
+  /* Aseguramos que las capas nuevas se dibujen después de cargar MapLibre. */
+  const renderMapAnterior=typeof dvRenderMap==='function' ? dvRenderMap : null;
+  if(typeof renderMapAnterior==='function'){
+    dvRenderMap=function(){
+      renderMapAnterior();
+      setTimeout(()=>{cargarZonasMapa();dvRenderZones();v40RenderClaims();actualizarBotonesMapaV40();},80);
+    };
+  }
+
+  const actualizarMapaAnterior=typeof actualizarMapaOperativo==='function' ? actualizarMapaOperativo : null;
+  if(typeof actualizarMapaAnterior==='function'){
+    actualizarMapaOperativo=async function(manual){
+      await actualizarMapaAnterior(manual);
+      await cargarZonasMapa();
+      dvRenderZones();
+      v40RenderClaims();
+      actualizarBotonesMapaV40();
+    };
+  }
+
+  /* =====================================================
+     6. ESTADOS VISUALES DEL NUEVO FLUJO
+     ===================================================== */
+  const estadoClaseAnterior=window.estadoClase;
+  window.estadoClase=function(e){
+    const n=norm(e);
+    if(n.includes('finalizado')||n.includes('final'))return'blue';
+    if(n.includes('viaje'))return'blue';
+    if(n.includes('inspeccion'))return'yellow';
+    if(n.includes('listo'))return'yellow';
+    if(n.includes('suspend'))return'red';
+    return estadoClaseAnterior?estadoClaseAnterior(e):'gray';
+  };
+
+  /* =====================================================
+     7. CARGA INICIAL
+     ===================================================== */
+  const cargaInicialAnterior=window.addEventListener;
+  window.addEventListener('load',()=>{
+    setTimeout(async()=>{
+      try{
+        if(!V40.backendLoaded) await cargarBackendServicios();
+        if(typeof renderAll==='function')renderAll();
+        await cargarZonasMapa();
+        actualizarBotonesMapaV40();
+      }catch(e){
+        console.warn('V40 carga inicial:',e);
+      }
+    },1200);
+  });
+
+})();
 
 </body>
 </html>
