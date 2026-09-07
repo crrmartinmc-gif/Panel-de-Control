@@ -1358,7 +1358,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 /*
- * PANEL DE CONTROL V40 — INTEGRACION SERVICIOS + ZONAS + RECLAMOS
+ * PANEL DE CONTROL V43 — INTEGRACION SERVICIOS + ZONAS + RECLAMOS
  *
  * Este bloque se agrega AL FINAL de index.html, antes de </body>.
  * No reemplaza el mapa ni los módulos existentes: sobrescribe solamente
@@ -1683,21 +1683,76 @@ document.addEventListener('DOMContentLoaded',()=>{
     config.addEventListener('change',()=>{filtrarRutas();completarHora();});
     filtrarRutas();
 
-    document.getElementById('v40ServicioForm').addEventListener('submit',()=>{
+    const form=document.getElementById('v40ServicioForm');
+    const frame=document.getElementById('v40PostFrame');
+    let v40Submitting=false;
+    let v40AntesIds=new Set((V40.backend.servicios||[]).map(s=>String(s.idServicio||'')));
+
+    frame.addEventListener('load',async()=>{
+      if(!v40Submitting)return;
+
       const st=document.getElementById('v40SaveStatus');
+      if(!st)return;
+
       st.style.display='block';
-      st.textContent='Guardando servicio en Día Verde...';
-      setTimeout(async()=>{
+      st.className='notice';
+      st.textContent='Procesando alta en SERVICIOS...';
+
+      let confirmado=false;
+      let ultimoError='';
+
+      for(let intento=1; intento<=8; intento++){
+        await new Promise(r=>setTimeout(r,700));
+
         try{
           await cargarBackendServicios();
           renderAll();
-          cerrarModal();
-          alert('Servicio enviado. Se actualizó la programación desde SERVICIOS.');
+
+          const nuevos=(V40.backend.servicios||[]).filter(s=>{
+            const id=String(s.idServicio||'');
+            return id && !v40AntesIds.has(id);
+          });
+
+          if(nuevos.length){
+            confirmado=true;
+            break;
+          }
         }catch(e){
-          st.className='notice err';
-          st.textContent='Se envió el alta, pero no se pudo refrescar la lista: '+e.message;
+          ultimoError=e.message||String(e);
         }
-      },1200);
+      }
+
+      const boton=form.querySelector('button[type="submit"]');
+
+      if(confirmado){
+        v40Submitting=false;
+        if(boton)boton.disabled=false;
+        cerrarModal();
+        alert('Servicio creado correctamente. ID: '+String((V40.backend.servicios||[]).find(s=>!v40AntesIds.has(String(s.idServicio||'')))?.idServicio||''));
+      }else{
+        v40Submitting=false;
+        if(boton)boton.disabled=false;
+        st.className='notice err';
+        st.textContent=ultimoError
+          ? 'No se pudo confirmar el alta desde SERVICIOS: '+ultimoError
+          : 'El servidor recibió el envío, pero no apareció un nuevo servicio en SERVICIOS. Revisemos el backend antes de volver a guardar.';
+      }
+    });
+
+    form.addEventListener('submit',()=>{
+      const st=document.getElementById('v40SaveStatus');
+      const boton=form.querySelector('button[type="submit"]');
+
+      v40Submitting=true;
+      v40AntesIds=new Set((V40.backend.servicios||[]).map(s=>String(s.idServicio||'')));
+
+      if(st){
+        st.style.display='block';
+        st.className='notice';
+        st.textContent='Enviando servicio a Día Verde...';
+      }
+
+      if(boton)boton.disabled=true;
     });
   };
 
