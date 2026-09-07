@@ -1937,12 +1937,51 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(key.includes('LOMAS'))return V40_CGM_ZONAS['LOMAS'].slice();
     return [];
   }
+  /* Normaliza los nombres de zona de RECLAMOS contra los nombres del GeoJSON.
+     Algunas filas usan nombres cortos (por ejemplo BANFIELD + ESTE), mientras
+     que el GeoJSON usa nombres completos (Banfield Este). */
+  function v40ZonaReclamoCanonica(o){
+    const cgm=v40NormalizarTexto(dvPick(o,['cgm'])).toUpperCase();
+    const zona=v40NormalizarTexto(dvPick(o,['zona']));
+    if(!zona)return '';
+    const z=zona.toUpperCase();
+
+    if(cgm.includes('BANFIELD')){
+      if(z==='ESTE' || z==='BANFIELD ESTE')return 'Banfield Este';
+      if(z==='OESTE' || z==='BANFIELD OESTE')return 'Banfield Oeste';
+      if(z==='BANFIELD 3' || z==='3')return 'Banfield 3';
+    }
+    if(cgm.includes('TEMPERLEY')){
+      if(z==='ESTE CERRITO' || z==='TEMPERLEY ESTE CERRITO')return 'Temperley Este Cerrito';
+      if(z==='ESTE 30 DE SEPTIEMBRE' || z==='TEMPERLEY ESTE 30 DE SEPTIEMBRE')return 'Temperley Este 30 de Septiembre';
+      if(z==='OESTE' || z==='TEMPERLEY OESTE')return 'Temperley Oeste';
+    }
+    if(cgm.includes('LLAVALLOL')){
+      if(z==='NORTE' || z==='LLAVALLOL NORTE')return 'Llavallol Norte';
+      if(z==='SUR' || z==='LLAVALLOL SUR')return 'Llavallol Sur';
+    }
+    if(cgm.includes('TURDERA')){
+      if(z==='TURDERA')return 'Turdera';
+    }
+    if(cgm.includes('LOMAS')){
+      if(z==='ESTE' || z==='LOMAS ESTE')return 'Lomas Este';
+      if(z.includes('MICROCENTRO'))return 'Lomas - Microcentro';
+      if(z.includes('FRIAS') || z.includes('GARIBALDI'))return 'Lomas - Frias/Garibaldi';
+      if(z.includes('P LIBERTAD') || z.includes('PLAZA LIBERTAD'))return 'Lomas - P Libertad';
+      if(z.includes('LAS HERAS'))return 'Lomas - Las Heras';
+    }
+    return zona;
+  }
+
   function v40ClaimVisible(o){
     if(!o)return false;
-    const cgm=dvPick(o,['cgm']);
-    const zona=dvPick(o,['zona']);
-    if(V40.cgmFilter && v40NormalizarTexto(cgm)!==v40NormalizarTexto(V40.cgmFilter))return false;
-    if(V40.zoneFilter && v40NormalizarTexto(zona)!==v40NormalizarTexto(V40.zoneFilter))return false;
+    const cgm=v40NormalizarTexto(dvPick(o,['cgm'])).toUpperCase();
+    const zonaCanon=v40NormalizarTexto(v40ZonaReclamoCanonica(o));
+    if(V40.cgmFilter){
+      const filtro=v40NormalizarTexto(V40.cgmFilter).toUpperCase();
+      if(cgm!==filtro && !cgm.includes(filtro) && !filtro.includes(cgm))return false;
+    }
+    if(V40.zoneFilter && zonaCanon!==v40NormalizarTexto(V40.zoneFilter))return false;
     return true;
   }
 
