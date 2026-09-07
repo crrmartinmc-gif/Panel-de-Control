@@ -1167,7 +1167,7 @@ function renderDvDriverPanel(groups){
    users.filter(u=>dvTimeAge(groups[u].at(-1)?.hora)<90).length;
  document.getElementById('dvKpiVehiculos').textContent=users.length;
  document.getElementById('dvKpiReclamos').textContent=
-   dvEvidenceRows.filter(o=>!dvPick(o,['fecha'])||dvPick(o,['fecha'])===dvDateToday()).length;
+   dvEvidenceRows.length;
  document.getElementById('dvKpiSinSenal').textContent=
    users.filter(u=>dvTimeAge(groups[u].at(-1)?.hora)>=180).length;
 
@@ -1232,7 +1232,13 @@ async function actualizarMapaOperativo(manual=false){
    dvEnsureMap();
    const data=await dvJsonpMapa();
    dvGpsRows=Array.isArray(data.gps)?data.gps:[];
-   dvEvidenceRows=Array.isArray(data.evidencias)?dvObjRows(data.evidencias):[];
+   dvEvidenceRows=Array.isArray(data.reclamos)
+      ? data.reclamos
+      : (Array.isArray(data.evidencias)
+        ? (data.evidencias.length && typeof data.evidencias[0]==='object' && !Array.isArray(data.evidencias[0])
+          ? data.evidencias
+          : dvObjRows(data.evidencias))
+        : []);
    dvRenderMap();
  }catch(e){
    console.warn('Mapa Día Verde:',e);
@@ -1838,14 +1844,28 @@ document.addEventListener('DOMContentLoaded',()=>{
       const lng=dvNum(dvPick(o,['longitud','lng','lon','longitude']));
       if(lat===null||lng===null)return;
 
-      const direccion=dvPick(o,['calle','direccion','domicilio'])||'Sin dirección';
+      const idReclamo=dvPick(o,['id_reclamo','id reclamo','id']);
+      const cgm=dvPick(o,['cgm']);
+      const calle=dvPick(o,['calle','direccion','domicilio'])||'Sin dirección';
+      const numero=dvPick(o,['numero','número']);
+      const direccion=[calle,numero].filter(Boolean).join(' ');
       const zona=dvPick(o,['zona'])||'—';
-      const estado=dvPick(o,['estado','situacion','resultado'])||'—';
+      const estado=dvPick(o,['estado','situacion'])||'—';
+      const resultado=dvPick(o,['resultado'])||'—';
       const fecha=dvPick(o,['fecha'])||'—';
       const hora=dvPick(o,['hora'])||'—';
+      const foto=dvPick(o,['foto','foto_url','foto url']);
 
-      const popup=new maplibregl.Popup({offset:18,maxWidth:'320px'}).setHTML(
-        '<strong>📍 RECLAMO DÍA VERDE</strong><br>'+        '📌 <strong>'+esc(direccion)+'</strong><br>'+        '🟢 Estado: '+esc(estado)+'<br>'+        '🗺️ Zona: '+esc(zona)+'<br>'+        '📅 '+esc(fecha)+' · '+esc(hora)
+      const popup=new maplibregl.Popup({offset:18,maxWidth:'340px'}).setHTML(
+        '<strong>📍 RECLAMO DÍA VERDE</strong><br>'+
+        (idReclamo?'🆔 '+esc(idReclamo)+'<br>':'')+
+        (cgm?'🏢 CGM: '+esc(cgm)+'<br>':'')+
+        '📌 <strong>'+esc(direccion)+'</strong><br>'+
+        '🟢 Estado: '+esc(estado)+'<br>'+
+        '📋 Resultado: '+esc(resultado)+'<br>'+
+        '🗺️ Zona: '+esc(zona)+'<br>'+
+        '📅 '+esc(fecha)+' · '+esc(hora)+
+        (foto?' <br>📷 <a href="'+esc(foto)+'" target="_blank" rel="noopener">Ver foto</a>':'')
       );
 
       const marker=new maplibregl.Marker({element:dvEvidenceElement(),anchor:'center'})
