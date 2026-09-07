@@ -947,7 +947,8 @@ function dvVehicleElement(color){
 function dvEvidenceElement(estado){
  const el=document.createElement('div');
  el.className='dv-reclamo-marker';
- const realizado=norm(estado||'').includes('realiz') || norm(estado||'').includes('resuelto') || norm(estado||'').includes('complet');
+ const estadoNorm=norm(estado||'');
+ const realizado=estadoNorm.includes('realiz') || estadoNorm.includes('resuelto') || estadoNorm.includes('complet') || estadoNorm.includes('levantado') || estadoNorm.includes('recolectado');
  el.textContent='♻';
  el.title=realizado?'Reclamo realizado':'Reclamo pendiente';
  el.style.width='28px';
@@ -1975,13 +1976,26 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   function v40ClaimVisible(o){
     if(!o)return false;
-    const cgm=v40NormalizarTexto(dvPick(o,['cgm'])).toUpperCase();
     const zonaCanon=v40NormalizarTexto(v40ZonaReclamoCanonica(o));
+    const zonaOriginal=v40NormalizarTexto(dvPick(o,['zona']));
+    let cgm=v40NormalizarTexto(dvPick(o,['cgm'])).toUpperCase();
+    // Si la fila no trae CGM, lo inferimos de la zona canónica.
+    if(!cgm){
+      const z=zonaCanon.toUpperCase();
+      if(z.includes('BANFIELD'))cgm='BANFIELD';
+      else if(z.includes('TEMPERLEY'))cgm='TEMPERLEY';
+      else if(z.includes('LLAVALLOL'))cgm='LLAVALLOL';
+      else if(z.includes('TURDERA'))cgm='TURDERA';
+      else if(z.includes('LOMAS'))cgm='LOMAS';
+    }
     if(V40.cgmFilter){
       const filtro=v40NormalizarTexto(V40.cgmFilter).toUpperCase();
       if(cgm!==filtro && !cgm.includes(filtro) && !filtro.includes(cgm))return false;
     }
-    if(V40.zoneFilter && zonaCanon!==v40NormalizarTexto(V40.zoneFilter))return false;
+    if(V40.zoneFilter){
+      const filtroZona=v40NormalizarTexto(V40.zoneFilter);
+      if(zonaCanon!==filtroZona && zonaOriginal!==filtroZona)return false;
+    }
     return true;
   }
 
@@ -2167,7 +2181,24 @@ document.addEventListener('DOMContentLoaded',()=>{
       dvMapLayers.evidencias.push(marker);
     });
 
-    dvSetClaimsVisible(V40.claimsVisible);
+    // Aplicar el filtro inmediatamente después de crear los marcadores.
+    // Esto evita que una capa creada antes del cambio de CGM/Zona quede oculta
+    // por un estado visual anterior.
+    let visibles=0;
+    dvMapLayers.evidencias.forEach(marker=>{
+      try{
+        const row=dvEvidenceRows[marker.__dvReclamoIndex];
+        const visible=V40.claimsVisible && v40ClaimVisible(row);
+        marker.getElement().style.display=visible?'':'none';
+        if(visible)visibles++;
+      }catch(e){}
+    });
+    actualizarBotonesMapaV40();
+    const mapStatus=document.getElementById('dvMapStatus');
+    if(mapStatus && (V40.cgmFilter||V40.zoneFilter)){
+      const filtroTxt=V40.zoneFilter ? V40.zoneFilter : V40.cgmFilter;
+      mapStatus.textContent=String(visibles)+' reclamo(s) visibles · '+filtroTxt+' · GPS de hoy';
+    }
   }
 
   function dvSetClaimsVisible(v){
