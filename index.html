@@ -145,8 +145,9 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
    </div>
    <div class="dv-map-layout">
     <div class="card dv-map-card">
-     <div class="dv-map-toolbar">
+     <div class="dv-map-toolbar" style="display:block">
       <div class="dv-map-filters" id="dvMapFilters"></div>
+      <div id="v40GeoFilters" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"></div>
       <span class="dv-map-status" id="dvMapStatus">Esperando datos GPS...</span>
      </div>
      <div id="dvOperationalMap"></div>
@@ -943,20 +944,23 @@ function dvVehicleElement(color){
  return el;
 }
 
-function dvEvidenceElement(){
+function dvEvidenceElement(estado){
  const el=document.createElement('div');
  el.className='dv-reclamo-marker';
- el.textContent='✓';
- el.style.width='24px';
- el.style.height='24px';
+ const realizado=norm(estado||'').includes('realiz') || norm(estado||'').includes('resuelto') || norm(estado||'').includes('complet');
+ el.textContent='♻';
+ el.title=realizado?'Reclamo realizado':'Reclamo pendiente';
+ el.style.width='28px';
+ el.style.height='28px';
  el.style.display='flex';
  el.style.alignItems='center';
  el.style.justifyContent='center';
  el.style.borderRadius='50%';
- el.style.background='#b42318';
- el.style.color='#fff';
+ el.style.background=realizado?'#087a3d':'#ffffff';
+ el.style.color=realizado?'#ffffff':'#087a3d';
  el.style.fontWeight='900';
- el.style.border='2px solid #fff';
+ el.style.fontSize='19px';
+ el.style.border='2px solid #087a3d';
  el.style.boxShadow='0 2px 7px rgba(0,0,0,.25)';
  return el;
 }
@@ -1070,7 +1074,7 @@ function dvRenderEvidence(){
        '<br>Hora: '+esc(dvPick(o,['hora'])||'—')
      );
 
-   const marker=new maplibregl.Marker({element:dvEvidenceElement(),anchor:'center'})
+   const marker=new maplibregl.Marker({element:dvEvidenceElement(dvPick(o,['estado','resultado'])),anchor:'center'})
      .setLngLat([lng,lat])
      .setPopup(popup)
      .addTo(dvOperationalMap);
@@ -1135,7 +1139,11 @@ function dvRenderMap(){
  dvRenderEvidence();
 
  if(bounds.length&&!window.__dvMapInitialFitDone){
-   dvOperationalMap.fitBounds(bounds,{padding:40,maxZoom:15,duration:0});
+   if(bounds.length===1){
+     dvOperationalMap.easeTo({center:bounds[0],zoom:16,duration:0});
+   }else{
+     dvOperationalMap.fitBounds(bounds,{padding:40,maxZoom:15,duration:0});
+   }
    window.__dvMapInitialFitDone=true;
  }
 
@@ -1824,6 +1832,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     [fillId,lineId,labelId].forEach(id=>{
       if(map.getLayer(id))map.setLayoutProperty(id,'visibility',visible);
     });
+    v40AplicarFiltroZonasGeoJSON();
   }
 
   function dvSetZonesVisible(v){
@@ -1832,6 +1841,129 @@ document.addEventListener('DOMContentLoaded',()=>{
     actualizarBotonesMapaV40();
   }
 
+  /* =====================================================
+     5B. FILTROS GEOGRÁFICOS: MAPA GENERAL -> CGM -> ZONA
+     ===================================================== */
+  V40.cgmFilter = '';
+  V40.zoneFilter = '';
+
+  function v40NormalizarTexto(s){
+    return norm(String(s||'')).replace(/\s+/g,' ').trim();
+  }
+
+  function v40ListaCGM(){
+    return uniqueSorted((Array.isArray(dvEvidenceRows)?dvEvidenceRows:[])
+      .map(o=>dvPick(o,['cgm']))
+      .filter(Boolean));
+  }
+
+  function v40ListaZonas(cgm){
+    const claims=Array.isArray(dvEvidenceRows)?dvEvidenceRows:[];
+    const filtrados=cgm
+      ? claims.filter(o=>v40NormalizarTexto(dvPick(o,['cgm']))===v40NormalizarTexto(cgm))
+      : claims;
+    return uniqueSorted(filtrados.map(o=>dvPick(o,['zona'])).filter(Boolean));
+  }
+
+  function v40ClaimVisible(o){
+    if(!o)return false;
+    const cgm=dvPick(o,['cgm']);
+    const zona=dvPick(o,['zona']);
+    if(V40.cgmFilter && v40NormalizarTexto(cgm)!==v40NormalizarTexto(V40.cgmFilter))return false;
+    if(V40.zoneFilter && v40NormalizarTexto(zona)!==v40NormalizarTexto(V40.zoneFilter))return false;
+    return true;
+  }
+
+  function v40ZoneVisibleByFilter(feature){
+    if(!V40.cgmFilter && !V40.zoneFilter)return true;
+    const nombre=v40NormalizarTexto(feature?.properties?.name||'');
+    if(V40.zoneFilter){
+      const z=v40NormalizarTexto(V40.zoneFilter);
+      return nombre===z || nombre.includes(z) || z.includes(nombre);
+    }
+    const zonasCGM=v40ListaZonas(V40.cgmFilter).map(v40NormalizarTexto);
+    return zonasCGM.some(z=>nombre===z || nombre.includes(z) || z.includes(nombre));
+  }
+
+  function v40AplicarFiltroZonasGeoJSON(){
+    if(!V40.zonesGeo)return;
+    const features=(V40.zonesGeo.features||[]).filter(v40ZoneVisibleByFilter);
+    const source=dvOperationalMap?.getSource('v40-zonas');
+    if(source)source.setData({type:'FeatureCollection',features});
+  }
+
+  function v40RenderGeoFilters(){
+    const host=document.getElementById('v40GeoFilters');
+    if(!host)return;
+
+    const cgms=v40ListaCGM();
+    const zonas=v40ListaZonas(V40.cgmFilter);
+
+    if(V40.zoneFilter && !zonas.some(z=>v40NormalizarTexto(z)===v40NormalizarTexto(V40.zoneFilter))){
+      V40.zoneFilter='';
+    }
+
+    host.innerHTML=
+      '<select id="v40CgmSelect" aria-label="Filtrar por CGM" style="min-width:230px;padding:9px 12px;border:1px solid #d8e2dc;border-radius:10px;background:#fff;font-weight:700">'+
+      '<option value="">Mapa general — todos los CGM</option>'+
+      cgms.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('')+
+      '</select>'+
+      '<select id="v40ZoneSelect" aria-label="Filtrar por zona" style="min-width:230px;padding:9px 12px;border:1px solid #d8e2dc;border-radius:10px;background:#fff;font-weight:700" '+(!V40.cgmFilter?'disabled':'')+'>'+
+      '<option value="">Todas las zonas</option>'+
+      zonas.map(z=>'<option value="'+esc(z)+'">'+esc(z)+'</option>').join('')+
+      '</select>'+
+      '<button class="dv-map-filter" onclick="window.__v40ClearGeo()">↺ Mapa general</button>';
+
+    const c=document.getElementById('v40CgmSelect');
+    const z=document.getElementById('v40ZoneSelect');
+    if(c)c.value=V40.cgmFilter;
+    if(z)z.value=V40.zoneFilter;
+
+    if(c)c.onchange=()=>{
+      V40.cgmFilter=c.value;
+      V40.zoneFilter='';
+      v40RenderGeoFilters();
+      v40AplicarFiltroGeografico();
+    };
+    if(z)z.onchange=()=>{
+      V40.zoneFilter=z.value;
+      v40AplicarFiltroGeografico();
+    };
+  }
+
+  function v40AplicarFiltroGeografico(){
+    v40AplicarFiltroZonasGeoJSON();
+
+    if(Array.isArray(dvMapLayers.evidencias)){
+      dvMapLayers.evidencias.forEach(marker=>{
+        try{
+          const row=dvEvidenceRows[marker.__dvReclamoIndex];
+          marker.getElement().style.display=(V40.claimsVisible && v40ClaimVisible(row))?'':'none';
+        }catch(e){}
+      });
+    }
+
+    const pts=[];
+    (Array.isArray(dvEvidenceRows)?dvEvidenceRows:[]).forEach(o=>{
+      if(!v40ClaimVisible(o))return;
+      const lat=dvNum(dvPick(o,['latitud','lat','latitude']));
+      const lng=dvNum(dvPick(o,['longitud','lng','lon','longitude']));
+      if(lat!==null&&lng!==null)pts.push([lng,lat]);
+    });
+
+    if(dvOperationalMap && pts.length){
+      if(pts.length===1)dvOperationalMap.easeTo({center:pts[0],zoom:16,duration:450});
+      else dvOperationalMap.fitBounds(pts,{padding:50,maxZoom:15,duration:450});
+    }
+  }
+
+  window.__v40ClearGeo=()=>{
+    V40.cgmFilter='';
+    V40.zoneFilter='';
+    v40RenderGeoFilters();
+    v40AplicarFiltroGeografico();
+  };
+
   function v40RenderClaims(){
     if(!dvOperationalMap || !dvMapReady)return;
     if(Array.isArray(dvMapLayers.evidencias)){
@@ -1839,7 +1971,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
     dvMapLayers.evidencias=[];
 
-    (Array.isArray(dvEvidenceRows)?dvEvidenceRows:[]).forEach(o=>{
+    (Array.isArray(dvEvidenceRows)?dvEvidenceRows:[]).forEach((o,idx)=>{
       const lat=dvNum(dvPick(o,['latitud','lat','latitude']));
       const lng=dvNum(dvPick(o,['longitud','lng','lon','longitude']));
       if(lat===null||lng===null)return;
@@ -1868,11 +2000,12 @@ document.addEventListener('DOMContentLoaded',()=>{
         (foto?' <br>📷 <a href="'+esc(foto)+'" target="_blank" rel="noopener">Ver foto</a>':'')
       );
 
-      const marker=new maplibregl.Marker({element:dvEvidenceElement(),anchor:'center'})
+      const marker=new maplibregl.Marker({element:dvEvidenceElement(dvPick(o,['estado','resultado'])),anchor:'center'})
         .setLngLat([lng,lat])
         .setPopup(popup)
         .addTo(dvOperationalMap);
 
+      marker.__dvReclamoIndex=idx;
       dvMapLayers.evidencias.push(marker);
     });
 
@@ -1883,7 +2016,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     V40.claimsVisible=!!v;
     if(Array.isArray(dvMapLayers.evidencias)){
       dvMapLayers.evidencias.forEach(m=>{
-        try{m.getElement().style.display=V40.claimsVisible?'':'none';}catch(e){}
+        try{
+          const row=dvEvidenceRows[m.__dvReclamoIndex];
+          m.getElement().style.display=(V40.claimsVisible && v40ClaimVisible(row))?'':'none';
+        }catch(e){}
       });
     }
     actualizarBotonesMapaV40();
@@ -1905,6 +2041,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     wrap.innerHTML=
       '<button class="dv-map-filter '+(V40.zoneVisible?'active':'')+'" onclick="window.__v40Zones()">🟩 Zonas</button>'+
       '<button class="dv-map-filter '+(V40.claimsVisible?'active':'')+'" onclick="window.__v40Claims()">📍 Reclamos</button>';
+    v40RenderGeoFilters();
   }
 
   window.__v40Zones=()=>dvSetZonesVisible(!V40.zoneVisible);
@@ -1926,6 +2063,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       await cargarZonasMapa();
       dvRenderZones();
       v40RenderClaims();
+      v40RenderGeoFilters();
       actualizarBotonesMapaV40();
     };
   }
