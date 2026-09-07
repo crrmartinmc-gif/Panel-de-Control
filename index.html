@@ -971,6 +971,31 @@ function dvTimeAge(ts){
  return Math.max(0,(Date.now()-t)/1000);
 }
 
+function dvGpsFechaLocalClave(valor){
+ const d=new Date(valor);
+ if(Number.isFinite(d.getTime())){
+   return String(d.getFullYear()).padStart(4,'0')+'-'+
+          String(d.getMonth()+1).padStart(2,'0')+'-'+
+          String(d.getDate()).padStart(2,'0');
+ }
+ const s=String(valor||'').trim();
+ let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+ if(m)return m[1]+'-'+m[2]+'-'+m[3];
+ m=s.match(/^(\d{1,2})[\/](\d{1,2})[\/](\d{4})/);
+ if(m)return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+ return '';
+}
+function dvGpsHoy(rows){
+ const now=new Date();
+ const hoy=String(now.getFullYear()).padStart(4,'0')+'-'+
+           String(now.getMonth()+1).padStart(2,'0')+'-'+
+           String(now.getDate()).padStart(2,'0');
+ return (Array.isArray(rows)?rows:[]).filter(o=>{
+   const ts=dvPick(o,['timestamp','fecha_hora','hora','fecha']);
+   return dvGpsFechaLocalClave(ts)===hoy;
+ });
+}
+
 function dvGroupGps(rows){
  const out={};
  rows.forEach(o=>{
@@ -1210,7 +1235,7 @@ function renderDvDriverPanel(groups){
 
  const totalGpsPuntos=Object.values(groups).reduce((n,a)=>n+a.length,0);
  document.getElementById('dvMapStatus').textContent=
-   users.length?(users.length+' recorrido(s) · '+totalGpsPuntos+' puntos GPS · actualizado '+new Date().toLocaleTimeString('es-AR')):'Esperando GPS...';
+   users.length?(users.length+' recorrido(s) · '+totalGpsPuntos+' puntos GPS de hoy · actualizado '+new Date().toLocaleTimeString('es-AR')):'Esperando GPS de hoy...';
 }
 
 function dvSetMapFilter(v){
@@ -1239,7 +1264,7 @@ async function actualizarMapaOperativo(manual=false){
  try{
    dvEnsureMap();
    const data=await dvJsonpMapa();
-   dvGpsRows=Array.isArray(data.gps)?data.gps:[];
+   dvGpsRows=dvGpsHoy(Array.isArray(data.gps)?data.gps:[]);
    dvEvidenceRows=Array.isArray(data.reclamos)
       ? data.reclamos
       : (Array.isArray(data.evidencias)
@@ -1862,14 +1887,40 @@ document.addEventListener('DOMContentLoaded',()=>{
       .filter(Boolean));
   }
 
-  function v40ListaZonas(cgm){
-    const claims=Array.isArray(dvEvidenceRows)?dvEvidenceRows:[];
-    const filtrados=cgm
-      ? claims.filter(o=>v40NormalizarTexto(dvPick(o,['cgm']))===v40NormalizarTexto(cgm))
-      : claims;
-    return uniqueSorted(filtrados.map(o=>dvPick(o,['zona'])).filter(Boolean));
-  }
+  /* Relación oficial CGM -> polígonos del GeoJSON.
+     No se deduce de los reclamos. */
+  const V40_CGM_ZONAS = {
+    'BANFIELD': ['Banfield Este','Banfield Oeste','Banfield 3'],
+    'BANFIELD ESTE': ['Banfield Este'],
+    'BANFIELD OESTE': ['Banfield Oeste'],
+    'BANFIELD 3': ['Banfield 3'],
+    'TEMPERLEY': ['Temperley Este Cerrito','Temperley Este 30 de Septiembre','Temperley Oeste'],
+    'TEMPERLEY ESTE CERRITO': ['Temperley Este Cerrito'],
+    'TEMPERLEY ESTE 30 DE SEPTIEMBRE': ['Temperley Este 30 de Septiembre'],
+    'TEMPERLEY OESTE': ['Temperley Oeste'],
+    'LLAVALLOL': ['Llavallol Norte','Llavallol Sur'],
+    'LLAVALLOL NORTE': ['Llavallol Norte'],
+    'LLAVALLOL SUR': ['Llavallol Sur'],
+    'TURDERA': ['Turdera'],
+    'LOMAS': ['Lomas - Microcentro','Lomas - Frias/Garibaldi','Lomas - P Libertad','Lomas - Las Heras','Lomas Este'],
+    'LOMAS - MICROCENTRO': ['Lomas - Microcentro'],
+    'LOMAS - FRIAS/GARIBALDI': ['Lomas - Frias/Garibaldi'],
+    'LOMAS - P LIBERTAD': ['Lomas - P Libertad'],
+    'LOMAS - LAS HERAS': ['Lomas - Las Heras'],
+    'LOMAS ESTE': ['Lomas Este']
+  };
 
+  function v40ListaZonas(cgm){
+    if(!cgm)return uniqueSorted(Object.values(V40_CGM_ZONAS).flat());
+    const key=v40NormalizarTexto(cgm).toUpperCase();
+    if(V40_CGM_ZONAS[key])return V40_CGM_ZONAS[key].slice();
+    if(key.includes('BANFIELD'))return V40_CGM_ZONAS['BANFIELD'].slice();
+    if(key.includes('TEMPERLEY'))return V40_CGM_ZONAS['TEMPERLEY'].slice();
+    if(key.includes('LLAVALLOL'))return V40_CGM_ZONAS['LLAVALLOL'].slice();
+    if(key.includes('TURDERA'))return V40_CGM_ZONAS['TURDERA'].slice();
+    if(key.includes('LOMAS'))return V40_CGM_ZONAS['LOMAS'].slice();
+    return [];
+  }
   function v40ClaimVisible(o){
     if(!o)return false;
     const cgm=dvPick(o,['cgm']);
@@ -1887,7 +1938,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       return nombre===z;
     }
     const zonasCGM=v40ListaZonas(V40.cgmFilter).map(v40NormalizarTexto);
-    return zonasCGM.some(z=>nombre===z);
+    return zonasCGM.includes(nombre);
   }
 
   function v40AplicarFiltroZonasGeoJSON(){
