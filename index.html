@@ -1847,6 +1847,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   V40.cgmFilter = '';
   V40.zoneFilter = '';
 
+  /* Encuadre general del mapa: Lomas de Zamora.
+     No se usa el GPS de vehículos para el encuadre general. */
+  V40.generalCenter = [-58.4158,-34.7606];
+  V40.generalZoom = 13.25;
+
   function v40NormalizarTexto(s){
     return norm(String(s||'')).replace(/\s+/g,' ').trim();
   }
@@ -1879,10 +1884,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     const nombre=v40NormalizarTexto(feature?.properties?.name||'');
     if(V40.zoneFilter){
       const z=v40NormalizarTexto(V40.zoneFilter);
-      return nombre===z || nombre.includes(z) || z.includes(nombre);
+      return nombre===z;
     }
     const zonasCGM=v40ListaZonas(V40.cgmFilter).map(v40NormalizarTexto);
-    return zonasCGM.some(z=>nombre===z || nombre.includes(z) || z.includes(nombre));
+    return zonasCGM.some(z=>nombre===z);
   }
 
   function v40AplicarFiltroZonasGeoJSON(){
@@ -1951,12 +1956,33 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(lat!==null&&lng!==null)pts.push([lng,lat]);
     });
 
+    /* General = Lomas de Zamora. Los GPS no determinan el encuadre. */
+    if(!V40.cgmFilter && !V40.zoneFilter){
+      if(dvOperationalMap){
+        dvOperationalMap.easeTo({
+          center:V40.generalCenter,
+          zoom:V40.generalZoom,
+          duration:450
+        });
+      }
+      return;
+    }
+
+    /* Filtro CGM/Zona = encuadre sobre sus propios reclamos. */
     if(dvOperationalMap && pts.length){
-      if(pts.length===1)dvOperationalMap.easeTo({center:pts[0],zoom:16,duration:450});
-      else dvOperationalMap.fitBounds(pts,{padding:50,maxZoom:15,duration:450});
+      if(pts.length===1){
+        dvOperationalMap.easeTo({center:pts[0],zoom:16,duration:450});
+      }else{
+        dvOperationalMap.fitBounds(pts,{padding:55,maxZoom:16,duration:450});
+      }
+    }else if(dvOperationalMap){
+      dvOperationalMap.easeTo({
+        center:V40.generalCenter,
+        zoom:V40.generalZoom,
+        duration:450
+      });
     }
   }
-
   window.__v40ClearGeo=()=>{
     V40.cgmFilter='';
     V40.zoneFilter='';
@@ -2092,6 +2118,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         if(!V40.backendLoaded) await cargarBackendServicios();
         if(typeof renderAll==='function')renderAll();
         await cargarZonasMapa();
+        v40AplicarFiltroGeografico();
         actualizarBotonesMapaV40();
       }catch(e){
         console.warn('V40 carga inicial:',e);
