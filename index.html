@@ -895,8 +895,8 @@ function dvEnsureMap(){
  dvOperationalMap=new maplibregl.Map({
    container:'dvOperationalMap',
    style:'https://tiles.openfreemap.org/styles/liberty',
-   center:[-58.40,-34.76],
-   zoom:12,
+   center:[-58.4158,-34.7606],
+   zoom:13.25,
    pitch:0,
    bearing:0,
    antialias:true,
@@ -1882,9 +1882,25 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 
   function v40ListaCGM(){
-    return uniqueSorted((Array.isArray(dvEvidenceRows)?dvEvidenceRows:[])
+    /* Los CGM no dependen de que haya reclamos cargados en ese instante.
+       La lista se fija con los CGM operativos conocidos y luego se agregan
+       automáticamente valores nuevos que lleguen desde RECLAMOS. */
+    const base=[
+      'BANFIELD','TEMPERLEY','LLAVALLOL','TURDERA','LOMAS'
+    ];
+    const desdeDatos=(Array.isArray(dvEvidenceRows)?dvEvidenceRows:[])
       .map(o=>dvPick(o,['cgm']))
-      .filter(Boolean));
+      .filter(Boolean)
+      .map(v=>{
+        const k=v40NormalizarTexto(v).toUpperCase();
+        if(k.includes('BANFIELD'))return 'BANFIELD';
+        if(k.includes('TEMPERLEY'))return 'TEMPERLEY';
+        if(k.includes('LLAVALLOL'))return 'LLAVALLOL';
+        if(k.includes('TURDERA'))return 'TURDERA';
+        if(k.includes('LOMAS'))return 'LOMAS';
+        return v40NormalizarTexto(v).toUpperCase();
+      });
+    return uniqueSorted(base.concat(desdeDatos).filter(Boolean));
   }
 
   /* Relación oficial CGM -> polígonos del GeoJSON.
@@ -2019,7 +2035,33 @@ document.addEventListener('DOMContentLoaded',()=>{
       return;
     }
 
-    /* Filtro CGM/Zona = encuadre sobre sus propios reclamos. */
+    /* Cuando se selecciona una ZONA, el mapa se ubica sobre la geometría
+       real de esa zona. No depende de dónde haya reclamos. */
+    if(V40.zoneFilter && dvOperationalMap){
+      const f=(V40.zonesGeo?.features||[]).find(x=>
+        v40NormalizarTexto(x?.properties?.name||'')===v40NormalizarTexto(V40.zoneFilter)
+      );
+      if(f){
+        const coords=[];
+        const walk=(g)=>{
+          if(!g)return;
+          if(g.type==='Point')coords.push(g.coordinates);
+          else if(g.coordinates)g.coordinates.forEach(c=>{
+            if(Array.isArray(c)&&typeof c[0]==='number')coords.push(c);
+            else walk({coordinates:c});
+          });
+        };
+        walk(f.geometry);
+        if(coords.length===1){
+          dvOperationalMap.easeTo({center:coords[0],zoom:15.5,duration:450});
+        }else if(coords.length){
+          dvOperationalMap.fitBounds(coords,{padding:55,maxZoom:16,duration:450});
+        }
+      }
+      return;
+    }
+
+    /* CGM: encuadre sobre los reclamos de ese CGM. */
     if(dvOperationalMap && pts.length){
       if(pts.length===1){
         dvOperationalMap.easeTo({center:pts[0],zoom:16,duration:450});
