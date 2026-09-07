@@ -1151,7 +1151,9 @@ function dvRenderMap(){
    if(!visibleUsers.includes(u))dvRemoveVehicleLayer(u);
  });
 
- dvRenderEvidence();
+ /* V53: no volver a dibujar reclamos con Marker HTML.
+    Los reclamos quedan exclusivamente en la capa GeoJSON nativa de MapLibre. */
+ if(typeof dvLimpiarMarcadoresReclamosLegacy==='function') dvLimpiarMarcadoresReclamosLegacy();
 
  if(bounds.length&&!window.__dvMapInitialFitDone){
    if(bounds.length===1){
@@ -2121,6 +2123,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     v40AplicarFiltroGeografico();
   };
 
+  function dvLimpiarMarcadoresReclamosLegacy(){
+    try{
+      if(Array.isArray(dvMapLayers.evidencias)){
+        dvMapLayers.evidencias.forEach(m=>{try{m.remove();}catch(e){}});
+        dvMapLayers.evidencias=[];
+      }
+    }catch(e){}
+  }
+
   function v40RenderClaims(){
     if(!dvOperationalMap || !dvMapReady)return;
 
@@ -2213,6 +2224,27 @@ document.addEventListener('DOMContentLoaded',()=>{
         }
       });
 
+      /* V53: icono nativo de MapLibre, fijado a la coordenada GeoJSON. */
+      const iconLayer='v40-reclamos-iconos';
+      if(!dvOperationalMap.getLayer(iconLayer))dvOperationalMap.addLayer({
+        id:iconLayer,
+        type:'symbol',
+        source:sourceId,
+        filter:['==',['get','visible'],'1'],
+        layout:{
+          'text-field':'♻',
+          'text-size':18,
+          'text-anchor':'center',
+          'text-allow-overlap':true,
+          'text-ignore-placement':true
+        },
+        paint:{
+          'text-color':['case',['==',['get','realizado'],'1'],'#ffffff','#087a3d'],
+          'text-halo-color':['case',['==',['get','realizado'],'1'],'#087a3d','#ffffff'],
+          'text-halo-width':2
+        }
+      });
+
       const popupReclamo=(ev)=>{
         const f=ev.features&&ev.features[0];
         if(!f)return;
@@ -2288,6 +2320,9 @@ document.addEventListener('DOMContentLoaded',()=>{
         dvRenderZones();
         v40RenderClaims();
         actualizarBotonesMapaV40();
+        if(!V40.cgmFilter && !V40.zoneFilter && dvOperationalMap){
+          dvOperationalMap.easeTo({center:V40.generalCenter,zoom:V40.generalZoom,duration:0});
+        }
       };
       setTimeout(pintar,80);
     };
@@ -2302,6 +2337,9 @@ document.addEventListener('DOMContentLoaded',()=>{
       v40RenderClaims();
       v40RenderGeoFilters();
       actualizarBotonesMapaV40();
+      if(!V40.cgmFilter && !V40.zoneFilter && dvOperationalMap){
+        dvOperationalMap.easeTo({center:V40.generalCenter,zoom:V40.generalZoom,duration:0});
+      }
       setTimeout(()=>{ if(dvMapReady) v40RenderClaims(); },250);
     };
   }
