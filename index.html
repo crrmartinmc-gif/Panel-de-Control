@@ -245,12 +245,12 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
   </section>
  </main>
 </div>
-<footer>Panel de Control · Lectura pública de Google Sheets · El Panel no modifica las hojas todavía.</footer>
+<footer>Panel de Control · Fuentes maestras + Día Verde · Servicios conectados al backend operativo.</footer>
 
 <div id="modal" class="modal">
  <div class="modal-box">
-  <div class="page-head"><div><h2>Nuevo servicio</h2><p>Alta local del servicio. La escritura en Google Sheets se habilitará después de definir la estructura de guardado.</p></div><button class="btn btn-light" onclick="cerrarModal()">✕</button></div>
-  <div class="notice warn">Por ahora este formulario sirve para validar el modelo. No escribe sobre la hoja original.</div>
+  <div class="page-head"><div><h2>Nuevo servicio</h2><p>Alta del servicio en el backend operativo de Día Verde.</p></div><button class="btn btn-light" onclick="cerrarModal()">✕</button></div>
+  <div class="notice">El alta se registra en SERVICIOS y genera su evento de creación.</div>
   <div class="form-grid">
    <label>Fecha<input id="mFecha" type="date"></label>
    <label>Hora<input id="mHora" type="time"></label>
@@ -1388,7 +1388,7 @@ document.addEventListener('DOMContentLoaded',()=>{
      1. EL SHEET 2026 DEJA DE SER FUENTE DE SERVICIOS
      ===================================================== */
   try{
-    if(window.CONFIG && CONFIG.sheets){
+    if(typeof CONFIG!=='undefined' && CONFIG.sheets){
       delete CONFIG.sheets['2026'];
       delete CONFIG.sheets['Semana siguiente'];
     }
@@ -1479,7 +1479,8 @@ document.addEventListener('DOMContentLoaded',()=>{
       return y+'-'+String(Number(m[2])).padStart(2,'0')+'-'+String(Number(m[1])).padStart(2,'0');
     }
     const d=new Date(s);
-    return Number.isNaN(d.getTime())?'':d.toISOString().slice(0,10);
+    if(Number.isNaN(d.getTime()))return '';
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }
 
   function mapearEstadoPanel(e){
@@ -1704,7 +1705,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 
   function dvRenderZones(){
-    if(!!dvOperationalMap || !dvMapReady || !V40.zonesGeo)return;
+    if(!dvOperationalMap || !dvMapReady || !V40.zonesGeo)return;
     const map=dvOperationalMap;
     const sourceId='v40-zonas';
     const fillId='v40-zonas-fill';
