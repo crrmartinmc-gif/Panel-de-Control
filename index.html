@@ -290,8 +290,6 @@ const state={
   choferes:[],
   destinos:[],
   mantenimiento:[],
-  inspecciones:[],
-  asignaciones:[],
   fecha:new Date()
 };
 
@@ -563,15 +561,19 @@ function buildEntities(){
   // 2) Normalized services, as an additional source.
   s.forEach(x=>addPlate(x.dominio,'Servicios'));
 
-  state.flota=[...plates.values()].map(v=>{
-    const m=state.mantenimiento.find(x=>norm(x.dominio)===norm(v.dominio));
-    return {
-      dominio:v.dominio,
-      modelo:m?.modelo||'',
-      estado:m?.estado||'Operativo',
-      fuentes:[...v.fuentes]
-    };
-  }).sort((a,b)=>a.dominio.localeCompare(b.dominio,'es'));
+  // La flota maestra se carga desde VEHICULOS mediante el backend de Día Verde.
+  // Este bloque solo se usa como respaldo cuando todavía no llegó el backend.
+  if(!Array.isArray(state.flota)||!state.flota.length){
+    state.flota=[...plates.values()].map(v=>{
+      const m=state.mantenimiento.find(x=>norm(x.dominio)===norm(v.dominio));
+      return {
+        dominio:v.dominio,
+        modelo:m?.modelo||'',
+        estado:m?.estado||'Operativo',
+        fuentes:[...v.fuentes]
+      };
+    }).sort((a,b)=>a.dominio.localeCompare(b.dominio,'es'));
+  }
 
   state.choferes=uniqueSorted(s.map(x=>x.chofer)).map(n=>({nombre:n}));
   state.destinos=uniqueSorted(s.map(x=>x.destino)).map(n=>({destino:n}));
@@ -590,9 +592,8 @@ function renderInicio(){
   document.getElementById('kVehiculos').textContent=state.flota.length||0;
   const taller=state.flota.filter(v=>norm(v.estado).includes('taller')).length;
   document.getElementById('kTaller').textContent=taller;
-  const alertasServicio=state.servicios.filter(s=>!s.dominio||!s.chofer).length;
-  const alertasInspeccion=(state.inspecciones||[]).filter(x=>norm(x.estado)==='critico'||norm(x.estado)==='atencion').length;
-  document.getElementById('kAlertas').textContent=alertasServicio+alertasInspeccion;
+  const alertas=state.servicios.filter(s=>!s.dominio||!s.chofer).length;
+  document.getElementById('kAlertas').textContent=alertas;
   document.getElementById('hoyBox').innerHTML=renderServicesTable(hoy.slice(0,20),true);
   const f=state.fuentes;
   document.getElementById('fuentesBox').innerHTML=Object.keys(f).map(k=>`<div class="list-item"><span>${esc(k)}</span><strong>${f[k].rows?.length||0} filas</strong></div>`).join('')||'<div class="empty">Sin datos</div>';
@@ -1394,72 +1395,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 /*
  * PANEL DE CONTROL V43 — INTEGRACION SERVICIOS + ZONAS + RECLAMOS
  *
- * Este bloque se agrega AL FINAL de index.html, antes de 
-<style>
-  .v54-alert-row{cursor:pointer}
-  .v54-alert-row:hover{background:#f2fbf6}
-  .v54-alerts{margin:12px 0;padding:14px 16px;border-radius:12px;border:1px solid #f0c7c7;background:#fff6f6}
-  .v54-alerts strong{color:#b42318}
-  .v54-alert-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .v54-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:999px;font-size:12px;font-weight:700}
-  .v54-chip.crit{background:#ffe1e1;color:#a61b1b}.v54-chip.att{background:#fff0d5;color:#9a5200}
-  .v54-modal{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:9999;display:none;align-items:center;justify-content:center;padding:18px}
-  .v54-modal.open{display:flex}.v54-box{background:#fff;border-radius:18px;max-width:980px;width:min(980px,96vw);max-height:92vh;overflow:auto;box-shadow:0 25px 70px rgba(0,0,0,.25)}
-  .v54-head{padding:20px 22px;border-bottom:1px solid #e7eee9;display:flex;justify-content:space-between;gap:16px;align-items:center}.v54-head h2{margin:0}.v54-close{border:0;background:#eef5f1;border-radius:10px;padding:9px 12px;cursor:pointer}
-  .v54-body{padding:20px 22px}.v54-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:20px}@media(max-width:760px){.v54-grid{grid-template-columns:1fr}}
-  .v54-card{border:1px solid #e3ece7;border-radius:14px;padding:16px}.v54-card h3{margin:0 0 12px}.v54-alert-item{border-left:5px solid #e1a000;background:#fff9ed;padding:11px 12px;border-radius:9px;margin:8px 0}.v54-alert-item.crit{border-left-color:#d92d20;background:#fff1f1}.v54-alert-item small{display:block;color:#6b7280;margin-top:3px}
-  .v54-sil{display:flex;justify-content:center;align-items:center;min-height:360px;background:#f7faf8;border-radius:14px}.v54-sil svg{width:min(280px,80%);height:340px}.v54-wheel{fill:#f04444;stroke:#fff;stroke-width:3}.v54-wheel.att{fill:#f59e0b}.v54-wheel.ok{fill:#22a447}
-  .v54-spec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.v54-spec div{background:#f7faf8;padding:9px;border-radius:9px}.v54-spec span{display:block;font-size:11px;color:#6b7280}.v54-spec strong{font-size:13px}
-</style>
-<div id="v54FlotaModal" class="v54-modal" onclick="if(event.target===this)v54CerrarFicha()"><div class="v54-box"><div class="v54-head"><div><div class="eyebrow">FICHA DE UNIDAD</div><h2 id="v54FichaTitle">Vehículo</h2></div><button class="v54-close" onclick="v54CerrarFicha()">✕</button></div><div class="v54-body" id="v54FichaBody"></div></div></div>
-<script>
-(function(){
-  function alertsFor(v){
-    const id=String(v.idUnidad||'').trim(), dom=norm(v.dominio);
-    return (state.inspecciones||[]).filter(x=>String(x.idUnidad||'').trim()===id || (dom && norm(x.dominio)===dom))
-      .filter(x=>{const e=norm(x.estado);return e==='critico'||e==='atencion'});
-  }
-  function wheelCount(v){return Math.max(4,Number(v.cantidadRuedas||0)||4)}
-  function wheelSvg(v,alerts){
-    const n=wheelCount(v);
-    const coords=n===6?[[72,65],[168,65],[55,155],[185,155],[55,245],[185,245]]:[[72,65],[168,65],[55,245],[185,245]];
-    const tireAlerts=alerts.filter(x=>norm(x.categoria).includes('neumatic'));
-    const wheels=coords.map((p,i)=>{
-      let pos=i===0?'delantera izquierda':i===1?'delantera derecha':i===2?'trasera izquierda':i===3?'trasera derecha':i===4?'trasera izquierda interior':'trasera derecha interior';
-      const a=tireAlerts.find(x=>norm(x.posicion).includes(pos));
-      const cls=a?(norm(a.estado)==='critico'?'':'att'):'ok';
-      return `<circle class="v54-wheel ${cls}" cx="${p[0]}" cy="${p[1]}" r="14"/>`;
-    }).join('');
-    const others=alerts.filter(x=>!norm(x.categoria).includes('neumatic')).slice(0,6).map((x,i)=>{
-      const crit=norm(x.estado)==='critico'; const positions=[[32,95],[208,95],[32,175],[208,175],[32,255],[208,255]]; const p=positions[i];
-      return `<g><circle cx="${p[0]}" cy="${p[1]}" r="13" fill="${crit?'#d92d20':'#f59e0b'}" stroke="#fff" stroke-width="3"/><text x="${p[0]}" y="${p[1]+5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">!</text></g>`;
-    }).join('');
-    return `<svg viewBox="0 0 240 350" aria-label="Silueta de unidad"><rect x="65" y="35" width="110" height="285" rx="38" fill="#dcebe4" stroke="#0b5b3f" stroke-width="5"/><rect x="82" y="58" width="76" height="70" rx="16" fill="#fff" stroke="#8ab7a4" stroke-width="3"/><rect x="86" y="145" width="68" height="120" rx="18" fill="#eef7f2" stroke="#8ab7a4" stroke-width="3"/>${wheels}${others}</svg>`;
-  }
-  window.v54CerrarFicha=function(){document.getElementById('v54FlotaModal').classList.remove('open')};
-  window.v54AbrirFicha=function(id){
-    const v=(state.flota||[]).find(x=>String(x.idUnidad||'')===String(id)||norm(x.dominio)===norm(id)); if(!v)return;
-    const alerts=alertsFor(v); const title=(v.modelo||'Vehículo')+' · '+(v.dominio||'SIN DOMINIO');
-    document.getElementById('v54FichaTitle').textContent=title;
-    const crit=alerts.filter(x=>norm(x.estado)==='critico').length, att=alerts.filter(x=>norm(x.estado)==='atencion').length;
-    const alertHtml=alerts.length?alerts.map(x=>`<div class="v54-alert-item ${norm(x.estado)==='critico'?'crit':''}"><strong>${norm(x.estado)==='critico'?'🔴 CRÍTICO':'🟠 ATENCIÓN'} · ${esc(x.categoria||'')}</strong><div>${esc(x.elemento||'')} ${x.posicion?'· '+esc(x.posicion):''}</div><small>${esc(x.observacion||'Reportado en inspección')} · ${esc(x.fechaHora||x.fecha||'')}</small></div>`).join(''):'<div class="empty">Sin alertas registradas.</div>';
-    document.getElementById('v54FichaBody').innerHTML=`<div class="v54-grid"><div><div class="v54-card"><h3>Estado de la unidad</h3><div class="v54-spec"><div><span>Dominio</span><strong>${esc(v.dominio||'—')}</strong></div><div><span>Interno</span><strong>${esc(v.numeroInterno||'—')}</strong></div><div><span>Unidad</span><strong>${esc(v.idUnidad||'—')}</strong></div><div><span>Ruedas</span><strong>${wheelCount(v)}</strong></div><div><span>Estado</span><strong>${esc(v.estado||'Operativo')}</strong></div><div><span>Alertas</span><strong>🔴 ${crit} · 🟠 ${att}</strong></div></div></div><div class="v54-card" style="margin-top:14px"><h3>Alertas reportadas</h3>${alertHtml}</div></div><div class="v54-card"><h3>Silueta de la unidad</h3><p class="muted">Las posiciones con alerta se marcan sobre la silueta según la inspección.</p><div class="v54-sil">${wheelSvg(v,alerts)}</div></div></div>`;
-    document.getElementById('v54FlotaModal').classList.add('open');
-  };
-  const oldRenderFlota=window.renderFlota;
-  window.renderFlota=function(){
-    const q=norm(document.getElementById('fFlota')?.value||''); const estado=document.getElementById('estadoFlota')?.value||''; const actividad=document.getElementById('fActividadFlota')?.value||'';
-    const base=Array.isArray(state.flota)?state.flota:[]; let list=base.map(v=>{const servicios=state.servicios.filter(s=>norm(s.dominio)===norm(v.dominio));const choferes=uniqueSorted(servicios.map(s=>s.chofer));const alerts=alertsFor(v);return {...v,alertas:alerts.length,criticos:alerts.filter(x=>norm(x.estado)==='critico').length,estadoReal:estadoFlotaDesdeDatos(v),servicios:servicios.length,choferes,ultimaFecha:servicios.map(s=>s.fecha).filter(Boolean).sort().pop()||''}});
-    list=list.filter(v=>{const blob=norm([v.dominio,v.modelo,v.estadoReal,v.choferes.join(' ')].join(' '));if(q&&!blob.includes(q))return false;if(estado&&v.estadoReal!==estado)return false;if(actividad==='Con servicios'&&v.servicios===0)return false;if(actividad==='Sin servicios'&&v.servicios>0)return false;return true}).sort((a,b)=>b.alertas-a.alertas||b.servicios-a.servicios||a.dominio.localeCompare(b.dominio,'es'));
-    const total=base.length,con=base.filter(v=>state.servicios.some(s=>norm(s.dominio)===norm(v.dominio))).length,taller=base.filter(v=>estadoFlotaDesdeDatos(v)==='En taller').length,sin=total-con;['fTotal','fConServicios','fEnTaller','fSinActividad'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=[total,con,taller,sin][i]});
-    const totalAlerts=base.reduce((n,v)=>n+alertsFor(v).length,0); const critical=base.reduce((n,v)=>n+alertsFor(v).filter(x=>norm(x.estado)==='critico').length,0);
-    const box=document.getElementById('flotaTable'); if(!list.length){box.innerHTML='<div class="empty">No hay vehículos que coincidan con los filtros.</div>';return;}
-    const rows=list.map(v=>`<tr class="v54-alert-row" onclick="v54AbrirFicha('${esc(v.idUnidad||v.dominio)}')"><td><strong>${esc(v.dominio||'—')}</strong></td><td>${esc(v.modelo||'—')}</td><td><span class="badge ${v.estadoReal==='En taller'?'yellow':(v.estadoReal==='Fuera de servicio'?'red':'')}">${esc(v.estadoReal)}</span></td><td>${v.servicios}</td><td>${esc(v.choferes.slice(0,4).join(', ')||'—')}</td><td>${v.alertas?`<span class="v54-chip ${v.criticos?'crit':'att'}">${v.criticos?'🔴':'🟠'} ${v.alertas} alerta${v.alertas===1?'':'s'}</span>`:'<span class="muted">Sin alertas</span>'}</td><td>${esc(v.ultimaFecha||'—')}</td></tr>`).join('');
-    box.innerHTML=`<div class="v54-alerts"><strong>Alertas de inspección: ${totalAlerts}</strong> · 🔴 Críticas: ${critical}<div class="v54-alert-list">${critical?'🔴 Hay unidades bloqueadas por estado CRÍTICO.':''}${totalAlerts?' Hacé clic sobre una unidad para abrir su ficha y ver el detalle.':' No hay alertas de inspección.'}</div></div><div class="raw-wrap"><table><thead><tr><th>Dominio</th><th>Modelo</th><th>Estado</th><th>Servicios</th><th>Choferes</th><th>Alertas</th><th>Última actividad</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  };
-})();
-</script>
-</body>.
+ * Este bloque se agrega AL FINAL de index.html, antes de </body>.
  * No reemplaza el mapa ni los módulos existentes: sobrescribe solamente
  * la fuente de SERVICIOS y amplía el Mapa Operativo.
  *
@@ -1529,14 +1465,30 @@ document.addEventListener('DOMContentLoaded',()=>{
       serviciosConfig:Array.isArray(data.serviciosConfig)?data.serviciosConfig:[],
       rutas:Array.isArray(data.rutas)?data.rutas:[],
       servicios:Array.isArray(data.servicios)?data.servicios:[],
-      inspecciones:Array.isArray(data.inspecciones)?data.inspecciones:[],
+      estadoFlota:Array.isArray(data.estadoFlota)?data.estadoFlota:[],
       mantenimiento:Array.isArray(data.mantenimiento)?data.mantenimiento:[],
-      asignaciones:Array.isArray(data.asignaciones)?data.asignaciones:[]
+      inspecciones:Array.isArray(data.inspecciones)?data.inspecciones:[]
     };
     V40.backendLoaded=true;
+
+    /* ESTADO_FLOTA pasa a ser la fuente maestra del estado actual de cada unidad. */
+    state.mantenimiento=V40.backend.estadoFlota.map(x=>({
+      modelo:x.modelo||'',
+      estado:x.estado||'Sin estado',
+      dominio:(x.dominio||'').toUpperCase().replace(/\s+/g,''),
+      km:x.km||'',
+      fecha:x.fecha||'',
+      service:x.service||'',
+      estadoService:x.estadoService||'',
+      pastilla:x.pastilla||'',
+      ploteo:x.ploteo||'',
+      vtv:x.vtv||'',
+      espejos:x.espejos||'',
+      luces:x.luces||''
+    })).filter(x=>x.dominio||x.modelo);
+
+    /* Las inspecciones siguen llegando del mismo backend maestro. */
     state.inspecciones=V40.backend.inspecciones;
-    state.mantenimiento=V40.backend.mantenimiento;
-    state.asignaciones=V40.backend.asignaciones;
 
     /* SERVICIOS pasa definitivamente al backend nuevo. */
     state.servicios=V40.backend.servicios.map(s=>({
@@ -1560,17 +1512,6 @@ document.addEventListener('DOMContentLoaded',()=>{
       numeroInterno:v.numeroInterno,
       fotoUrl:v.fotoUrl||'',
       silueta:v.silueta||'',
-      cantidadRuedas:Number(v.cantidadRuedas||0)||4,
-      marca:v.marca||'',
-      tipoVehiculo:v.tipoVehiculo||'',
-      combustible:v.combustible||'',
-      base:v.base||'',
-      anio:v.anio||'',
-      kilometrajeActual:v.kilometrajeActual||'',
-      fechaUltimoService:v.fechaUltimoService||'',
-      vtvVencimiento:v.vtvVencimiento||'',
-      seguroVencimiento:v.seguroVencimiento||'',
-      observaciones:v.observaciones||'',
       fuentes:['VEHICULOS']
     })).filter(v=>v.dominio||v.idUnidad);
 
@@ -2463,6 +2404,93 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 })();
 
+</script>
+<style>
+ .v54-alert-row{cursor:pointer}
+ .v54-alert-row:hover{background:#f2fbf6}
+ .v54-alerts{margin:12px 0;padding:14px 16px;border-radius:12px;border:1px solid #f0c7c7;background:#fff6f6}
+ .v54-alerts strong{color:#b42318}
+ .v54-alert-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+ .v54-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:999px;font-size:12px;font-weight:700}
+ .v54-chip.crit{background:#ffe1e1;color:#a61b1b}.v54-chip.att{background:#fff0d5;color:#9a5200}
+ .v54-modal{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:9999;display:none;align-items:center;justify-content:center;padding:18px}
+ .v54-modal.open{display:flex}.v54-box{background:#fff;border-radius:18px;max-width:980px;width:min(980px,96vw);max-height:92vh;overflow:auto;box-shadow:0 25px 70px rgba(0,0,0,.25)}
+ .v54-head{padding:20px 22px;border-bottom:1px solid #e7eee9;display:flex;justify-content:space-between;gap:16px;align-items:center}.v54-head h2{margin:0}.v54-close{border:0;background:#eef5f1;border-radius:10px;padding:9px 12px;cursor:pointer}
+ .v54-body{padding:20px 22px}.v54-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:20px}@media(max-width:760px){.v54-grid{grid-template-columns:1fr}}
+ .v54-card{border:1px solid #e3ece7;border-radius:14px;padding:16px}.v54-card h3{margin:0 0 12px}.v54-alert-item{border-left:5px solid #e1a000;background:#fff9ed;padding:11px 12px;border-radius:9px;margin:8px 0}.v54-alert-item.crit{border-left-color:#d92d20;background:#fff1f1}.v54-alert-item small{display:block;color:#6b7280;margin-top:3px}
+ .v54-sil{display:flex;justify-content:center;align-items:center;min-height:360px;background:#f7faf8;border-radius:14px}.v54-sil svg{width:min(280px,80%);height:340px}.v54-wheel{fill:#f04444;stroke:#fff;stroke-width:3}.v54-wheel.att{fill:#f59e0b}.v54-wheel.ok{fill:#22a447}
+ .v54-spec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.v54-spec div{background:#f7faf8;padding:9px;border-radius:9px}.v54-spec span{display:block;font-size:11px;color:#6b7280}.v54-spec strong{font-size:13px}
+</style>
+</style>
+<div id="v54FlotaModal" class="v54-modal" onclick="if(event.target===this)v54CerrarFicha()"><div class="v54-box"><div class="v54-head"><div><div class="eyebrow">FICHA DE UNIDAD</div><h2 id="v54FichaTitle">Vehículo</h2></div><button class="v54-close" onclick="v54CerrarFicha()">✕</button></div><div class="v54-body" id="v54FichaBody"></div></div></div>
+
+<script>
+(function(){
+  'use strict';
+  const API='https://script.google.com/macros/s/AKfycbyLa6dr_bfxG8UKJoTbA69q6nShN8r4fmdy862KzqW7fqxrCyKy-D5q7zA02BjPtzdvYw/exec';
+  function apiGet(params){
+    return new Promise((resolve,reject)=>{
+      const cb='panelAlertas_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+      const s=document.createElement('script'); let done=false;
+      const finish=(fn,v)=>{if(done)return;done=true;clearTimeout(t);try{delete window[cb]}catch(e){}s.remove();fn(v)};
+      window[cb]=d=>d&&d.ok?finish(resolve,d):finish(reject,new Error(d&&d.error||'Error del backend'));
+      s.onerror=()=>finish(reject,new Error('No se pudo consultar las inspecciones.'));
+      const t=setTimeout(()=>finish(reject,new Error('Tiempo agotado consultando inspecciones.')),15000);
+      s.src=API+'?'+new URLSearchParams({...params,callback:cb,_:Date.now()});
+      document.head.appendChild(s);
+    });
+  }
+  async function cargarInspecciones(){
+    try{
+      const d=await apiGet({accion:'listarInspecciones'});
+      state.inspecciones=Array.isArray(d.inspecciones)?d.inspecciones:[];
+    }catch(e){
+      console.warn('Alertas de inspección:',e);
+      state.inspecciones=[];
+    }
+  }
+  function alertasUnidad(v){
+    const id=String(v.idUnidad||'').trim(), dom=norm(v.dominio);
+    return (state.inspecciones||[]).filter(x=>{
+      const xid=String(x.idUnidad||'').trim(), xdom=norm(x.dominio);
+      const e=norm(x.estado);
+      return (id&&xid===id)||(dom&&xdom===dom) ? (e==='critico'||e==='atencion') : false;
+    });
+  }
+  function ruedaPos(x){return norm(x.posicion||'');}
+  function wheelCount(v){const n=Number(v.cantidadRuedas||0);return [4,6,10].includes(n)?n:4}
+  function wheelSvg(v,alerts){
+    const n=wheelCount(v);
+    const coords=n===6?[[72,65],[168,65],[55,155],[185,155],[55,245],[185,245]]:n===10?[[72,50],[168,50],[52,105],[188,105],[52,160],[188,160],[52,215],[188,215],[52,270],[188,270]]:[[72,65],[168,65],[55,245],[185,245]];
+    const tires=alerts.filter(x=>norm(x.categoria).includes('neumatic')||norm(x.elemento).includes('neumatic'));
+    const posFor=i=>i===0?'delantera izquierda':i===1?'delantera derecha':i===2?'trasera izquierda':i===3?'trasera derecha':i%2?'trasera derecha interior':'trasera izquierda interior';
+    const wheels=coords.map((p,i)=>{const a=tires.find(x=>ruedaPos(x).includes(posFor(i)));const c=a?(norm(a.estado)==='critico'?'#d92d20':'#f59e0b'):'#22a447';return `<circle class="v54-wheel" cx="${p[0]}" cy="${p[1]}" r="14" fill="${c}" stroke="#fff" stroke-width="3"/>`;}).join('');
+    const others=alerts.filter(x=>!norm(x.categoria).includes('neumatic')&&!norm(x.elemento).includes('neumatic')).slice(0,8).map((x,i)=>{const ps=[[30,95],[210,95],[30,150],[210,150],[30,205],[210,205],[30,260],[210,260]],p=ps[i];const crit=norm(x.estado)==='critico';return `<g><circle cx="${p[0]}" cy="${p[1]}" r="13" fill="${crit?'#d92d20':'#f59e0b'}" stroke="#fff" stroke-width="3"/><text x="${p[0]}" y="${p[1]+5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">!</text></g>`}).join('');
+    return `<svg viewBox="0 0 240 350" aria-label="Silueta de unidad"><rect x="65" y="35" width="110" height="285" rx="38" fill="#dcebe4" stroke="#0b5b3f" stroke-width="5"/><rect x="82" y="58" width="76" height="70" rx="16" fill="#fff" stroke="#8ab7a4" stroke-width="3"/><rect x="86" y="145" width="68" height="120" rx="18" fill="#eef7f2" stroke="#8ab7a4" stroke-width="3"/>${wheels}${others}</svg>`;
+  }
+  window.v54CerrarFicha=()=>document.getElementById('v54FlotaModal').classList.remove('open');
+  window.v54AbrirFicha=function(id){
+    const v=(state.flota||[]).find(x=>String(x.idUnidad||'')===String(id)||norm(x.dominio)===norm(id));if(!v)return;
+    const a=alertasUnidad(v),crit=a.filter(x=>norm(x.estado)==='critico').length,att=a.filter(x=>norm(x.estado)==='atencion').length;
+    document.getElementById('v54FichaTitle').textContent=(v.modelo||'Vehículo')+' · '+(v.dominio||'SIN DOMINIO');
+    const html=a.length?a.map(x=>`<div class="v54-alert-item ${norm(x.estado)==='critico'?'crit':''}"><strong>${norm(x.estado)==='critico'?'🔴 CRÍTICO':'🟠 ATENCIÓN'} · ${esc(x.categoria||'')}</strong><div>${esc(x.elemento||'')} ${x.posicion?'· '+esc(x.posicion):''}</div><small>${esc(x.observacion||'Sin observación')} · ${esc(x.fechaHora||x.fecha||'')}</small></div>`).join(''):'<div class="empty">Sin alertas registradas.</div>';
+    document.getElementById('v54FichaBody').innerHTML=`<div class="v54-grid"><div><div class="v54-card"><h3>Estado de la unidad</h3><div class="v54-spec"><div><span>Dominio</span><strong>${esc(v.dominio||'—')}</strong></div><div><span>Interno</span><strong>${esc(v.numeroInterno||'—')}</strong></div><div><span>Unidad</span><strong>${esc(v.idUnidad||'—')}</strong></div><div><span>Ruedas</span><strong>${wheelCount(v)}</strong></div><div><span>Estado</span><strong>${esc(v.estado||'Operativo')}</strong></div><div><span>Alertas</span><strong>🔴 ${crit} · 🟠 ${att}</strong></div></div></div><div class="v54-card" style="margin-top:14px"><h3>Alertas reportadas</h3>${html}</div></div><div class="v54-card"><h3>Silueta de la unidad</h3><p class="muted">Las posiciones con alerta quedan marcadas sobre la unidad.</p><div class="v54-sil">${wheelSvg(v,a)}</div></div></div>`;
+    document.getElementById('v54FlotaModal').classList.add('open');
+  };
+  const old=window.renderFlota;
+  window.renderFlota=function(){
+    const base=Array.isArray(state.flota)?state.flota:[],q=norm(document.getElementById('fFlota')?.value||''),estado=document.getElementById('estadoFlota')?.value||'',actividad=document.getElementById('fActividadFlota')?.value||'';
+    let list=base.map(v=>{const servicios=(state.servicios||[]).filter(s=>norm(s.dominio)===norm(v.dominio));const choferes=uniqueSorted(servicios.map(s=>s.chofer));const al=alertasUnidad(v);return {...v,alertas:al.length,criticos:al.filter(x=>norm(x.estado)==='critico').length,estadoReal:estadoFlotaDesdeDatos(v),servicios:servicios.length,choferes,ultimaFecha:servicios.map(s=>s.fecha).filter(Boolean).sort().pop()||''}});
+    list=list.filter(v=>{const blob=norm([v.dominio,v.modelo,v.estadoReal,v.choferes.join(' ')].join(' '));if(q&&!blob.includes(q))return false;if(estado&&v.estadoReal!==estado)return false;if(actividad==='Con servicios'&&!v.servicios)return false;if(actividad==='Sin servicios'&&v.servicios)return false;return true}).sort((a,b)=>b.alertas-a.alertas||b.servicios-a.servicios||a.dominio.localeCompare(b.dominio,'es'));
+    const total=base.length,con=base.filter(v=>(state.servicios||[]).some(s=>norm(s.dominio)===norm(v.dominio))).length,taller=base.filter(v=>estadoFlotaDesdeDatos(v)==='En taller').length,sin=total-con;['fTotal','fConServicios','fEnTaller','fSinActividad'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=[total,con,taller,sin][i]});
+    const totalAlerts=base.reduce((n,v)=>n+alertasUnidad(v).length,0),critical=base.reduce((n,v)=>n+alertasUnidad(v).filter(x=>norm(x.estado)==='critico').length,0),box=document.getElementById('flotaTable');
+    if(!list.length){box.innerHTML='<div class="empty">No hay vehículos que coincidan con los filtros.</div>';return;}
+    const rows=list.map(v=>`<tr class="v54-alert-row" onclick="v54AbrirFicha('${esc(v.idUnidad||v.dominio)}')"><td><strong>${esc(v.dominio||'—')}</strong></td><td>${esc(v.modelo||'—')}</td><td><span class="badge ${v.estadoReal==='En taller'?'yellow':(v.estadoReal==='Fuera de servicio'?'red':'')}" >${esc(v.estadoReal)}</span></td><td>${v.servicios}</td><td>${esc(v.choferes.slice(0,4).join(', ')||'—')}</td><td>${v.alertas?`<span class="v54-chip ${v.criticos?'crit':'att'}">${v.criticos?'🔴':'🟠'} ${v.alertas} alerta${v.alertas===1?'':'s'}</span>`:'<span class="muted">Sin alertas</span>'}</td><td>${esc(v.ultimaFecha||'—')}</td></tr>`).join('');
+    box.innerHTML=`<div class="v54-alerts"><strong>Alertas de inspección: ${totalAlerts}</strong> · 🔴 Críticas: ${critical}<div class="v54-alert-list">${critical?'🔴 Hay unidades bloqueadas por estado CRÍTICO.':''}${totalAlerts?' Hacé clic sobre una unidad para abrir su ficha y ver el detalle.':' No hay alertas de inspección.'}</div></div><div class="raw-wrap"><table><thead><tr><th>Dominio</th><th>Modelo</th><th>Estado</th><th>Servicios</th><th>Choferes</th><th>Alertas</th><th>Última actividad</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  };
+  document.addEventListener('DOMContentLoaded',async()=>{await cargarInspecciones();setTimeout(()=>{try{renderFlota();if(window.lucide)lucide.createIcons()}catch(e){console.warn(e)}},300);});
+  setInterval(async()=>{await cargarInspecciones();try{renderFlota()}catch(e){}},15000);
+})();
 </script>
 </body>
 </html>
