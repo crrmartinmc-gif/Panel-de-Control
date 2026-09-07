@@ -2048,14 +2048,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   function v40AplicarFiltroGeografico(){
     v40AplicarFiltroZonasGeoJSON();
 
-    if(Array.isArray(dvMapLayers.evidencias)){
-      dvMapLayers.evidencias.forEach(marker=>{
-        try{
-          const row=dvEvidenceRows[marker.__dvReclamoIndex];
-          marker.getElement().style.display=(V40.claimsVisible && v40ClaimVisible(row))?'':'none';
-        }catch(e){}
-      });
-    }
+    /* Los reclamos se renderizan como una capa GeoJSON de MapLibre,
+       no como elementos HTML flotantes. Así quedan anclados a sus
+       coordenadas reales durante zoom, pan y fitBounds. */
+    if(dvMapReady) v40RenderClaims();
 
     const pts=[];
     (Array.isArray(dvEvidenceRows)?dvEvidenceRows:[]).forEach(o=>{
@@ -2127,11 +2123,11 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   function v40RenderClaims(){
     if(!dvOperationalMap || !dvMapReady)return;
-    if(!Array.isArray(dvMapLayers.evidencias))dvMapLayers.evidencias=[];
-    dvMapLayers.evidencias.forEach(m=>{try{m.remove();}catch(e){}});
-    dvMapLayers.evidencias=[];
+
     const rows=Array.isArray(dvEvidenceRows)?dvEvidenceRows:[];
-    let visibles=0,pendientes=0,realizados=0,conCoords=0;
+    const features=[];
+    let visibles=0, pendientes=0, realizados=0, conCoords=0;
+
     rows.forEach((o,idx)=>{
       try{
         if(!o)return;
@@ -2139,12 +2135,15 @@ document.addEventListener('DOMContentLoaded',()=>{
         const lng=dvNum(dvPick(o,['longitud','lng','lon','longitude']));
         if(lat===null||lng===null||Math.abs(lat)>90||Math.abs(lng)>180)return;
         conCoords++;
+
         const estado=dvPick(o,['estado','resultado'])||'PENDIENTE';
         const e=norm(estado);
         const realizado=e.includes('realiz')||e.includes('resuelto')||e.includes('complet')||e.includes('levantado')||e.includes('recolectado');
-        if(realizado)realizados++;else pendientes++;
+        if(realizado)realizados++; else pendientes++;
+
         const visible=V40.claimsVisible && v40ClaimVisible(o);
         if(visible)visibles++;
+
         const idReclamo=dvPick(o,['id_reclamo','id reclamo','id']);
         const cgm=dvPick(o,['cgm']);
         const calle=dvPick(o,['calle','direccion','domicilio'])||'Sin dirección';
@@ -2155,42 +2154,104 @@ document.addEventListener('DOMContentLoaded',()=>{
         const fecha=dvPick(o,['fecha'])||'—';
         const hora=dvPick(o,['hora'])||'—';
         const foto=dvPick(o,['foto','foto_url','foto url']);
-        const popup=new maplibregl.Popup({offset:18,maxWidth:'340px'}).setHTML(
-          '<strong>📍 RECLAMO DÍA VERDE</strong><br>'+
-          (idReclamo?'🆔 '+esc(idReclamo)+'<br>':'')+
-          (cgm?'🏢 CGM: '+esc(cgm)+'<br>':'')+
-          '📌 <strong>'+esc(direccion)+'</strong><br>'+
-          (realizado?'🟢 REALIZADO HOY':'⚪ PENDIENTE')+'<br>'+
-          '📋 Resultado: '+esc(resultado)+'<br>'+ '🗺️ Zona: '+esc(zona)+'<br>'+
-          '📅 '+esc(fecha)+' · '+esc(hora)+
-          (foto?' <br>📷 <a href="'+esc(foto)+'" target="_blank" rel="noopener">Ver foto</a>':'')
-        );
-        const marker=new maplibregl.Marker({element:dvEvidenceElement(estado),anchor:'center'})
-          .setLngLat([lng,lat]).setPopup(popup).addTo(dvOperationalMap);
-        marker.__dvReclamoIndex=idx;
-        marker.getElement().style.display=visible?'':'none';
-        dvMapLayers.evidencias.push(marker);
-      }catch(err){console.warn('Reclamo no renderizado',idx,err);}
+
+        features.push({
+          type:'Feature',
+          geometry:{type:'Point',coordinates:[lng,lat]},
+          properties:{
+            idx:String(idx),
+            visible:visible?'1':'0',
+            realizado:realizado?'1':'0',
+            idReclamo:String(idReclamo||''),
+            cgm:String(cgm||''),
+            direccion:String(direccion||''),
+            zona:String(zona||''),
+            resultado:String(resultado||''),
+            fecha:String(fecha||''),
+            hora:String(hora||''),
+            foto:String(foto||'')
+          }
+        });
+      }catch(err){console.warn('Reclamo no preparado',idx,err);}
     });
+
+    const data={type:'FeatureCollection',features};
+    const sourceId='v40-reclamos';
+    const pendienteLayer='v40-reclamos-pendientes';
+    const realizadoLayer='v40-reclamos-realizados';
+
+    const source=dvOperationalMap.getSource(sourceId);
+    if(source)source.setData(data);
+    else{
+      dvOperationalMap.addSource(sourceId,{type:'geojson',data});
+      dvOperationalMap.addLayer({
+        id:pendienteLayer,
+        type:'circle',
+        source:sourceId,
+        filter:['all',['==',['get','visible'],'1'],['==',['get','realizado'],'0']],
+        paint:{
+          'circle-radius':8,
+          'circle-color':'#ffffff',
+          'circle-stroke-color':'#087a3d',
+          'circle-stroke-width':2,
+          'circle-opacity':0.98,
+          'circle-stroke-opacity':1
+        }
+      });
+      dvOperationalMap.addLayer({
+        id:realizadoLayer,
+        type:'circle',
+        source:sourceId,
+        filter:['all',['==',['get','visible'],'1'],['==',['get','realizado'],'1']],
+        paint:{
+          'circle-radius':9,
+          'circle-color':'#087a3d',
+          'circle-stroke-color':'#ffffff',
+          'circle-stroke-width':2,
+          'circle-opacity':0.98,
+          'circle-stroke-opacity':1
+        }
+      });
+
+      const popupReclamo=(ev)=>{
+        const f=ev.features&&ev.features[0];
+        if(!f)return;
+        const p=f.properties||{};
+        const realizado=p.realizado==='1';
+        const foto=p.foto||'';
+        const html=
+          '<strong>📍 RECLAMO DÍA VERDE</strong><br>'+
+          (p.idReclamo?'🆔 '+esc(p.idReclamo)+'<br>':'')+
+          (p.cgm?'🏢 CGM: '+esc(p.cgm)+'<br>':'')+
+          '📌 <strong>'+esc(p.direccion||'Sin dirección')+'</strong><br>'+
+          (realizado?'🟢 REALIZADO HOY':'⚪ PENDIENTE')+'<br>'+
+          '📋 Resultado: '+esc(p.resultado||'—')+'<br>'+
+          '🗺️ Zona: '+esc(p.zona||'—')+'<br>'+
+          '📅 '+esc(p.fecha||'—')+' · '+esc(p.hora||'—')+
+          (foto?' <br>📷 <a href="'+esc(foto)+'" target="_blank" rel="noopener">Ver foto</a>':'');
+        new maplibregl.Popup({offset:12,maxWidth:'340px'})
+          .setLngLat(ev.lngLat).setHTML(html).addTo(dvOperationalMap);
+      };
+      dvOperationalMap.on('click',pendienteLayer,popupReclamo);
+      dvOperationalMap.on('click',realizadoLayer,popupReclamo);
+      dvOperationalMap.on('mouseenter',pendienteLayer,()=>dvOperationalMap.getCanvas().style.cursor='pointer');
+      dvOperationalMap.on('mouseleave',pendienteLayer,()=>dvOperationalMap.getCanvas().style.cursor='');
+      dvOperationalMap.on('mouseenter',realizadoLayer,()=>dvOperationalMap.getCanvas().style.cursor='pointer');
+      dvOperationalMap.on('mouseleave',realizadoLayer,()=>dvOperationalMap.getCanvas().style.cursor='');
+    }
+
     actualizarBotonesMapaV40();
     const st=document.getElementById('dvMapStatus');
     if(st){
       const filtro=V40.zoneFilter||V40.cgmFilter||'Mapa general';
       st.textContent=visibles+' reclamo(s) visibles · '+realizados+' realizados · '+pendientes+' pendientes · '+filtro+' · GPS de hoy';
     }
-    console.info('RECLAMOS MAPA', {total:rows.length,conCoordenadas:conCoords,visibles:visibles,realizados:realizados,pendientes:pendientes});
+    console.info('RECLAMOS MAPA GEOJSON', {total:rows.length,conCoordenadas:conCoords,visibles:visibles,realizados:realizados,pendientes:pendientes});
   }
 
   function dvSetClaimsVisible(v){
     V40.claimsVisible=!!v;
-    if(Array.isArray(dvMapLayers.evidencias)){
-      dvMapLayers.evidencias.forEach(m=>{
-        try{
-          const row=dvEvidenceRows[m.__dvReclamoIndex];
-          m.getElement().style.display=(V40.claimsVisible && v40ClaimVisible(row))?'':'none';
-        }catch(e){}
-      });
-    }
+    if(dvMapReady) v40RenderClaims();
     actualizarBotonesMapaV40();
   }
 
