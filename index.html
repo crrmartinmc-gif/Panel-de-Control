@@ -151,7 +151,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
       <span class="dv-map-status" id="dvMapStatus">Esperando datos GPS...</span>
      </div>
      <div id="dvOperationalMap"></div>
-     <div class="dv-map-note">El recorrido se dibuja con los puntos GPS publicados por Día Verde. Los marcadores de reclamos corresponden a las evidencias registradas en la jornada.</div>
+     <div class="dv-map-note">El recorrido se dibuja con los puntos GPS publicados por Día Verde. Los marcadores representan los reclamos registrados. El color indica su estado.</div>
     </div>
     <div class="card panel dv-driver-panel" id="dvDriverPanel">
       <div class="empty">Cargando estado de los recorridos...</div>
@@ -946,23 +946,12 @@ function dvVehicleElement(color){
 
 function dvEvidenceElement(estado){
  const el=document.createElement('div');
- el.className='dv-reclamo-marker';
  const estadoNorm=norm(estado||'');
  const realizado=estadoNorm.includes('realiz') || estadoNorm.includes('resuelto') || estadoNorm.includes('complet') || estadoNorm.includes('levantado') || estadoNorm.includes('recolectado');
+ el.className='dv-reclamo-marker';
  el.textContent='♻';
  el.title=realizado?'Reclamo realizado':'Reclamo pendiente';
- el.style.width='28px';
- el.style.height='28px';
- el.style.display='flex';
- el.style.alignItems='center';
- el.style.justifyContent='center';
- el.style.borderRadius='50%';
- el.style.background=realizado?'#087a3d':'#ffffff';
- el.style.color=realizado?'#ffffff':'#087a3d';
- el.style.fontWeight='900';
- el.style.fontSize='19px';
- el.style.border='2px solid #087a3d';
- el.style.boxShadow='0 2px 7px rgba(0,0,0,.25)';
+ Object.assign(el.style,{width:'30px',height:'30px',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'50%',background:realizado?'#087a3d':'#ffffff',color:realizado?'#ffffff':'#087a3d',fontWeight:'900',fontSize:'19px',border:'2px solid #087a3d',boxShadow:'0 2px 8px rgba(0,0,0,.30)',pointerEvents:'auto',position:'relative',zIndex:'1000'});
  return el;
 }
 
@@ -2138,67 +2127,58 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   function v40RenderClaims(){
     if(!dvOperationalMap || !dvMapReady)return;
-    if(Array.isArray(dvMapLayers.evidencias)){
-      dvMapLayers.evidencias.forEach(m=>{try{m.remove();}catch(e){}});
-    }
+    if(!Array.isArray(dvMapLayers.evidencias))dvMapLayers.evidencias=[];
+    dvMapLayers.evidencias.forEach(m=>{try{m.remove();}catch(e){}});
     dvMapLayers.evidencias=[];
-
-    (Array.isArray(dvEvidenceRows)?dvEvidenceRows:[]).forEach((o,idx)=>{
-      const lat=dvNum(dvPick(o,['latitud','lat','latitude']));
-      const lng=dvNum(dvPick(o,['longitud','lng','lon','longitude']));
-      if(lat===null||lng===null)return;
-
-      const idReclamo=dvPick(o,['id_reclamo','id reclamo','id']);
-      const cgm=dvPick(o,['cgm']);
-      const calle=dvPick(o,['calle','direccion','domicilio'])||'Sin dirección';
-      const numero=dvPick(o,['numero','número']);
-      const direccion=[calle,numero].filter(Boolean).join(' ');
-      const zona=dvPick(o,['zona'])||'—';
-      const estado=dvPick(o,['estado','situacion'])||'—';
-      const resultado=dvPick(o,['resultado'])||'—';
-      const fecha=dvPick(o,['fecha'])||'—';
-      const hora=dvPick(o,['hora'])||'—';
-      const foto=dvPick(o,['foto','foto_url','foto url']);
-
-      const popup=new maplibregl.Popup({offset:18,maxWidth:'340px'}).setHTML(
-        '<strong>📍 RECLAMO DÍA VERDE</strong><br>'+
-        (idReclamo?'🆔 '+esc(idReclamo)+'<br>':'')+
-        (cgm?'🏢 CGM: '+esc(cgm)+'<br>':'')+
-        '📌 <strong>'+esc(direccion)+'</strong><br>'+
-        '🟢 Estado: '+esc(estado)+'<br>'+
-        '📋 Resultado: '+esc(resultado)+'<br>'+
-        '🗺️ Zona: '+esc(zona)+'<br>'+
-        '📅 '+esc(fecha)+' · '+esc(hora)+
-        (foto?' <br>📷 <a href="'+esc(foto)+'" target="_blank" rel="noopener">Ver foto</a>':'')
-      );
-
-      const marker=new maplibregl.Marker({element:dvEvidenceElement(dvPick(o,['estado','resultado'])),anchor:'center'})
-        .setLngLat([lng,lat])
-        .setPopup(popup)
-        .addTo(dvOperationalMap);
-
-      marker.__dvReclamoIndex=idx;
-      dvMapLayers.evidencias.push(marker);
-    });
-
-    // Aplicar el filtro inmediatamente después de crear los marcadores.
-    // Esto evita que una capa creada antes del cambio de CGM/Zona quede oculta
-    // por un estado visual anterior.
-    let visibles=0;
-    dvMapLayers.evidencias.forEach(marker=>{
+    const rows=Array.isArray(dvEvidenceRows)?dvEvidenceRows:[];
+    let visibles=0,pendientes=0,realizados=0,conCoords=0;
+    rows.forEach((o,idx)=>{
       try{
-        const row=dvEvidenceRows[marker.__dvReclamoIndex];
-        const visible=V40.claimsVisible && v40ClaimVisible(row);
-        marker.getElement().style.display=visible?'':'none';
+        if(!o)return;
+        const lat=dvNum(dvPick(o,['latitud','lat','latitude']));
+        const lng=dvNum(dvPick(o,['longitud','lng','lon','longitude']));
+        if(lat===null||lng===null||Math.abs(lat)>90||Math.abs(lng)>180)return;
+        conCoords++;
+        const estado=dvPick(o,['estado','resultado'])||'PENDIENTE';
+        const e=norm(estado);
+        const realizado=e.includes('realiz')||e.includes('resuelto')||e.includes('complet')||e.includes('levantado')||e.includes('recolectado');
+        if(realizado)realizados++;else pendientes++;
+        const visible=V40.claimsVisible && v40ClaimVisible(o);
         if(visible)visibles++;
-      }catch(e){}
+        const idReclamo=dvPick(o,['id_reclamo','id reclamo','id']);
+        const cgm=dvPick(o,['cgm']);
+        const calle=dvPick(o,['calle','direccion','domicilio'])||'Sin dirección';
+        const numero=dvPick(o,['numero','número']);
+        const direccion=[calle,numero].filter(Boolean).join(' ');
+        const zona=dvPick(o,['zona'])||'—';
+        const resultado=dvPick(o,['resultado'])||'—';
+        const fecha=dvPick(o,['fecha'])||'—';
+        const hora=dvPick(o,['hora'])||'—';
+        const foto=dvPick(o,['foto','foto_url','foto url']);
+        const popup=new maplibregl.Popup({offset:18,maxWidth:'340px'}).setHTML(
+          '<strong>📍 RECLAMO DÍA VERDE</strong><br>'+
+          (idReclamo?'🆔 '+esc(idReclamo)+'<br>':'')+
+          (cgm?'🏢 CGM: '+esc(cgm)+'<br>':'')+
+          '📌 <strong>'+esc(direccion)+'</strong><br>'+
+          (realizado?'🟢 REALIZADO HOY':'⚪ PENDIENTE')+'<br>'+
+          '📋 Resultado: '+esc(resultado)+'<br>'+ '🗺️ Zona: '+esc(zona)+'<br>'+
+          '📅 '+esc(fecha)+' · '+esc(hora)+
+          (foto?' <br>📷 <a href="'+esc(foto)+'" target="_blank" rel="noopener">Ver foto</a>':'')
+        );
+        const marker=new maplibregl.Marker({element:dvEvidenceElement(estado),anchor:'center'})
+          .setLngLat([lng,lat]).setPopup(popup).addTo(dvOperationalMap);
+        marker.__dvReclamoIndex=idx;
+        marker.getElement().style.display=visible?'':'none';
+        dvMapLayers.evidencias.push(marker);
+      }catch(err){console.warn('Reclamo no renderizado',idx,err);}
     });
     actualizarBotonesMapaV40();
-    const mapStatus=document.getElementById('dvMapStatus');
-    if(mapStatus && (V40.cgmFilter||V40.zoneFilter)){
-      const filtroTxt=V40.zoneFilter ? V40.zoneFilter : V40.cgmFilter;
-      mapStatus.textContent=String(visibles)+' reclamo(s) visibles · '+filtroTxt+' · GPS de hoy';
+    const st=document.getElementById('dvMapStatus');
+    if(st){
+      const filtro=V40.zoneFilter||V40.cgmFilter||'Mapa general';
+      st.textContent=visibles+' reclamo(s) visibles · '+realizados+' realizados · '+pendientes+' pendientes · '+filtro+' · GPS de hoy';
     }
+    console.info('RECLAMOS MAPA', {total:rows.length,conCoordenadas:conCoords,visibles:visibles,realizados:realizados,pendientes:pendientes});
   }
 
   function dvSetClaimsVisible(v){
@@ -2241,7 +2221,14 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(typeof renderMapAnterior==='function'){
     dvRenderMap=function(){
       renderMapAnterior();
-      setTimeout(()=>{cargarZonasMapa();dvRenderZones();v40RenderClaims();actualizarBotonesMapaV40();},80);
+      const pintar=()=>{
+        if(!dvMapReady){setTimeout(pintar,120);return;}
+        cargarZonasMapa();
+        dvRenderZones();
+        v40RenderClaims();
+        actualizarBotonesMapaV40();
+      };
+      setTimeout(pintar,80);
     };
   }
 
@@ -2254,6 +2241,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       v40RenderClaims();
       v40RenderGeoFilters();
       actualizarBotonesMapaV40();
+      setTimeout(()=>{ if(dvMapReady) v40RenderClaims(); },250);
     };
   }
 
