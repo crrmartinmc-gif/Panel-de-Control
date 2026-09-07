@@ -1438,7 +1438,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       ...s,
       fecha:normalizarFechaServicio(s.fecha),
       fechaFin:normalizarFechaServicio(s.fecha),
-      hora:s.horaProgramada||'',
+      hora:normalizarHoraServicio(s.horaProgramada),
       descripcion:s.descripcion||s.nombreServicio||'Sin descripción',
       destino:[s.destinoInicial,s.destinoFinal].filter(Boolean).join(' → '),
       estado:mapearEstadoPanel(s.estado),
@@ -1481,6 +1481,19 @@ document.addEventListener('DOMContentLoaded',()=>{
     const d=new Date(s);
     if(Number.isNaN(d.getTime()))return '';
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+
+  function normalizarHoraServicio(v){
+    if(v===null || v===undefined || v==='')return '';
+    if(v instanceof Date && !isNaN(v.getTime())){
+      return v.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false});
+    }
+    const s=String(v).trim();
+    const iso=s.match(/(?:T|\s)(\d{1,2}):(\d{2})/);
+    if(iso)return String(Number(iso[1])).padStart(2,'0')+':'+iso[2];
+    const hm=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if(hm)return String(Number(hm[1])).padStart(2,'0')+':'+hm[2];
+    return s;
   }
 
   function mapearEstadoPanel(e){
