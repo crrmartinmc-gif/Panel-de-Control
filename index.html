@@ -81,10 +81,29 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 @media(max-width:560px){.dv-driver-panel{grid-template-columns:1fr}#dvOperationalMap{min-height:470px;height:62vh}}
 
 .svc-status-editor{display:flex;align-items:center;min-width:145px}
-.svc-status-select{width:100%;border:1px solid var(--borde);border-radius:999px;padding:7px 30px 7px 10px;background:#fff;color:var(--texto);font:800 10px 'Nunito Sans',Arial,sans-serif;cursor:pointer;outline:0;box-shadow:0 2px 7px #163a2608}
-.svc-status-select:focus{border-color:var(--verde);box-shadow:0 0 0 3px #087a3d18}
-.svc-status-select:disabled{opacity:.6;cursor:wait}
-.svc-status-editor::before{content:'↕';color:var(--verde);font-weight:900;margin-right:-23px;z-index:1;pointer-events:none;transform:translateX(-4px)}
+/* Selects visualmente neutros: sin flecha permanente. El menú nativo aparece únicamente al hacer click. */
+.estado-select,.svc-status-select{appearance:none;-webkit-appearance:none;-moz-appearance:none;background-image:none!important;width:100%;border:1px solid var(--borde);border-radius:999px;padding:8px 11px;background:#fff;color:var(--texto);font:800 10px 'Nunito Sans',Arial,sans-serif;cursor:pointer;outline:0;box-shadow:0 2px 7px #163a2608;transition:.15s}
+.estado-select:focus,.svc-status-select:focus{box-shadow:0 0 0 3px #087a3d18}
+.estado-select:disabled,.svc-status-select:disabled{opacity:.6;cursor:wait}
+/* Colores del estado seleccionado */
+.estado-select.estado-operativo,.svc-status-select.estado-operativo{background:#e9f7ed;color:#087a3d;border-color:#b9e4c7}
+.estado-select.estado-fuera,.svc-status-select.estado-fuera{background:#fdecec;color:#b42318;border-color:#f3b9b4}
+.estado-select.estado-condicional{background:#fff4df;color:#9a6500;border-color:#f0d39c}
+.svc-status-select.estado-programado{background:#eef4ff;color:#285ea8;border-color:#c7d9f5}
+.svc-status-select.estado-inspeccionando{background:#f3edff;color:#7048a8;border-color:#d8c7f5}
+.svc-status-select.estado-listo{background:#e9f7ed;color:#087a3d;border-color:#b9e4c7}
+.svc-status-select.estado-viaje{background:#e7f4ff;color:#1261a0;border-color:#b7d9ef}
+.svc-status-select.estado-finalizado{background:#eef1ef;color:#53605a;border-color:#d5ddd8}
+.svc-status-select.estado-suspendido{background:#fdecec;color:#b42318;border-color:#f3b9b4}
+/* Las opciones del menú también quedan identificables por color cuando el navegador lo permite. */
+#estadoFlota option[value="Operativo"]{color:#087a3d}
+#estadoFlota option[value="Fuera de servicio"]{color:#b42318}
+#fEstado option[value="Programado"]{color:#285ea8}
+#fEstado option[value="Inspeccionando"]{color:#7048a8}
+#fEstado option[value="Listo para salir"]{color:#087a3d}
+#fEstado option[value="En viaje"]{color:#1261a0}
+#fEstado option[value="Finalizado"]{color:#53605a}
+#fEstado option[value="Suspendido"]{color:#b42318}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
 @media(max-width:800px){.app{grid-template-columns:1fr}.sidebar{position:static}.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.nav button{margin:0}.filters{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.grid{grid-template-columns:1fr}.nav{grid-template-columns:1fr 1fr}.filters{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}}
@@ -186,11 +205,10 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
     </div>
     <div class="filters">
       <input id="fFlota" placeholder="🔎 Buscar dominio, modelo o marca" oninput="renderFlota()">
-      <select id="estadoFlota" onchange="renderFlota()">
+      <select id="estadoFlota" class="estado-select" onchange="renderFlota();estilizarSelectEstado(this)">
        <option value="">Todos los estados</option>
        <option value="Operativo">Operativo</option>
        <option value="Fuera de servicio">Fuera de servicio</option>
-       <option value="Sin actividad">Sin actividad</option>
       </select>
       <select id="fActividadFlota" onchange="renderFlota()">
        <option value="">Toda actividad</option>
@@ -216,7 +234,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
    </div>
    <div class="card panel">
     <div class="day-nav" style="margin-bottom:12px"><strong id="fechaTitulo"></strong><span class="muted" id="fechaSub"></span></div>
-    <div class="filters"><input id="fServicio" placeholder="🔎 Servicio, dominio, chofer o destino" oninput="renderServicios()"><select id="fEstado" onchange="renderServicios()"><option value="">Todos los estados</option><option>Programado</option><option>En curso</option><option>Finalizado</option><option>Suspendido</option></select><select id="fVehiculo" onchange="renderServicios()"><option value="">Todos los vehículos</option></select><select id="fChoferServ" onchange="renderServicios()"><option value="">Todos los choferes</option></select></div>
+    <div class="filters"><input id="fServicio" placeholder="🔎 Servicio, dominio, chofer o destino" oninput="renderServicios()"><select id="fEstado" class="estado-select" onchange="renderServicios();estilizarSelectEstado(this)"><option value="">Todos los estados</option><option>Programado</option><option>Inspeccionando</option><option>Listo para salir</option><option>En viaje</option><option>Finalizado</option><option>Suspendido</option></select><select id="fVehiculo" onchange="renderServicios()"><option value="">Todos los vehículos</option></select><select id="fChoferServ" onchange="renderServicios()"><option value="">Todos los choferes</option></select></div>
     <div id="serviciosTable"></div>
    </div>
   </section>
@@ -588,7 +606,8 @@ function renderServicesTable(list,compact=false){
     const estado=s.estado||'Programado';
     const id=String(s.idServicio||'');
     const options=estados.map(([value,label])=>`<option value="${esc(value)}" ${norm(value)===norm(estado)?'selected':''}>${esc(label)}</option>`).join('');
-    return `<tr><td>${esc(s.hora||'—')}</td><td><strong>${esc(s.descripcion||'Sin descripción')}</strong></td><td>${esc(s.destino||'—')}</td><td>${esc(s.dominio||'—')}</td><td>${esc(s.chofer||'—')}</td><td><div class="svc-status-editor"><select class="svc-status-select" data-id-servicio="${esc(id)}" onchange="cambiarEstadoServicio(this)" aria-label="Cambiar estado del servicio">${options}</select></div></td></tr>`;
+    const claseEstado={'PROGRAMADO':'estado-programado','INSPECCIONANDO':'estado-inspeccionando','LISTO PARA SALIR':'estado-listo','EN VIAJE':'estado-viaje','FINALIZADO':'estado-finalizado','SUSPENDIDO':'estado-suspendido'}[norm(estado)]||'';
+    return `<tr><td>${esc(s.hora||'—')}</td><td><strong>${esc(s.descripcion||'Sin descripción')}</strong></td><td>${esc(s.destino||'—')}</td><td>${esc(s.dominio||'—')}</td><td>${esc(s.chofer||'—')}</td><td><div class="svc-status-editor"><select class="svc-status-select ${claseEstado}" data-id-servicio="${esc(id)}" onchange="cambiarEstadoServicio(this);estilizarSelectEstado(this)" aria-label="Cambiar estado del servicio">${options}</select></div></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 function renderServicios(){
@@ -1294,6 +1313,7 @@ function estadoFlotaDesdeDatos(v){
 function renderFlota(){
   const q=norm(document.getElementById('fFlota')?.value||'');
   const estado=document.getElementById('estadoFlota')?.value||'';
+  estilizarSelectEstado(document.getElementById('estadoFlota'));
   const actividad=document.getElementById('fActividadFlota')?.value||'';
 
   const base=Array.isArray(state.flota)?state.flota:[];
@@ -1322,7 +1342,7 @@ function renderFlota(){
   const con=base.filter(v=>state.servicios.some(s=>norm(s.dominio)===norm(v.dominio))).length;
   const taller=base.filter(v=>{
     const m=state.mantenimiento.find(x=>norm(x.dominio)===norm(v.dominio));
-    return estadoFlotaDesdeDatos({...v,estado:m?.estado||v.estado})==='En taller';
+    return estadoFlotaDesdeDatos({...v,estado:m?.estado||v.estado})==='Fuera de servicio';
   }).length;
   const sin=total-con;
 
@@ -1350,10 +1370,31 @@ function renderFlota(){
       </tr>`;
     }).join('')+'</tbody></table></div>';
 }
+function estilizarSelectEstado(el){
+  if(!el)return;
+  const v=norm(el.value||'');
+  el.classList.remove('estado-operativo','estado-fuera','estado-condicional','estado-programado','estado-inspeccionando','estado-listo','estado-viaje','estado-finalizado','estado-suspendido');
+  if(el.id==='estadoFlota'){
+    if(v==='OPERATIVO')el.classList.add('estado-operativo');
+    else if(v==='FUERA DE SERVICIO')el.classList.add('estado-fuera');
+    else if(v==='CONDICIONAL')el.classList.add('estado-condicional');
+  }else if(el.id==='fEstado'){
+    const mapa={'PROGRAMADO':'estado-programado','INSPECCIONANDO':'estado-inspeccionando','LISTO PARA SALIR':'estado-listo','EN VIAJE':'estado-viaje','FINALIZADO':'estado-finalizado','SUSPENDIDO':'estado-suspendido'};
+    if(mapa[v])el.classList.add(mapa[v]);
+  }
+}
+function inicializarSelectsEstado(){
+  ['estadoFlota','fEstado'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)estilizarSelectEstado(el);
+  });
+}
+
 function limpiarFiltrosFlota(){
   ['fFlota','estadoFlota','fActividadFlota'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
+  inicializarSelectsEstado();
   renderFlota();
 }
 document.addEventListener('DOMContentLoaded',()=>{
@@ -1546,6 +1587,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       ['Suspendido','Suspendido']
     ].map(x=>'<option value="'+esc(x[0])+'">'+esc(x[1])+'</option>').join('');
     if([...sel.options].some(o=>o.value===valor))sel.value=valor;
+    estilizarSelectEstado(sel);
   }
 
   /* =====================================================
