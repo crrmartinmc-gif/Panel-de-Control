@@ -813,10 +813,12 @@ async function cargarTodo(){
   document.getElementById('connText').textContent='Leyendo Google Sheets...';document.getElementById('connDot').className='dot';
   const fuentes={};
   try{
-    for(const n of Object.keys(CONFIG.sheets)){
-      try{fuentes[n]=await leerHoja(CONFIG.sheets[n]);}
-      catch(e){fuentes[n]={rows:[],error:e.message,fecha:new Date()};}
-    }
+    const nombres=Object.keys(CONFIG.sheets);
+    const resultados=await Promise.all(nombres.map(async n=>{
+      try{return [n,await leerHoja(CONFIG.sheets[n])];}
+      catch(e){return [n,{rows:[],error:e.message,fecha:new Date()}];}
+    }));
+    resultados.forEach(([n,data])=>fuentes[n]=data);
     state.fuentes=fuentes;
     const f2026=fuentes['2026'];
     state.servicios=f2026?.rows?.length?normalize2026(f2026):[];
@@ -1775,12 +1777,14 @@ document.addEventListener('DOMContentLoaded',()=>{
       let confirmado=false;
       let ultimoError='';
 
-      for(let intento=1; intento<=8; intento++){
-        await new Promise(r=>setTimeout(r,700));
-
+      // El POST ya terminó; hacemos una confirmación rápida en lugar de
+      // esperar 700 ms x 8 intentos. Normalmente alcanza el primer intento.
+      for(let intento=1; intento<=3; intento++){
+        if(intento>1) await new Promise(r=>setTimeout(r,350));
         try{
           await cargarBackendServicios();
-          renderAll();
+          renderServicios();
+          renderInicio();
 
           const nuevos=(V40.backend.servicios||[]).filter(s=>{
             const id=String(s.idServicio||'');
