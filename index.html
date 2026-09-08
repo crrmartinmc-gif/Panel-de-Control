@@ -79,6 +79,11 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 @media(max-width:1050px){.dv-map-layout{grid-template-columns:1fr}.dv-driver-panel{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.dv-driver-card{margin-bottom:0}}
 @media(max-width:560px){.dv-driver-panel{grid-template-columns:1fr}#dvOperationalMap{min-height:470px;height:62vh}}
 
+.svc-status-editor{display:flex;align-items:center;min-width:145px}
+.svc-status-select{width:100%;border:1px solid var(--borde);border-radius:999px;padding:7px 30px 7px 10px;background:#fff;color:var(--texto);font:800 10px 'Nunito Sans',Arial,sans-serif;cursor:pointer;outline:0;box-shadow:0 2px 7px #163a2608}
+.svc-status-select:focus{border-color:var(--verde);box-shadow:0 0 0 3px #087a3d18}
+.svc-status-select:disabled{opacity:.6;cursor:wait}
+.svc-status-editor::before{content:'↕';color:var(--verde);font-weight:900;margin-right:-23px;z-index:1;pointer-events:none;transform:translateX(-4px)}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
 @media(max-width:800px){.app{grid-template-columns:1fr}.sidebar{position:static}.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.nav button{margin:0}.filters{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.grid{grid-template-columns:1fr}.nav{grid-template-columns:1fr 1fr}.filters{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}}
@@ -600,9 +605,20 @@ function renderInicio(){
 }
 function renderServicesTable(list,compact=false){
   if(!list.length)return'<div class="empty">No hay servicios detectados para este día.</div>';
+  const estados=[
+    ['Programado','Programado'],
+    ['Inspeccionando','Inspeccionando'],
+    ['Listo para salir','Listo para salir'],
+    ['En viaje','En viaje'],
+    ['Finalizado','Finalizado'],
+    ['Suspendido','Suspendido'],
+    ['Bloqueado','Bloqueado']
+  ];
   return `<div style="overflow:auto"><table><thead><tr><th>Hora</th><th>Servicio</th><th>Destino</th><th>Dominio</th><th>Chofer</th><th>Estado</th></tr></thead><tbody>${list.map(s=>{
     const estado=s.estado||'Programado';
-    return `<tr><td>${esc(s.hora||'—')}</td><td><strong>${esc(s.descripcion||'Sin descripción')}</strong></td><td>${esc(s.destino||'—')}</td><td>${esc(s.dominio||'—')}</td><td>${esc(s.chofer||'—')}</td><td><span class="badge ${estadoClase(estado)}">${esc(estado)}</span></td></tr>`;
+    const id=String(s.idServicio||'');
+    const options=estados.map(([value,label])=>`<option value="${esc(value)}" ${norm(value)===norm(estado)?'selected':''}>${esc(label)}</option>`).join('');
+    return `<tr><td>${esc(s.hora||'—')}</td><td><strong>${esc(s.descripcion||'Sin descripción')}</strong></td><td>${esc(s.destino||'—')}</td><td>${esc(s.dominio||'—')}</td><td>${esc(s.chofer||'—')}</td><td><div class="svc-status-editor"><select class="svc-status-select" data-id-servicio="${esc(id)}" onchange="cambiarEstadoServicio(this)" aria-label="Cambiar estado del servicio">${options}</select></div></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 function renderServicios(){
@@ -1814,10 +1830,86 @@ document.addEventListener('DOMContentLoaded',()=>{
     });
   };
 
+  /* =====================================================
+     4B. CAMBIO MANUAL DE ESTADO DESDE SERVICIOS
+     ===================================================== */
+  const V40_ESTADOS_EDITABLES=['PROGRAMADO','INSPECCIONANDO','LISTO PARA SALIR','EN VIAJE','FINALIZADO','SUSPENDIDO','BLOQUEADO'];
+  let v40EstadoFrame=null;
+  let v40EstadoForm=null;
+
+  function asegurarFormularioEstado(){
+    if(v40EstadoFrame && v40EstadoForm)return;
+    v40EstadoFrame=document.createElement('iframe');
+    v40EstadoFrame.name='v40EstadoPostFrame_'+Date.now();
+    v40EstadoFrame.style.display='none';
+    document.body.appendChild(v40EstadoFrame);
+    v40EstadoForm=document.createElement('form');
+    v40EstadoForm.method='POST';
+    v40EstadoForm.target=v40EstadoFrame.name;
+    v40EstadoForm.action=V40.API;
+    v40EstadoForm.style.display='none';
+    document.body.appendChild(v40EstadoForm);
+  }
+
+  window.cambiarEstadoServicio=async function(select){
+    const idServicio=String(select?.dataset?.idServicio||'').trim();
+    const estadoPanel=String(select?.value||'').trim();
+    const estado=estadoPanel.toUpperCase();
+    if(!idServicio || !V40_ESTADOS_EDITABLES.includes(estado))return;
+
+    const anterior=select.dataset.previousValue || select.value;
+    select.dataset.previousValue=select.value;
+    select.disabled=true;
+
+    try{
+      asegurarFormularioEstado();
+      v40EstadoForm.innerHTML='';
+      [['accion','actualizarEstadoServicio'],['idServicio',idServicio],['estado',estado],['origen','PANEL_CONTROL']].forEach(([name,value])=>{
+        const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;v40EstadoForm.appendChild(input);
+      });
+
+      await new Promise((resolve,reject)=>{
+        const frame=v40EstadoFrame;
+        let terminado=false;
+        const timer=setTimeout(()=>{if(terminado)return;terminado=true;reject(new Error('Tiempo agotado actualizando el estado.'));},12000);
+        const onload=()=>{if(terminado)return;terminado=true;clearTimeout(timer);frame.removeEventListener('load',onload);resolve();};
+        frame.addEventListener('load',onload);
+        v40EstadoForm.submit();
+      });
+
+      await new Promise(r=>setTimeout(r,700));
+      await cargarBackendServicios();
+      renderAll();
+      if(window.lucide)lucide.createIcons();
+    }catch(e){
+      console.error('Cambio de estado:',e);
+      select.value=anterior;
+      alert('No se pudo cambiar el estado: '+(e.message||e));
+    }finally{
+      select.disabled=false;
+    }
+  };
+
   window.cerrarModal=function(){
     const m=document.getElementById('modal');
     if(m)m.classList.remove('show');
   };
+
+  /* =====================================================
+     4C. SINCRONIZACIÓN AUTOMÁTICA DE ESTADOS
+     ===================================================== */
+  if(!window.__panelEstadoSyncTimer){
+    window.__panelEstadoSyncTimer=setInterval(async()=>{
+      try{
+        await cargarBackendServicios();
+        fillServiceFilters();
+        renderServicios();
+        renderInicio();
+      }catch(e){
+        console.warn('Sincronización de estados:',e);
+      }
+    },15000);
+  }
 
   /* =====================================================
      5. MAPA: ZONAS REALES + RECLAMOS
