@@ -34,6 +34,7 @@ h1{margin:0;font-size:27px;font-weight:800;letter-spacing:-.45px}.sub{font-size:
 .kpi{padding:17px;display:flex;justify-content:space-between;align-items:center}.kpi small{display:block;color:var(--gris);font-weight:700;font-size:12px;margin-bottom:6px}.kpi strong{font-size:28px;font-weight:800;letter-spacing:-.7px}
 .kpi-icon{width:45px;height:45px;border-radius:13px;background:var(--verde-claro);display:grid;place-items:center;font-size:21px}
 .kpi.alert .kpi-icon{background:#fff4df}.kpi.alert strong{color:var(--amarillo)}.kpi.danger .kpi-icon{background:#fff0ef}.kpi.danger strong{color:var(--rojo)}
+.kpi[onclick]{cursor:pointer;transition:.15s}.kpi[onclick]:hover{transform:translateY(-2px);box-shadow:0 10px 28px #163a2618}
 .panel{padding:17px}.panel h3{margin:0 0 13px;font-size:17px;font-weight:800;letter-spacing:-.2px}
 .two{display:grid;grid-template-columns:1.35fr 1fr;gap:13px}
 .filters{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:9px;margin-bottom:13px}
@@ -126,7 +127,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
    <div class="grid">
     <div class="card kpi"><div><small>Servicios cargados</small><strong id="kServicios">—</strong></div><div class="kpi-icon"> <i data-lucide="clipboard-list"></i></div></div>
     <div class="card kpi"><div><small>Vehículos detectados</small><strong id="kVehiculos">—</strong></div><div class="kpi-icon"> <i data-lucide="truck"></i></div></div>
-    <div class="card kpi alert"><div><small>En taller</small><strong id="kTaller">—</strong></div><div class="kpi-icon"> <i data-lucide="wrench"></i></div></div>
+    <div class="card kpi alert" onclick="abrirListaFlota('fuera')" title="Ver vehículos fuera de servicio"><div><small>Fuera de servicio</small><strong id="kTaller">—</strong></div><div class="kpi-icon"> <i data-lucide="wrench"></i></div></div>
     <div class="card kpi danger"><div><small>Alertas</small><strong id="kAlertas">—</strong></div><div class="kpi-icon"> <i data-lucide="triangle-alert"></i></div></div>
    </div>
    <div class="two">
@@ -166,15 +167,15 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 
   <section id="flota" class="page">
    <div class="page-head">
-    <div><h2>Flota</h2><p>Maestro de vehículos construido a partir de la planificación y mantenimiento.</p></div>
+    <div><h2>Flota</h2><p>Maestro de vehículos proveniente de la fuente maestra de Día Verde.</p></div>
     <div class="actions"><button class="btn btn-light" onclick="cargarTodo()">↻ Actualizar flota</button></div>
    </div>
 
    <div class="grid">
     <div class="card kpi"><div><small>Vehículos detectados</small><strong id="fTotal">—</strong></div><div class="kpi-icon"><i data-lucide="truck"></i></div></div>
-    <div class="card kpi"><div><small>Con servicios</small><strong id="fConServicios">—</strong></div><div class="kpi-icon"><i data-lucide="route"></i></div></div>
-    <div class="card kpi alert"><div><small>En mantenimiento</small><strong id="fEnTaller">—</strong></div><div class="kpi-icon"><i data-lucide="wrench"></i></div></div>
-    <div class="card kpi"><div><small>Sin actividad detectada</small><strong id="fSinActividad">—</strong></div><div class="kpi-icon"><i data-lucide="circle-off"></i></div></div>
+    <div class="card kpi" onclick="abrirListaFlota('servicios')" title="Ver vehículos con servicios"><div><small>Con servicios</small><strong id="fConServicios">—</strong></div><div class="kpi-icon"><i data-lucide="route"></i></div></div>
+    <div class="card kpi alert" onclick="abrirListaFlota('fuera')" title="Ver vehículos fuera de servicio"><div><small>Fuera de servicio</small><strong id="fEnTaller">—</strong></div><div class="kpi-icon"><i data-lucide="wrench"></i></div></div>
+    <div class="card kpi" onclick="abrirListaFlota('sinactividad')" title="Ver vehículos sin actividad"><div><small>Sin actividad detectada</small><strong id="fSinActividad">—</strong></div><div class="kpi-icon"><i data-lucide="circle-off"></i></div></div>
    </div>
 
    <div class="card panel">
@@ -188,7 +189,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
       <select id="estadoFlota" onchange="renderFlota()">
        <option value="">Todos los estados</option>
        <option value="Operativo">Operativo</option>
-       <option value="En taller">En taller</option>
+       <option value="Fuera de servicio">Fuera de servicio</option>
        <option value="Sin actividad">Sin actividad</option>
       </select>
       <select id="fActividadFlota" onchange="renderFlota()">
@@ -204,7 +205,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 
 
   <section id="choferes" class="page">
-   <div class="page-head"><div><h2>Choferes</h2><p>Choferes identificados en la planificación histórica/actual.</p></div></div>
+   <div class="page-head"><div><h2>Choferes</h2><p>Choferes provenientes del maestro operativo de Día Verde.</p></div></div>
    <div class="card panel"><div class="filters"><input id="fChofer" placeholder="🔎 Buscar chofer" oninput="renderChoferes()"><div></div><div></div><div></div></div><div id="choferTable"></div></div>
   </section>
 
@@ -223,13 +224,13 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
   <section id="mantenimiento" class="page">
    <div class="page-head"><div><h2>Mantenimiento</h2><p>Lectura de la hoja de mantenimiento, sin modificar su estructura original.</p></div></div>
    <div class="card panel">
-    <div class="filters"><input id="fMant" placeholder="🔎 Buscar dominio, modelo o dato" oninput="renderMantenimiento()"><select id="fMantEstado" onchange="renderMantenimiento()"><option value="">Todos</option><option>Operativo</option><option>En taller</option><option>Condicional</option><option>Fuera de servicio</option></select><div></div><div></div></div>
+    <div class="filters"><input id="fMant" placeholder="🔎 Buscar dominio, modelo o dato" oninput="renderMantenimiento()"><select id="fMantEstado" onchange="renderMantenimiento()"><option value="">Todos</option><option>Operativo</option><option>Condicional</option><option>Fuera de servicio</option></select><div></div><div></div></div>
     <div id="mantTable"></div>
    </div>
   </section>
 
   <section id="destinos" class="page">
-   <div class="page-head"><div><h2>Destinos</h2><p>Destinos encontrados en la planificación de servicios.</p></div></div>
+   <div class="page-head"><div><h2>Destinos</h2><p>Destinos provenientes de la configuración de rutas de Día Verde.</p></div></div>
    <div class="card panel"><div class="filters"><input id="fDestino" placeholder="🔎 Buscar destino" oninput="renderDestinos()"><div></div><div></div><div></div></div><div id="destinoTable"></div></div>
   </section>
 
@@ -268,24 +269,23 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
    <label>Repetición<select id="mRep"><option>Ninguna</option><option>Diaria</option><option>Días hábiles</option><option>Semanal</option><option>Personalizada</option></select></label>
    <label>Serie<input id="mSerie" placeholder="Ej. Jovenes-Progreso-13hs"></label>
   </div>
-  <div class="actions" style="justify-content:flex-end;margin-top:15px"><button class="btn btn-light" onclick="cerrarModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarLocal()">Guardar prueba</button></div>
+  <div class="actions" style="justify-content:flex-end;margin-top:15px"><button class="btn btn-light" onclick="cerrarModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarLocal()">Guardar servicio</button></div>
  </div>
 </div>
 
 <script>
 // V25: Mantenimiento usa directamente la columna B=Estado y C=Dominio.
 const CONFIG={
-  spreadsheetId:'1ysCEVN9PljeIcIFxvBsoxL9iXOdWbVTjm4mn8GcPkK8',
+  // FUENTE MAESTRA: misma planilla utilizada por el backend de Día Verde.
+  spreadsheetId:'1yt7JqSWUjybFodTFUr94-788RvvlxIsHeI-j0U7B0L0',
+  // Estas hojas son solo técnicas/diagnóstico.
+  // Flota, choferes, servicios, estado de flota y mantenimiento
+  // se toman exclusivamente desde panelServicios().
   sheets:{
-    '2026':'2026',
-    'Semana siguiente':'Semana siguiente',
     'Direcciones Día Verde CGM':'Direcciones Día Verde CGM',
     'Salida del Partido':'Salida del Partido',
-    'Mantenimiento':'Mantenimiento',
-     'Día Verde Histórico':'Hoja 1',
-     'GPS Día Verde':'GPS Día Verde'
-  },
-  // V25: la hoja Mantenimiento ahora usa B=Estado y C=Dominio.
+    'Día Verde Histórico':'Hoja 1'
+  }
 };
 
 const state={
@@ -547,41 +547,11 @@ function domainHeaderInColumn(rows,col){
 }
 function uniqueSorted(arr){return [...new Set(arr.filter(Boolean).map(clean))].sort((a,b)=>a.localeCompare(b,'es'));}
 function buildEntities(){
-  const s=Array.isArray(state.servicios)?state.servicios:[];
-  const plates=new Map();
-  const addPlate=(raw,source='')=>{
-    const rawText=clean(raw).toUpperCase().replace(/\s+/g,'');
-    if(!looksLikePlate(rawText))return;
-    if(!plates.has(rawText))plates.set(rawText,{dominio:rawText,fuentes:new Set()});
-    if(source)plates.get(rawText).fuentes.add(source);
-  };
-
-  // 1) Primary source: every cell of every loaded sheet.
-  // This is intentional because the 2026 sheet uses dropdown cells and
-  // the patent can live in a repeated weekly block rather than a simple column.
-  Object.entries(state.fuentes||{}).forEach(([name,f])=>{
-    (f?.rows||[]).forEach(row=>(row||[]).forEach(cell=>addPlate(cell,name)));
-  });
-
-  // 2) Normalized services, as an additional source.
-  s.forEach(x=>addPlate(x.dominio,'Servicios'));
-
-  // La flota maestra se carga desde VEHICULOS mediante el backend de Día Verde.
-  // Este bloque solo se usa como respaldo cuando todavía no llegó el backend.
-  if(!Array.isArray(state.flota)||!state.flota.length){
-    state.flota=[...plates.values()].map(v=>{
-      const m=state.mantenimiento.find(x=>norm(x.dominio)===norm(v.dominio));
-      return {
-        dominio:v.dominio,
-        modelo:m?.modelo||'',
-        estado:m?.estado||'Operativo',
-        fuentes:[...v.fuentes]
-      };
-    }).sort((a,b)=>a.dominio.localeCompare(b.dominio,'es'));
-  }
-
-  state.choferes=uniqueSorted(s.map(x=>x.chofer)).map(n=>({nombre:n}));
-  state.destinos=uniqueSorted(s.map(x=>x.destino)).map(n=>({destino:n}));
+  // Compatibilidad para módulos antiguos. No se generan entidades leyendo
+  // celdas arbitrarias: la fuente autoritativa es el backend normalizado.
+  if(!Array.isArray(state.flota))state.flota=[];
+  if(!Array.isArray(state.choferes))state.choferes=[];
+  if(!Array.isArray(state.destinos))state.destinos=[];
 }
 function estadoClase(e){const n=norm(e);if(n.includes('taller'))return'yellow';if(n.includes('condicional'))return'yellow';if(n.includes('fuera')||n.includes('suspend'))return'red';if(n.includes('final'))return'blue';return'gray';}
 function servicesForDate(){
@@ -595,7 +565,7 @@ function renderInicio(){
   const hoy=servicesForDate();
   document.getElementById('kServicios').textContent=state.servicios.length||0;
   document.getElementById('kVehiculos').textContent=state.flota.length||0;
-  const taller=state.flota.filter(v=>norm(v.estado).includes('taller')).length;
+  const taller=state.flota.filter(v=>estadoFlotaDesdeDatos(v)==='Fuera de servicio').length;
   document.getElementById('kTaller').textContent=taller;
   const alertas=state.servicios.filter(s=>!s.dominio||!s.chofer).length;
   document.getElementById('kAlertas').textContent=alertas;
@@ -701,10 +671,11 @@ function renderMantenimiento(){
 }
 function renderDestinos(){
   const q=norm(document.getElementById('fDestino').value);
-  const list=state.destinos.filter(x=>!q||norm(x.destino).includes(q));
-  document.getElementById('destinoTable').innerHTML=list.length?`<div style="overflow:auto"><table><thead><tr><th>Destino</th><th>Servicios</th><th>Vehículos</th><th>Choferes</th></tr></thead><tbody>${list.map(x=>{
-    const ss=state.servicios.filter(s=>s.destino===x.destino);return `<tr><td><strong>${esc(x.destino)}</strong></td><td>${ss.length}</td><td>${uniqueSorted(ss.map(s=>s.dominio)).length}</td><td>${uniqueSorted(ss.map(s=>s.chofer)).length}</td></tr>`;
-  }).join('')}</tbody></table></div>`:'<div class="empty">No hay destinos detectados.</div>';
+  const list=state.destinos.filter(x=>!q||norm(x.destino).includes(q)).map(x=>{
+    const ss=state.servicios.filter(s=>s.destino===x.destino);
+    return {...x,servicios:ss.length,vehiculos:uniqueSorted(ss.map(s=>s.dominio)).length,choferes:uniqueSorted(ss.map(s=>s.chofer)).length};
+  }).sort((a,b)=>b.servicios-a.servicios||a.destino.localeCompare(b.destino,'es'));
+  document.getElementById('destinoTable').innerHTML=list.length?`<div style="overflow:auto"><table><thead><tr><th>Destino</th><th>Servicios</th><th>Vehículos</th><th>Choferes</th></tr></thead><tbody>${list.map(x=>`<tr><td><strong>${esc(x.destino)}</strong></td><td>${x.servicios}</td><td>${x.vehiculos}</td><td>${x.choferes}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">No hay destinos detectados.</div>';
 }
 function renderReportes(){
   // Agrupamos con una clave normalizada, pero mostramos los valores originales.
@@ -809,31 +780,19 @@ function leerEstadoMantenimientoDesdeHoja(data){
     fila:i+2
   })).filter(x=>x.dominio);
 }
-async function cargarTodo(){
-  document.getElementById('connText').textContent='Leyendo Google Sheets...';document.getElementById('connDot').className='dot';
+async function cargarFuentesTecnicas(){
   const fuentes={};
-  try{
-    const nombres=Object.keys(CONFIG.sheets);
-    const resultados=await Promise.all(nombres.map(async n=>{
-      try{return [n,await leerHoja(CONFIG.sheets[n])];}
-      catch(e){return [n,{rows:[],error:e.message,fecha:new Date()}];}
-    }));
-    resultados.forEach(([n,data])=>fuentes[n]=data);
-    state.fuentes=fuentes;
-    const f2026=fuentes['2026'];
-    state.servicios=f2026?.rows?.length?normalize2026(f2026):[];
-    // Mantenimiento V25: lectura directa de la hoja.
-    // Estructura: A=Modelo, B=Estado, C=Dominio, D=Km Actual, E=Fecha, F=Service, G=Estado del Service, H=Pastilla de Freno %, I=Ploteo, J=Vtv, K=Espejos, L=Luces.
-    state.mantenimiento=leerEstadoMantenimientoDesdeHoja(fuentes['Mantenimiento']);
-    buildEntities();
-    renderAll();
-    const ok=Object.values(fuentes).filter(x=>x.rows?.length).length;
-    document.getElementById('connText').textContent=ok?'Google Sheets conectado · '+ok+'/'+Object.keys(CONFIG.sheets).length+' hojas leídas':'No se pudieron leer las hojas';
-    document.getElementById('connDot').className='dot '+(ok?'ok':'err');
-  }catch(e){
-    document.getElementById('connText').textContent='Error de lectura: '+e.message;document.getElementById('connDot').className='dot err';
-  }
+  const nombres=Object.keys(CONFIG.sheets);
+  const resultados=await Promise.all(nombres.map(async n=>{
+    try{return [n,await leerHoja(CONFIG.sheets[n])];}
+    catch(e){return [n,{rows:[],error:e.message,fecha:new Date()}];}
+  }));
+  resultados.forEach(([n,data])=>fuentes[n]=data);
+  state.fuentes=fuentes;
+  const ok=Object.values(fuentes).filter(x=>x.rows?.length).length;
+  return {fuentes,ok,total:nombres.length};
 }
+
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>{
  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active');
@@ -844,7 +803,7 @@ document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',(
    },80);
  }
 }));
-window.addEventListener('load',()=>{state.fecha=new Date();cargarTodo();});
+
 </script>
 
 <script>
@@ -1323,20 +1282,11 @@ document.addEventListener('DOMContentLoaded',()=>{ if(window.lucide) lucide.crea
 
 
 <script>
-function prepararMapaOperativo(){
-  const activos=state.servicios.filter(s=>s.fecha===dateKey(new Date()) && s.dominio && s.chofer).length;
-  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  set("mActivos",Math.min(4,uniqueSorted(state.servicios.filter(s=>s.fecha===dateKey(new Date())).map(s=>s.chofer)).length)+" / 4");
-  set("mRecorridos",activos);
-  set("mReclamos",0);
-  set("mAlertas",0);
-}
-const _renderAllOriginal=renderAll; renderAll=function(){_renderAllOriginal(); prepararMapaOperativo(); if(window.lucide)lucide.createIcons();};
 
 /* ===== FLOTA V7 ===== */
 function estadoFlotaDesdeDatos(v){
   const e=norm(v.estado||'');
-  if(e.includes('taller')||e.includes('mantenimiento')) return 'En taller';
+  if(e.includes('taller')||e.includes('mantenimiento')||e.includes('fuera')||e.includes('radiado')||e.includes('baja')) return 'Fuera de servicio';
   if(e.includes('condicional')) return 'Condicional';
   if(e.includes('fuera')||e.includes('radiado')||e.includes('baja')) return 'Fuera de servicio';
   return 'Operativo';
@@ -1389,7 +1339,7 @@ function renderFlota(){
     '<th>Dominio</th><th>Modelo</th><th>Estado</th><th>Servicios</th><th>Choferes detectados</th><th>Última actividad</th>'+
     '</tr></thead><tbody>'+
     list.map(v=>{
-      const badge=v.estadoReal==='En taller'?'yellow':(v.estadoReal==='Fuera de servicio'?'red':'');
+      const badge=v.estadoReal==='Fuera de servicio'?'red':(v.estadoReal==='Condicional'?'yellow':'');
       return `<tr>
         <td><strong>${esc(v.dominio)}</strong></td>
         <td>${esc(v.modelo||'—')}</td>
@@ -1438,16 +1388,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   };
 
   /* =====================================================
-     1. EL SHEET 2026 DEJA DE SER FUENTE DE SERVICIOS
-     ===================================================== */
-  try{
-    if(typeof CONFIG!=='undefined' && CONFIG.sheets){
-      delete CONFIG.sheets['2026'];
-      delete CONFIG.sheets['Semana siguiente'];
-    }
-  }catch(e){ console.warn('V40: no se pudo retirar fuente 2026',e); }
-
-  /* =====================================================
      2. JSONP PARA LEER EL BACKEND DE DÍA VERDE
      ===================================================== */
   function apiGet(params){
@@ -1490,19 +1430,20 @@ document.addEventListener('DOMContentLoaded',()=>{
     V40.backendLoaded=true;
 
     /* ESTADO_FLOTA pasa a ser la fuente maestra del estado actual de cada unidad. */
+    const pick=(o,keys)=>{for(const k of keys){if(o&&o[k]!==undefined&&o[k]!==null&&String(o[k]).trim()!=='')return o[k];}return '';};
     state.mantenimiento=V40.backend.estadoFlota.map(x=>({
-      modelo:x.modelo||'',
-      estado:x.estado||'Sin estado',
-      dominio:(x.dominio||'').toUpperCase().replace(/\s+/g,''),
-      km:x.km||'',
-      fecha:x.fecha||'',
-      service:x.service||'',
-      estadoService:x.estadoService||'',
-      pastilla:x.pastilla||'',
-      ploteo:x.ploteo||'',
-      vtv:x.vtv||'',
-      espejos:x.espejos||'',
-      luces:x.luces||''
+      modelo:pick(x,['modelo','MODELO']),
+      estado:pick(x,['estado','ESTADO'])||'Sin estado',
+      dominio:String(pick(x,['dominio','DOMINIO','patente','PATENTE'])||'').toUpperCase().replace(/\s+/g,''),
+      km:pick(x,['km','kmActual','KM ACTUAL','kilometraje','KILOMETRAJE']),
+      fecha:pick(x,['fecha','FECHA']),
+      service:pick(x,['service','SERVICE']),
+      estadoService:pick(x,['estadoService','estadoDelService','ESTADO DEL SERVICE']),
+      pastilla:pick(x,['pastilla','pastillaDeFreno','PASTILLA DE FRENO %']),
+      ploteo:pick(x,['ploteo','PLOTEO']),
+      vtv:pick(x,['vtv','VTV']),
+      espejos:pick(x,['espejos','ESPEJOS']),
+      luces:pick(x,['luces','LUCES'])
     })).filter(x=>x.dominio||x.modelo);
 
     /* Las inspecciones siguen llegando del mismo backend maestro. */
@@ -1585,7 +1526,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   function mapearEstadoVehiculo(e){
     const n=String(e||'').trim().toUpperCase();
-    if(n.includes('TALLER')||n.includes('MANTEN'))return'En taller';
+    if(n.includes('TALLER')||n.includes('MANTEN')||n.includes('FUERA')||n.includes('RADIADO')||n.includes('BAJA'))return'Fuera de servicio';
     if(n.includes('BAJA')||n.includes('RADIADO')||n.includes('FUERA'))return'Fuera de servicio';
     if(n.includes('CONDIC'))return'Condicional';
     return'Operativo';
@@ -1610,23 +1551,29 @@ document.addEventListener('DOMContentLoaded',()=>{
   /* =====================================================
      3. RECARGA GENERAL: EL PANEL YA NO TOMA SERVICIOS DEL 2026
      ===================================================== */
-  const cargarTodoAnterior=window.cargarTodo;
+  let panelCargaEnCurso=false;
   window.cargarTodo=async function(){
+    if(panelCargaEnCurso)return;
+    panelCargaEnCurso=true;
+    const txt=document.getElementById('connText');
+    const dot=document.getElementById('connDot');
     try{
-      if(typeof cargarTodoAnterior==='function') await cargarTodoAnterior();
+      if(txt)txt.textContent='Actualizando fuentes maestras de Día Verde...';
+      if(dot)dot.className='dot';
+      try{await cargarFuentesTecnicas();}catch(e){console.warn('Fuentes técnicas:',e);}
+      // ÚNICA fuente operativa del Panel.
       await cargarBackendServicios();
       if(typeof renderAll==='function')renderAll();
       if(window.lucide)lucide.createIcons();
-      const txt=document.getElementById('connText');
-      if(txt)txt.textContent='Google Sheets conectado · fuentes maestras + Día Verde';
-      const dot=document.getElementById('connDot');
+      if(typeof actualizarBotonesMapaV40==='function')actualizarBotonesMapaV40();
+      if(txt)txt.textContent='Google Sheets conectado · fuente maestra Día Verde';
       if(dot)dot.className='dot ok';
     }catch(error){
       console.error('Panel V40:',error);
-      const txt=document.getElementById('connText');
-      if(txt)txt.textContent='Error backend servicios: '+error.message;
-      const dot=document.getElementById('connDot');
+      if(txt)txt.textContent='Error al actualizar el Panel: '+(error?.message||error);
       if(dot)dot.className='dot err';
+    }finally{
+      panelCargaEnCurso=false;
     }
   };
 
@@ -2484,20 +2431,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   /* =====================================================
      7. CARGA INICIAL
      ===================================================== */
-  const cargaInicialAnterior=window.addEventListener;
-  window.addEventListener('load',()=>{
-    setTimeout(async()=>{
-      try{
-        if(!V40.backendLoaded) await cargarBackendServicios();
-        if(typeof renderAll==='function')renderAll();
-        await cargarZonasMapa();
-        v40AplicarFiltroGeografico();
-        actualizarBotonesMapaV40();
-      }catch(e){
-        console.warn('V40 carga inicial:',e);
-      }
-    },1200);
-  });
+  // La carga inicial única se ejecuta al final del documento.
+
 
 })();
 
@@ -2608,15 +2543,55 @@ document.addEventListener('DOMContentLoaded',()=>{
     const base=Array.isArray(state.flota)?state.flota:[],q=norm(document.getElementById('fFlota')?.value||''),estado=document.getElementById('estadoFlota')?.value||'',actividad=document.getElementById('fActividadFlota')?.value||'';
     let list=base.map(v=>{const servicios=(state.servicios||[]).filter(s=>norm(s.dominio)===norm(v.dominio));const choferes=uniqueSorted(servicios.map(s=>s.chofer));const al=alertasUnidad(v);return {...v,alertas:al.length,criticos:al.filter(x=>norm(x.estado)==='critico').length,estadoReal:estadoFlotaDesdeDatos(v),servicios:servicios.length,choferes,ultimaFecha:servicios.map(s=>s.fecha).filter(Boolean).sort().pop()||''}});
     list=list.filter(v=>{const blob=norm([v.dominio,v.modelo,v.estadoReal,v.choferes.join(' ')].join(' '));if(q&&!blob.includes(q))return false;if(estado&&v.estadoReal!==estado)return false;if(actividad==='Con servicios'&&!v.servicios)return false;if(actividad==='Sin servicios'&&v.servicios)return false;return true}).sort((a,b)=>b.alertas-a.alertas||b.servicios-a.servicios||a.dominio.localeCompare(b.dominio,'es'));
-    const total=base.length,con=base.filter(v=>(state.servicios||[]).some(s=>norm(s.dominio)===norm(v.dominio))).length,taller=base.filter(v=>estadoFlotaDesdeDatos(v)==='En taller').length,sin=total-con;['fTotal','fConServicios','fEnTaller','fSinActividad'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=[total,con,taller,sin][i]});
+    const total=base.length,con=base.filter(v=>(state.servicios||[]).some(s=>norm(s.dominio)===norm(v.dominio))).length,taller=base.filter(v=>estadoFlotaDesdeDatos(v)==='Fuera de servicio').length,sin=total-con;['fTotal','fConServicios','fEnTaller','fSinActividad'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=[total,con,taller,sin][i]});
     const totalAlerts=base.reduce((n,v)=>n+alertasUnidad(v).length,0),critical=base.reduce((n,v)=>n+alertasUnidad(v).filter(x=>norm(x.estado)==='critico').length,0),box=document.getElementById('flotaTable');
     if(!list.length){box.innerHTML='<div class="empty">No hay vehículos que coincidan con los filtros.</div>';return;}
-    const rows=list.map(v=>`<tr class="v54-alert-row" onclick="v54AbrirFicha('${esc(v.idUnidad||v.dominio)}')"><td><strong>${esc(v.dominio||'—')}</strong></td><td>${esc(v.modelo||'—')}</td><td><span class="badge ${v.estadoReal==='En taller'?'yellow':(v.estadoReal==='Fuera de servicio'?'red':'')}" >${esc(v.estadoReal)}</span></td><td>${v.servicios}</td><td>${esc(v.choferes.slice(0,4).join(', ')||'—')}</td><td>${v.alertas?`<span class="v54-chip ${v.criticos?'crit':'att'}">${v.criticos?'🔴':'🟠'} ${v.alertas} alerta${v.alertas===1?'':'s'}</span>`:'<span class="muted">Sin alertas</span>'}</td><td>${esc(v.ultimaFecha||'—')}</td></tr>`).join('');
+    const rows=list.map(v=>`<tr class="v54-alert-row" onclick="v54AbrirFicha('${esc(v.idUnidad||v.dominio)}')"><td><strong>${esc(v.dominio||'—')}</strong></td><td>${esc(v.modelo||'—')}</td><td><span class="badge ${v.estadoReal==='Fuera de servicio'?'red':(v.estadoReal==='Condicional'?'yellow':'')}" >${esc(v.estadoReal)}</span></td><td>${v.servicios}</td><td>${esc(v.choferes.slice(0,4).join(', ')||'—')}</td><td>${v.alertas?`<span class="v54-chip ${v.criticos?'crit':'att'}">${v.criticos?'🔴':'🟠'} ${v.alertas} alerta${v.alertas===1?'':'s'}</span>`:'<span class="muted">Sin alertas</span>'}</td><td>${esc(v.ultimaFecha||'—')}</td></tr>`).join('');
     box.innerHTML=`<div class="v54-alerts"><strong>Alertas de inspección: ${totalAlerts}</strong> · 🔴 Críticas: ${critical}<div class="v54-alert-list">${critical?'🔴 Hay unidades bloqueadas por estado CRÍTICO.':''}${totalAlerts?' Hacé clic sobre una unidad para abrir su ficha y ver el detalle.':' No hay alertas de inspección.'}</div></div><div class="raw-wrap"><table><thead><tr><th>Dominio</th><th>Modelo</th><th>Estado</th><th>Servicios</th><th>Choferes</th><th>Alertas</th><th>Última actividad</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   };
   document.addEventListener('DOMContentLoaded',async()=>{await cargarInspecciones();setTimeout(()=>{try{renderFlota();if(window.lucide)lucide.createIcons()}catch(e){console.warn(e)}},300);});
   setInterval(async()=>{await cargarInspecciones();try{renderFlota()}catch(e){}},15000);
 })();
+</script>
+
+<!-- ===== V59: MODAL DE KPIs DE FLOTA ===== -->
+<div id="v59KpiModal" class="v54-modal" onclick="if(event.target===this)v59CerrarKpi()">
+  <div class="v54-box">
+    <div class="v54-head"><div><div class="eyebrow">DETALLE DE FLOTA</div><h2 id="v59KpiTitle">Vehículos</h2></div><button class="v54-close" onclick="v59CerrarKpi()">✕</button></div>
+    <div class="v54-body" id="v59KpiBody"></div>
+  </div>
+</div>
+<script>
+(function(){
+  window.v59CerrarKpi=function(){const m=document.getElementById('v59KpiModal');if(m)m.classList.remove('open');};
+  window.abrirListaFlota=function(tipo){
+    const base=Array.isArray(state.flota)?state.flota:[],servicios=Array.isArray(state.servicios)?state.servicios:[];
+    const preparar=base.map(v=>({...v,servicios:servicios.filter(s=>norm(s.dominio)===norm(v.dominio)).length,estadoReal:estadoFlotaDesdeDatos(v)}));
+    let lista=[],titulo='Vehículos';
+    if(tipo==='servicios'){titulo='Vehículos con servicios';lista=preparar.filter(v=>v.servicios>0).sort((a,b)=>b.servicios-a.servicios||a.dominio.localeCompare(b.dominio,'es'));}
+    else if(tipo==='fuera'){titulo='Vehículos fuera de servicio';lista=preparar.filter(v=>v.estadoReal==='Fuera de servicio').sort((a,b)=>a.dominio.localeCompare(b.dominio,'es'));}
+    else{titulo='Vehículos sin actividad detectada';lista=preparar.filter(v=>v.servicios===0).sort((a,b)=>a.dominio.localeCompare(b.dominio,'es'));}
+    const body=document.getElementById('v59KpiBody'),title=document.getElementById('v59KpiTitle');
+    if(title)title.textContent=titulo+' · '+lista.length;
+    if(body)body.innerHTML=lista.length?'<div class="raw-wrap"><table><thead><tr><th>Dominio</th><th>Modelo</th><th>Estado</th><th>Servicios</th></tr></thead><tbody>'+lista.map(v=>'<tr class="v54-alert-row" onclick="v54AbrirFicha(\''+esc(v.idUnidad||v.dominio)+'\');v59CerrarKpi()"><td><strong>'+esc(v.dominio||'—')+'</strong></td><td>'+esc(v.modelo||'—')+'</td><td><span class="badge '+(v.estadoReal==='Fuera de servicio'?'red':(v.estadoReal==='Condicional'?'yellow':''))+'">'+esc(v.estadoReal)+'</span></td><td>'+v.servicios+'</td></tr>').join('')+'</tbody></table></div>':'<div class="empty">No hay vehículos en esta categoría.</div>';
+    const modal=document.getElementById('v59KpiModal');if(modal)modal.classList.add('open');
+  };
+})();
+</script>
+
+<script>
+window.addEventListener('load',()=>{
+  state.fecha=new Date();
+  setTimeout(async()=>{
+    try{
+      await cargarTodo();
+      await cargarZonasMapa();
+      v40AplicarFiltroGeografico();
+      actualizarBotonesMapaV40();
+      if(window.lucide)lucide.createIcons();
+    }catch(e){console.warn('Carga inicial Panel:',e);}
+  },120);
+});
 </script>
 </body>
 </html>
