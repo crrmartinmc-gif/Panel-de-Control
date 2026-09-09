@@ -657,15 +657,12 @@ async function seleccionarEstadoServicioDropdown(option,id,estado){
   const anterior=btn?.textContent?.trim()||'';
   root.classList.remove('open');
   if(btn){btn.disabled=true;btn.textContent=estado;btn.style.cssText=estadoEstiloInline(estado);}
-  const fake=document.createElement('select');
-  fake.value=estado;
-  fake.dataset.idServicio=id;
-  fake.dataset.previousValue=anterior;
   try{
-    await window.cambiarEstadoServicio(fake);
+    await window.cambiarEstadoServicio({value:estado,dataset:{idServicio:id,previousValue:anterior}});
   }catch(e){
     if(btn){btn.disabled=false;btn.textContent=anterior;btn.style.cssText=estadoEstiloInline(anterior);}
     console.error(e);
+    alert('No se pudo cambiar el estado: '+(e.message||e));
   }
 }
 
@@ -1401,7 +1398,7 @@ function renderFlota(){
     const choferes=uniqueSorted(servicios.map(s=>s.chofer));
     const m=state.mantenimiento.find(x=>norm(x.dominio)===norm(v.dominio));
     return {...v,
-      estadoReal:estadoFlotaDesdeDatos({...v,estado:m?.estado||v.estado}),
+      estadoReal:estadoFlotaDesdeDatos(v),
       servicios:servicios.length,
       choferes,
       ultimaFecha:servicios.map(s=>s.fecha).filter(Boolean).sort().pop()||''
@@ -1935,48 +1932,52 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 
   async function postEstadoPanel_(accion,campos){
-    // Para cambios de estado usamos el mismo canal JSON que la app de Choferes.
-    // El POST anterior por formulario/iframe llegaba como form-urlencoded y el
-    // doPost() maestro lo intentaba interpretar como JSON, por lo que el Panel
-    // podía aparentar un cambio y luego volver al valor anterior al recargar.
-    const payload=Object.assign({accion,origen:'PANEL_CONTROL'},campos||{});
-    const response=await fetch(V40.API,{
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify(payload),
-      cache:'no-store'
+    // Escritura compatible con Apps Script: formulario URL-encoded dentro de
+    // iframe oculto. No usamos fetch POST porque el Web App puede no exponer
+    // CORS al navegador. La confirmación se hace leyendo nuevamente el backend.
+    return await new Promise((resolve,reject)=>{
+      const iframe=document.createElement('iframe');
+      iframe.name='dv_post_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+      iframe.style.display='none';
+      document.body.appendChild(iframe);
+      const form=document.createElement('form');
+      form.method='POST';
+      form.action=V40.API;
+      form.target=iframe.name;
+      form.style.display='none';
+      const payload=Object.assign({accion,origen:'PANEL_CONTROL'},campos||{});
+      Object.keys(payload).forEach(k=>{
+        const input=document.createElement('input');
+        input.type='hidden'; input.name=k; input.value=payload[k]==null?'':String(payload[k]);
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      let done=false;
+      const cleanup=()=>{try{form.remove();iframe.remove()}catch(e){}};
+      const finish=(ok,val)=>{if(done)return;done=true;clearTimeout(timer);cleanup();ok?resolve(val):reject(val)};
+      iframe.addEventListener('load',()=>finish(true,{submitted:true}),{once:true});
+      const timer=setTimeout(()=>finish(false,new Error('Tiempo agotado enviando la actualización al backend.')),20000);
+      try{form.submit()}catch(e){finish(false,e)}
     });
-    if(!response.ok) throw new Error('El backend respondió HTTP '+response.status+'.');
-    let data;
-    try{ data=await response.json(); }
-    catch(e){ throw new Error('El backend no devolvió una respuesta JSON válida.'); }
-    if(!data || data.ok!==true){
-      throw new Error(data?.error || data?.resultado?.error || 'El backend rechazó la actualización.');
-    }
-    return data;
   }
 
   window.cambiarEstadoServicio=async function(select){
     const idServicio=String(select?.dataset?.idServicio||'').trim();
-    const estadoPanel=String(select?.value||'').trim();
-    const estado=estadoPanel.toUpperCase();
+    const estado=String(select?.value||'').trim().toUpperCase();
     if(!idServicio || !V40_ESTADOS_EDITABLES.includes(estado))return;
-
-    const anterior=select.dataset.previousValue || select.value;
-    select.dataset.previousValue=select.value;
-    select.disabled=true;
-
+    const anterior=select.dataset.previousValue||'';
     try{
       await postEstadoPanel_('actualizarEstadoServicio',{idServicio,estado});
       await cargarBackendServicios();
+      const raw=(V40.backend.servicios||[]).find(x=>String(x.idServicio||'')===idServicio);
+      const confirmado=String(raw?.estado||'').trim().toUpperCase()===estado;
+      if(!confirmado)throw new Error('El backend no confirmó el estado '+estado+' para el servicio '+idServicio+'.');
       renderAll();
       if(window.lucide)lucide.createIcons();
+      return true;
     }catch(e){
       console.error('Cambio de estado:',e);
-      select.value=anterior;
-      alert('No se pudo cambiar el estado: '+(e.message||e));
-    }finally{
-      select.disabled=false;
+      throw e;
     }
   };
 
@@ -2681,29 +2682,32 @@ document.addEventListener('DOMContentLoaded',()=>{
     const idUnidad=String(select?.dataset?.idUnidad||'').trim();
     const estado=String(select?.value||'').trim().toUpperCase();
     const validos=['OPERATIVO','CONDICIONAL','FUERA DE SERVICIO'];
-    if(!idUnidad || !validos.includes(estado)) return;
-    const anterior=select.dataset.previousValue || select.value;
-    select.dataset.previousValue=select.value;
-    select.disabled=true;
-    try{
-      await postEstadoPanel_('actualizarEstadoVehiculo',{idUnidad,estado});
-      await cargarBackendServicios();
-      renderAll();
-      if(window.lucide)lucide.createIcons();
-    }catch(e){
-      console.error('Cambio de estado de vehículo:',e);
-      select.value=anterior;
-      estilizarSelectEstado(select);
-      throw e;
-    }finally{select.disabled=false;}
+    if(!idUnidad || !validos.includes(estado))return false;
+    await postEstadoPanel_('actualizarEstadoVehiculo',{idUnidad,estado});
+    await cargarBackendServicios();
+    const raw=(V40.backend.vehiculos||[]).find(x=>String(x.idUnidad||'')===idUnidad);
+    const confirmado=String(raw?.estadoOperativo||'').trim().toUpperCase()===estado;
+    if(!confirmado)throw new Error('El backend no confirmó el estado '+estado+' para la unidad '+idUnidad+'.');
+    renderAll();
+    if(window.lucide)lucide.createIcons();
+    return true;
   };
 
   async function seleccionarEstadoVehiculoDropdown(option,idUnidad,estado){
-  const root=option?.closest('.dv-state-dd');if(!root)return;
-  root.classList.remove('open');
-  const fake=document.createElement('select');fake.value=estado;fake.dataset.idUnidad=idUnidad;fake.dataset.previousValue=root.querySelector('.dv-state-btn')?.textContent||'';
-  try{await window.cambiarEstadoVehiculo(fake);}catch(e){console.error(e)}
-}
+    const root=option?.closest('.dv-state-dd');if(!root)return;
+    const btn=root.querySelector('.dv-state-btn');
+    const anterior=btn?.textContent?.trim()||'';
+    root.classList.remove('open');
+    if(btn){btn.disabled=true;btn.textContent=estado==='FUERA DE SERVICIO'?'Fuera de servicio':(estado==='CONDICIONAL'?'Condicional':'Operativo');btn.style.cssText=estadoEstiloInline(estado);}
+    try{
+      await window.cambiarEstadoVehiculo({value:estado,dataset:{idUnidad:idUnidad,previousValue:anterior}});
+    }catch(e){
+      if(btn){btn.disabled=false;btn.textContent=anterior;btn.style.cssText=estadoEstiloInline(anterior);}
+      console.error(e);
+      alert('No se pudo cambiar el estado de la unidad: '+(e.message||e));
+    }
+  }
+
 document.addEventListener('click',()=>document.querySelectorAll('.dv-state-dd.open').forEach(x=>x.classList.remove('open')));
 
 function claseEstadoVehiculo(v){
