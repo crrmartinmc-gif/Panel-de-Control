@@ -1,3 +1,4 @@
+<!-- DÍA VERDE PANEL V66 ALINEADO -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1641,11 +1642,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   function mapearEstadoPanel(e){
     const n=String(e||'').trim().toUpperCase();
     if(n==='PROGRAMADO')return'Programado';
+    if(n==='RETRASADO')return'Retrasado';
     if(n==='INSPECCIONANDO')return'Inspeccionando';
     if(n==='LISTO PARA SALIR')return'Listo para salir';
     if(n==='EN VIAJE')return'En viaje';
     if(n==='FINALIZADO')return'Finalizado';
     if(n==='SUSPENDIDO')return'Suspendido';
+    if(n==='BLOQUEADO')return'Bloqueado';
     return e||'Programado';
   }
 
@@ -1949,6 +1952,23 @@ document.addEventListener('DOMContentLoaded',()=>{
       frame.addEventListener('load',onload);
       try{v40EstadoForm.submit();}catch(err){clearTimeout(timer);frame.removeEventListener('load',onload);reject(err);}
     });
+    // El iframe no permite leer su JSON por CORS. Por eso la confirmación
+    // real se hace leyendo nuevamente el backend maestro y verificando el estado.
+    await new Promise(r=>setTimeout(r,350));
+    await cargarBackendServicios();
+    const idServicio=String(payload.idServicio||'').trim();
+    const idUnidad=String(payload.idUnidad||'').trim();
+    if(accion==='actualizarEstadoServicio' && idServicio){
+      const encontrado=(V40.backend.servicios||[]).find(x=>String(x.idServicio||'')===idServicio);
+      const real=String(encontrado?.estado||'').trim().toUpperCase();
+      if(real!==String(payload.estado||'').trim().toUpperCase()) throw new Error('El backend no confirmó el nuevo estado del servicio.');
+    }
+    if(accion==='actualizarEstadoVehiculo' && idUnidad){
+      const encontrado=(V40.backend.vehiculos||[]).find(x=>String(x.idUnidad||'').trim()===idUnidad);
+      const real=String(encontrado?.estadoOperativo||encontrado?.estado||'').trim().toUpperCase();
+      if(real!==String(payload.estado||'').trim().toUpperCase()) throw new Error('El backend no confirmó el nuevo estado de la unidad.');
+    }
+    return true;
   }
 
   window.cambiarEstadoServicio=async function(select){
@@ -1963,9 +1983,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 
     try{
       await postEstadoPanel_('actualizarEstadoServicio',{idServicio,estado});
-
-      await new Promise(r=>setTimeout(r,700));
-      await cargarBackendServicios();
       renderAll();
       if(window.lucide)lucide.createIcons();
     }catch(e){
@@ -2684,8 +2701,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     select.disabled=true;
     try{
       await postEstadoPanel_('actualizarEstadoVehiculo',{idUnidad,estado});
-      await new Promise(r=>setTimeout(r,500));
-      await cargarBackendServicios();
       renderAll();
       if(window.lucide)lucide.createIcons();
     }catch(e){
