@@ -1641,11 +1641,13 @@ document.addEventListener('DOMContentLoaded',()=>{
   function mapearEstadoPanel(e){
     const n=String(e||'').trim().toUpperCase();
     if(n==='PROGRAMADO')return'Programado';
+    if(n==='RETRASADO')return'Retrasado';
     if(n==='INSPECCIONANDO')return'Inspeccionando';
     if(n==='LISTO PARA SALIR')return'Listo para salir';
     if(n==='EN VIAJE')return'En viaje';
     if(n==='FINALIZADO')return'Finalizado';
     if(n==='SUSPENDIDO')return'Suspendido';
+    if(n==='BLOQUEADO')return'Bloqueado';
     return e||'Programado';
   }
 
@@ -1933,22 +1935,25 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 
   async function postEstadoPanel_(accion,campos){
-    asegurarFormularioEstado();
-    v40EstadoForm.innerHTML='';
+    // Para cambios de estado usamos el mismo canal JSON que la app de Choferes.
+    // El POST anterior por formulario/iframe llegaba como form-urlencoded y el
+    // doPost() maestro lo intentaba interpretar como JSON, por lo que el Panel
+    // podía aparentar un cambio y luego volver al valor anterior al recargar.
     const payload=Object.assign({accion,origen:'PANEL_CONTROL'},campos||{});
-    Object.keys(payload).forEach(name=>{
-      const input=document.createElement('input');
-      input.type='hidden';input.name=name;input.value=payload[name]??'';
-      v40EstadoForm.appendChild(input);
+    const response=await fetch(V40.API,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(payload),
+      cache:'no-store'
     });
-    await new Promise((resolve,reject)=>{
-      const frame=v40EstadoFrame;
-      let terminado=false;
-      const timer=setTimeout(()=>{if(terminado)return;terminado=true;reject(new Error('Tiempo agotado actualizando el estado.'));},15000);
-      const onload=()=>{if(terminado)return;terminado=true;clearTimeout(timer);frame.removeEventListener('load',onload);resolve();};
-      frame.addEventListener('load',onload);
-      try{v40EstadoForm.submit();}catch(err){clearTimeout(timer);frame.removeEventListener('load',onload);reject(err);}
-    });
+    if(!response.ok) throw new Error('El backend respondió HTTP '+response.status+'.');
+    let data;
+    try{ data=await response.json(); }
+    catch(e){ throw new Error('El backend no devolvió una respuesta JSON válida.'); }
+    if(!data || data.ok!==true){
+      throw new Error(data?.error || data?.resultado?.error || 'El backend rechazó la actualización.');
+    }
+    return data;
   }
 
   window.cambiarEstadoServicio=async function(select){
@@ -1963,8 +1968,6 @@ document.addEventListener('DOMContentLoaded',()=>{
 
     try{
       await postEstadoPanel_('actualizarEstadoServicio',{idServicio,estado});
-
-      await new Promise(r=>setTimeout(r,700));
       await cargarBackendServicios();
       renderAll();
       if(window.lucide)lucide.createIcons();
@@ -2684,7 +2687,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     select.disabled=true;
     try{
       await postEstadoPanel_('actualizarEstadoVehiculo',{idUnidad,estado});
-      await new Promise(r=>setTimeout(r,500));
       await cargarBackendServicios();
       renderAll();
       if(window.lucide)lucide.createIcons();
