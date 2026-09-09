@@ -89,21 +89,26 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 .estado-select.estado-operativo,.svc-status-select.estado-operativo{background:#e9f7ed;color:#087a3d;border-color:#b9e4c7}
 .estado-select.estado-fuera,.svc-status-select.estado-fuera{background:#fdecec;color:#b42318;border-color:#f3b9b4}
 .estado-select.estado-condicional{background:#fff4df;color:#9a6500;border-color:#f0d39c}
-.svc-status-select.estado-programado{background:#eef4ff;color:#285ea8;border-color:#c7d9f5}
+.svc-status-select.estado-programado{background:#fff4cc;color:#8a6200;border-color:#efd98a}
 .svc-status-select.estado-inspeccionando{background:#f3edff;color:#7048a8;border-color:#d8c7f5}
 .svc-status-select.estado-listo{background:#e9f7ed;color:#087a3d;border-color:#b9e4c7}
-.svc-status-select.estado-viaje{background:#e7f4ff;color:#1261a0;border-color:#b7d9ef}
-.svc-status-select.estado-finalizado{background:#eef1ef;color:#53605a;border-color:#d5ddd8}
-.svc-status-select.estado-suspendido{background:#fdecec;color:#b42318;border-color:#f3b9b4}
-/* Las opciones del menú también quedan identificables por color cuando el navegador lo permite. */
-#estadoFlota option[value="Operativo"]{color:#087a3d}
-#estadoFlota option[value="Fuera de servicio"]{color:#b42318}
-#fEstado option[value="Programado"]{color:#285ea8}
-#fEstado option[value="Inspeccionando"]{color:#7048a8}
-#fEstado option[value="Listo para salir"]{color:#087a3d}
-#fEstado option[value="En viaje"]{color:#1261a0}
-#fEstado option[value="Finalizado"]{color:#53605a}
-#fEstado option[value="Suspendido"]{color:#b42318}
+.svc-status-select.estado-viaje{background:#dff5e5;color:#087a3d;border-color:#b6dfc2}
+.svc-status-select.estado-finalizado{background:#d7f0dc;color:#04552b;border-color:#9ed0a9}
+.svc-status-select.estado-suspendido{background:#eee1ff;color:#7040a0;border-color:#cdb1ee}
+.svc-status-select.estado-retrasado{background:#ffe4cc;color:#c65d00;border-color:#f0b27a}
+.svc-status-select.estado-bloqueado{background:#fdecec;color:#b42318;border-color:#f3b9b4}
+/* El menú nativo usa estos colores cuando el navegador/SO permite estilizar OPTION. */
+#estadoFlota option[value="Operativo"]{color:#087a3d;background:#e9f7ed}
+#estadoFlota option[value="Fuera de servicio"]{color:#b42318;background:#fdecec}
+#estadoFlota option[value="Condicional"]{color:#9a6500;background:#fff4df}
+#fEstado option[value="Programado"]{color:#8a6200;background:#fff4cc}
+#fEstado option[value="Inspeccionando"]{color:#7048a8;background:#f3edff}
+#fEstado option[value="Listo para salir"]{color:#087a3d;background:#e9f7ed}
+#fEstado option[value="En viaje"]{color:#087a3d;background:#dff5e5}
+#fEstado option[value="Finalizado"]{color:#04552b;background:#d7f0dc}
+#fEstado option[value="Suspendido"]{color:#7040a0;background:#eee1ff}
+#fEstado option[value="Retrasado"]{color:#c65d00;background:#ffe4cc}
+#fEstado option[value="Bloqueado"]{color:#b42318;background:#fdecec}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
 @media(max-width:800px){.app{grid-template-columns:1fr}.sidebar{position:static}.nav{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.nav button{margin:0}.filters{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.grid{grid-template-columns:1fr}.nav{grid-template-columns:1fr 1fr}.filters{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.full{grid-column:auto}}
@@ -136,7 +141,6 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
    <button data-page="mantenimiento"><i data-lucide="wrench"></i><span>Mantenimiento</span></button>
    <button data-page="destinos"><i data-lucide="map-pin"></i><span>Destinos</span></button>
    <button data-page="reportes"><i data-lucide="chart-no-axes-combined"></i><span>Reportes</span></button>
-   <button data-page="datos"><i data-lucide="database"></i><span>Datos fuente</span></button>
   </nav>
  </aside>
 
@@ -150,8 +154,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
     <div class="card kpi danger"><div><small>Alertas</small><strong id="kAlertas">—</strong></div><div class="kpi-icon"> <i data-lucide="triangle-alert"></i></div></div>
    </div>
    <div class="two">
-    <div class="card panel"><h3>Servicios de hoy</h3><div id="hoyBox"><div class="empty">Cargando...</div></div></div>
-    <div class="card panel"><h3>Fuentes de datos</h3><div id="fuentesBox"></div></div>
+    <div class="card panel" style="grid-column:1 / -1"><h3>Servicios de hoy</h3><div id="hoyBox"><div class="empty">Cargando...</div></div></div>
    </div>
   </section>
 
@@ -234,7 +237,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
    </div>
    <div class="card panel">
     <div class="day-nav" style="margin-bottom:12px"><strong id="fechaTitulo"></strong><span class="muted" id="fechaSub"></span></div>
-    <div class="filters"><input id="fServicio" placeholder="🔎 Servicio, dominio, chofer o destino" oninput="renderServicios()"><select id="fEstado" class="estado-select" onchange="renderServicios();estilizarSelectEstado(this)"><option value="">Todos los estados</option><option>Programado</option><option>Inspeccionando</option><option>Listo para salir</option><option>En viaje</option><option>Finalizado</option><option>Suspendido</option></select><select id="fVehiculo" onchange="renderServicios()"><option value="">Todos los vehículos</option></select><select id="fChoferServ" onchange="renderServicios()"><option value="">Todos los choferes</option></select></div>
+    <div class="filters"><input id="fServicio" placeholder="🔎 Servicio, dominio, chofer o destino" oninput="renderServicios()"><select id="fEstado" class="estado-select" onchange="renderServicios();estilizarSelectEstado(this)"><option value="">Todos los estados</option><option>Programado</option><option>Retrasado</option><option>Inspeccionando</option><option>Listo para salir</option><option>En viaje</option><option>Finalizado</option><option>Suspendido</option><option>Bloqueado</option></select><select id="fVehiculo" onchange="renderServicios()"><option value="">Todos los vehículos</option></select><select id="fChoferServ" onchange="renderServicios()"><option value="">Todos los choferes</option></select></div>
     <div id="serviciosTable"></div>
    </div>
   </section>
@@ -270,7 +273,7 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
   </section>
  </main>
 </div>
-<footer>Panel de Control · Fuentes maestras + Día Verde · Servicios conectados al backend operativo.</footer>
+<footer>Panel de Control · Día Verde · Servicios conectados al backend operativo.</footer>
 
 <div id="modal" class="modal">
  <div class="modal-box">
@@ -320,7 +323,35 @@ function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&l
 function norm(v){return String(v??'').trim().replace(/\s+/g,' ').toLowerCase();}
 function clean(v){return String(v??'').trim().replace(/\s+/g,' ');}
 function fmtDate(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});}
-function dateKey(d){return d.toISOString().slice(0,10);}
+function dateKey(d){return d instanceof Date && !isNaN(d) ? new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(d) : '';}
+function fechaHoyArgentina(){
+  const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function ahoraArgentinaClave(){
+  const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`;
+}
+function fechaHoraArgentinaTexto(){
+  return new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
+}
+function minutosHora(h){
+  const m=String(h||'').match(/^(\d{1,2}):(\d{2})/);
+  return m ? Number(m[1])*60+Number(m[2]) : null;
+}
+function estadoEfectivoServicio(s){
+  const estado=String(s?.estado||'Programado').trim();
+  if(norm(estado)!=='programado') return estado;
+  const fecha=String(s?.fecha||'').trim();
+  const hora=String(s?.hora||'').trim();
+  const hm=minutosHora(hora);
+  if(!fecha || hm===null) return estado;
+  const limite=hm-10;
+  const hh=String(Math.floor((limite+1440)%1440/60)).padStart(2,'0');
+  const mm=String((limite+1440)%1440%60).padStart(2,'0');
+  const limiteClave=`${fecha}T${hh}:${mm}:00`;
+  return ahoraArgentinaClave()>=limiteClave ? 'Retrasado' : estado;
+}
 function parseDateAny(v){
   if(v instanceof Date && !isNaN(v)) return v;
   const s=clean(v); if(!s)return null;
@@ -595,6 +626,7 @@ function renderServicesTable(list,compact=false){
   if(!list.length)return'<div class="empty">No hay servicios detectados para este día.</div>';
   const estados=[
     ['Programado','Programado'],
+    ['Retrasado','Retrasado'],
     ['Inspeccionando','Inspeccionando'],
     ['Listo para salir','Listo para salir'],
     ['En viaje','En viaje'],
@@ -603,10 +635,10 @@ function renderServicesTable(list,compact=false){
     ['Bloqueado','Bloqueado']
   ];
   return `<div style="overflow:auto"><table><thead><tr><th>Hora</th><th>Servicio</th><th>Destino</th><th>Dominio</th><th>Chofer</th><th>Estado</th></tr></thead><tbody>${list.map(s=>{
-    const estado=s.estado||'Programado';
+    const estado=estadoEfectivoServicio(s);
     const id=String(s.idServicio||'');
     const options=estados.map(([value,label])=>`<option value="${esc(value)}" ${norm(value)===norm(estado)?'selected':''}>${esc(label)}</option>`).join('');
-    const claseEstado={'PROGRAMADO':'estado-programado','INSPECCIONANDO':'estado-inspeccionando','LISTO PARA SALIR':'estado-listo','EN VIAJE':'estado-viaje','FINALIZADO':'estado-finalizado','SUSPENDIDO':'estado-suspendido'}[norm(estado)]||'';
+    const claseEstado={'PROGRAMADO':'estado-programado','RETRASADO':'estado-retrasado','INSPECCIONANDO':'estado-inspeccionando','LISTO PARA SALIR':'estado-listo','EN VIAJE':'estado-viaje','FINALIZADO':'estado-finalizado','SUSPENDIDO':'estado-suspendido','BLOQUEADO':'estado-bloqueado'}[norm(estado)]||'';
     return `<tr><td>${esc(s.hora||'—')}</td><td><strong>${esc(s.descripcion||'Sin descripción')}</strong></td><td>${esc(s.destino||'—')}</td><td>${esc(s.dominio||'—')}</td><td>${esc(s.chofer||'—')}</td><td><div class="svc-status-editor"><select class="svc-status-select ${claseEstado}" data-id-servicio="${esc(id)}" onchange="cambiarEstadoServicio(this);estilizarSelectEstado(this)" aria-label="Cambiar estado del servicio">${options}</select></div></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
@@ -617,7 +649,7 @@ function renderServicios(){
   const est=document.getElementById('fEstado').value, veh=document.getElementById('fVehiculo').value, ch=document.getElementById('fChoferServ').value;
   let list=servicesForDate().filter(s=>{
     const blob=norm([s.descripcion,s.dominio,s.chofer,s.destino].join(' '));
-    return (!q||blob.includes(q))&&(!est||(s.estado||'Programado')===est)&&(!veh||s.dominio===veh)&&(!ch||s.chofer===ch);
+    return (!q||blob.includes(q))&&(!est||estadoEfectivoServicio(s)===est)&&(!veh||s.dominio===veh)&&(!ch||s.chofer===ch);
   });
   document.getElementById('serviciosTable').innerHTML=renderServicesTable(list);
 }
@@ -869,8 +901,8 @@ function dvFindHeader(rows,terms){
 }
 
 function dvDateToday(){
- const d=new Date();
- return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+ const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+ return `${p.day}/${p.month}/${p.year}`;
 }
 
 function dvObjRows(rows){
@@ -1373,13 +1405,13 @@ function renderFlota(){
 function estilizarSelectEstado(el){
   if(!el)return;
   const v=norm(el.value||'');
-  el.classList.remove('estado-operativo','estado-fuera','estado-condicional','estado-programado','estado-inspeccionando','estado-listo','estado-viaje','estado-finalizado','estado-suspendido');
+  el.classList.remove('estado-operativo','estado-fuera','estado-condicional','estado-programado','estado-inspeccionando','estado-listo','estado-viaje','estado-finalizado','estado-suspendido','estado-retrasado','estado-bloqueado');
   if(el.id==='estadoFlota'){
     if(v==='OPERATIVO')el.classList.add('estado-operativo');
     else if(v==='FUERA DE SERVICIO')el.classList.add('estado-fuera');
     else if(v==='CONDICIONAL')el.classList.add('estado-condicional');
   }else if(el.id==='fEstado'){
-    const mapa={'PROGRAMADO':'estado-programado','INSPECCIONANDO':'estado-inspeccionando','LISTO PARA SALIR':'estado-listo','EN VIAJE':'estado-viaje','FINALIZADO':'estado-finalizado','SUSPENDIDO':'estado-suspendido'};
+    const mapa={'PROGRAMADO':'estado-programado','RETRASADO':'estado-retrasado','INSPECCIONANDO':'estado-inspeccionando','LISTO PARA SALIR':'estado-listo','EN VIAJE':'estado-viaje','FINALIZADO':'estado-finalizado','SUSPENDIDO':'estado-suspendido','BLOQUEADO':'estado-bloqueado'};
     if(mapa[v])el.classList.add(mapa[v]);
   }
 }
@@ -1547,6 +1579,11 @@ document.addEventListener('DOMContentLoaded',()=>{
       return v.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false});
     }
     const s=String(v).trim();
+    // Si Apps Script devuelve una fecha ISO/UTC, la mostramos en horario argentino.
+    if(/[zZ]|[+-]\d{2}:?\d{2}$/.test(s)){
+      const d=new Date(s);
+      if(!Number.isNaN(d.getTime())) return new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',hour12:false}).format(d);
+    }
     const iso=s.match(/(?:T|\s)(\d{1,2}):(\d{2})/);
     if(iso)return String(Number(iso[1])).padStart(2,'0')+':'+iso[2];
     const hm=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
@@ -1580,11 +1617,13 @@ document.addEventListener('DOMContentLoaded',()=>{
     sel.innerHTML=[
       ['','Todos los estados'],
       ['Programado','Programado'],
+      ['Retrasado','Retrasado'],
       ['Inspeccionando','Inspeccionando'],
       ['Listo para salir','Listo para salir'],
       ['En viaje','En viaje'],
       ['Finalizado','Finalizado'],
-      ['Suspendido','Suspendido']
+      ['Suspendido','Suspendido'],
+      ['Bloqueado','Bloqueado']
     ].map(x=>'<option value="'+esc(x[0])+'">'+esc(x[1])+'</option>').join('');
     if([...sel.options].some(o=>o.value===valor))sel.value=valor;
     estilizarSelectEstado(sel);
@@ -1795,7 +1834,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         v40Submitting=false;
         if(boton)boton.disabled=false;
         cerrarModal();
-        alert('Servicio creado correctamente. ID: '+String((V40.backend.servicios||[]).find(s=>!v40AntesIds.has(String(s.idServicio||'')))?.idServicio||''));
+        console.info('Servicio creado correctamente en segundo plano.');
       }else{
         v40Submitting=false;
         if(boton)boton.disabled=false;
@@ -1814,12 +1853,14 @@ document.addEventListener('DOMContentLoaded',()=>{
       v40AntesIds=new Set((V40.backend.servicios||[]).map(s=>String(s.idServicio||'')));
 
       if(st){
-        st.style.display='block';
-        st.className='notice';
-        st.textContent='Enviando servicio a Día Verde...';
+        st.style.display='none';
+        st.textContent='';
       }
 
       if(boton)boton.disabled=true;
+      // Cerramos inmediatamente: el POST continúa en el iframe oculto y la confirmación
+      // se procesa en segundo plano, sin dejar al usuario esperando dentro del modal.
+      cerrarModal();
     });
   };
 
