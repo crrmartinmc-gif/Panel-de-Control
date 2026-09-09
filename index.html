@@ -614,15 +614,17 @@ function servicesForDate(){
 }
 function renderInicio(){
   const hoy=servicesForDate();
-  document.getElementById('kServicios').textContent=state.servicios.length||0;
-  document.getElementById('kVehiculos').textContent=state.flota.length||0;
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+  set('kServicios',state.servicios.length||0);
+  set('kVehiculos',state.flota.length||0);
   const taller=state.flota.filter(v=>estadoFlotaDesdeDatos(v)==='Fuera de servicio').length;
-  document.getElementById('kTaller').textContent=taller;
+  set('kTaller',taller);
   const alertas=state.servicios.filter(s=>!s.dominio||!s.chofer).length;
-  document.getElementById('kAlertas').textContent=alertas;
-  document.getElementById('hoyBox').innerHTML=renderServicesTable(hoy.slice(0,20),true);
-  const f=state.fuentes;
-  document.getElementById('fuentesBox').innerHTML=Object.keys(f).map(k=>`<div class="list-item"><span>${esc(k)}</span><strong>${f[k].rows?.length||0} filas</strong></div>`).join('')||'<div class="empty">Sin datos</div>';
+  set('kAlertas',alertas);
+  const hoyBox=document.getElementById('hoyBox');
+  if(hoyBox)hoyBox.innerHTML=renderServicesTable(hoy.slice(0,20),true);
+  /* V63+: Fuentes de datos ya no se muestran en la interfaz.
+     Nunca intentar escribir en #fuentesBox porque el elemento fue eliminado. */
 }
 function estadoEstiloInline(estado){
   const n=norm(estado||'');
@@ -651,9 +653,20 @@ function toggleEstadoDropdown(btn){
 }
 async function seleccionarEstadoServicioDropdown(option,id,estado){
   const root=option?.closest('.dv-state-dd'); if(!root)return;
+  const btn=root.querySelector('.dv-state-btn');
+  const anterior=btn?.textContent?.trim()||'';
   root.classList.remove('open');
-  const fake=document.createElement('select'); fake.value=estado; fake.dataset.idServicio=id; fake.dataset.previousValue=root.querySelector('.dv-state-btn')?.textContent||'';
-  try{ await window.cambiarEstadoServicio(fake); }catch(e){ console.error(e); }
+  if(btn){btn.disabled=true;btn.textContent=estado;btn.style.cssText=estadoEstiloInline(estado);}
+  const fake=document.createElement('select');
+  fake.value=estado;
+  fake.dataset.idServicio=id;
+  fake.dataset.previousValue=anterior;
+  try{
+    await window.cambiarEstadoServicio(fake);
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent=anterior;btn.style.cssText=estadoEstiloInline(anterior);}
+    console.error(e);
+  }
 }
 
 function renderServicesTable(list,compact=false){
@@ -1919,6 +1932,25 @@ document.addEventListener('DOMContentLoaded',()=>{
     document.body.appendChild(v40EstadoForm);
   }
 
+  async function postEstadoPanel_(accion,campos){
+    asegurarFormularioEstado();
+    v40EstadoForm.innerHTML='';
+    const payload=Object.assign({accion,origen:'PANEL_CONTROL'},campos||{});
+    Object.keys(payload).forEach(name=>{
+      const input=document.createElement('input');
+      input.type='hidden';input.name=name;input.value=payload[name]??'';
+      v40EstadoForm.appendChild(input);
+    });
+    await new Promise((resolve,reject)=>{
+      const frame=v40EstadoFrame;
+      let terminado=false;
+      const timer=setTimeout(()=>{if(terminado)return;terminado=true;reject(new Error('Tiempo agotado actualizando el estado.'));},15000);
+      const onload=()=>{if(terminado)return;terminado=true;clearTimeout(timer);frame.removeEventListener('load',onload);resolve();};
+      frame.addEventListener('load',onload);
+      try{v40EstadoForm.submit();}catch(err){clearTimeout(timer);frame.removeEventListener('load',onload);reject(err);}
+    });
+  }
+
   window.cambiarEstadoServicio=async function(select){
     const idServicio=String(select?.dataset?.idServicio||'').trim();
     const estadoPanel=String(select?.value||'').trim();
@@ -1930,20 +1962,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     select.disabled=true;
 
     try{
-      asegurarFormularioEstado();
-      v40EstadoForm.innerHTML='';
-      [['accion','actualizarEstadoServicio'],['idServicio',idServicio],['estado',estado],['origen','PANEL_CONTROL']].forEach(([name,value])=>{
-        const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;v40EstadoForm.appendChild(input);
-      });
-
-      await new Promise((resolve,reject)=>{
-        const frame=v40EstadoFrame;
-        let terminado=false;
-        const timer=setTimeout(()=>{if(terminado)return;terminado=true;reject(new Error('Tiempo agotado actualizando el estado.'));},12000);
-        const onload=()=>{if(terminado)return;terminado=true;clearTimeout(timer);frame.removeEventListener('load',onload);resolve();};
-        frame.addEventListener('load',onload);
-        v40EstadoForm.submit();
-      });
+      await postEstadoPanel_('actualizarEstadoServicio',{idServicio,estado});
 
       await new Promise(r=>setTimeout(r,700));
       await cargarBackendServicios();
@@ -2664,11 +2683,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     select.dataset.previousValue=select.value;
     select.disabled=true;
     try{
-      const payload=new URLSearchParams({accion:'actualizarEstadoVehiculo',idUnidad,estado,origen:'PANEL_CONTROL'});
-      const resp=await fetch(V40.API,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:payload.toString()});
-      const text=await resp.text();
-      let data=null; try{data=JSON.parse(text)}catch(_){data=null}
-      if(!resp.ok || !data || data.ok===false) throw new Error(data?.error || data?.mensaje || 'No se pudo actualizar el estado de la unidad.');
+      await postEstadoPanel_('actualizarEstadoVehiculo',{idUnidad,estado});
+      await new Promise(r=>setTimeout(r,500));
       await cargarBackendServicios();
       renderAll();
       if(window.lucide)lucide.createIcons();
@@ -2676,11 +2692,8 @@ document.addEventListener('DOMContentLoaded',()=>{
       console.error('Cambio de estado de vehículo:',e);
       select.value=anterior;
       estilizarSelectEstado(select);
-      alert('No se pudo cambiar el estado de la unidad: '+(e.message||e));
-    }finally{
-      select.disabled=false;
-      estilizarSelectEstado(select);
-    }
+      throw e;
+    }finally{select.disabled=false;}
   };
 
   async function seleccionarEstadoVehiculoDropdown(option,idUnidad,estado){
