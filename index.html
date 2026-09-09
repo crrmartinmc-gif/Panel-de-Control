@@ -83,6 +83,8 @@ footer{max-width:1500px;margin:auto;padding:4px 18px 22px;color:var(--gris);font
 .svc-status-editor{display:flex;align-items:center;min-width:145px}
 /* Selects visualmente neutros: sin flecha permanente. El menú nativo aparece únicamente al hacer click. */
 .estado-select,.svc-status-select{appearance:none;-webkit-appearance:none;-moz-appearance:none;background-image:none!important;width:100%;border:1px solid var(--borde);border-radius:999px;padding:8px 11px;background:#fff;color:var(--texto);font:800 10px 'Nunito Sans',Arial,sans-serif;cursor:pointer;outline:0;box-shadow:0 2px 7px #163a2608;transition:.15s}
+/* V64: dropdowns propios para colores reales en Chrome/Windows; el menu nativo de OPTION no garantiza fondos coloreados. */
+.dv-state-dd{position:relative;display:inline-block;width:100%;min-width:145px;font:800 10px 'Nunito Sans',Arial,sans-serif}.dv-state-btn{width:100%;border:1px solid #d5e0d9;border-radius:999px;padding:8px 11px;text-align:left;background:#fff;color:#22352a;font:800 10px 'Nunito Sans',Arial,sans-serif;cursor:pointer;position:relative}.dv-state-btn::after{content:'›';position:absolute;right:12px;top:50%;transform:translateY(-50%) rotate(90deg);font-size:14px;opacity:.65;transition:.15s}.dv-state-dd.open .dv-state-btn::after{transform:translateY(-50%) rotate(-90deg)}.dv-state-menu{display:none;position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:9999;background:#fff;border:1px solid #cfdad3;border-radius:12px;padding:5px;box-shadow:0 12px 28px #163a2626}.dv-state-dd.open .dv-state-menu{display:block}.dv-state-option{width:100%;border:0;border-radius:8px;padding:9px 10px;margin:2px 0;text-align:left;font:800 10px 'Nunito Sans',Arial,sans-serif;cursor:pointer}.dv-state-option:hover{filter:brightness(.97);transform:translateX(1px)}
 .estado-select:focus,.svc-status-select:focus{box-shadow:0 0 0 3px #087a3d18}
 .estado-select:disabled,.svc-status-select:disabled{opacity:.6;cursor:wait}
 /* Colores del estado seleccionado */
@@ -334,9 +336,6 @@ function ahoraArgentinaClave(){
 }
 function fechaHoraArgentinaTexto(){
   return new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
-}
-function horaActualArgentinaHHMM(){
-  return new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());
 }
 function minutosHora(h){
   const m=String(h||'').match(/^(\d{1,2}):(\d{2})/);
@@ -622,8 +621,41 @@ function renderInicio(){
   const alertas=state.servicios.filter(s=>!s.dominio||!s.chofer).length;
   document.getElementById('kAlertas').textContent=alertas;
   document.getElementById('hoyBox').innerHTML=renderServicesTable(hoy.slice(0,20),true);
-  // La sección 'Fuentes de datos' fue retirada de la interfaz; no intentar tocar un nodo inexistente.
+  const f=state.fuentes;
+  document.getElementById('fuentesBox').innerHTML=Object.keys(f).map(k=>`<div class="list-item"><span>${esc(k)}</span><strong>${f[k].rows?.length||0} filas</strong></div>`).join('')||'<div class="empty">Sin datos</div>';
 }
+function estadoEstiloInline(estado){
+  const n=norm(estado||'');
+  const m={
+    'PROGRAMADO':['#fff4cc','#8a6200','#efd98a'],
+    'RETRASADO':['#ffe4cc','#c65d00','#f0b27a'],
+    'INSPECCIONANDO':['#f3edff','#7048a8','#d8c7f5'],
+    'LISTO PARA SALIR':['#e9f7ed','#087a3d','#b9e4c7'],
+    'EN VIAJE':['#dff5e5','#087a3d','#b6dfc2'],
+    'FINALIZADO':['#d7f0dc','#04552b','#9ed0a9'],
+    'SUSPENDIDO':['#eee1ff','#7040a0','#cdb1ee'],
+    'BLOQUEADO':['#fdecec','#b42318','#f3b9b4']
+  };
+  const c=m[n]||['#fff','#22352a','#d5e0d9'];
+  return `background:${c[0]};color:${c[1]};border-color:${c[2]};`;
+}
+function crearDropdownEstadoServicio(id,estado){
+  const estados=[['Programado','Programado'],['Retrasado','Retrasado'],['Inspeccionando','Inspeccionando'],['Listo para salir','Listo para salir'],['En viaje','En viaje'],['Finalizado','Finalizado'],['Suspendido','Suspendido'],['Bloqueado','Bloqueado']];
+  const opts=estados.map(([v,l])=>`<button type="button" class="dv-state-option" style="${estadoEstiloInline(v)}" onclick="event.stopPropagation();seleccionarEstadoServicioDropdown(this,'${esc(id)}','${esc(v)}')">${esc(l)}</button>`).join('');
+  return `<div class="dv-state-dd" data-id-servicio="${esc(id)}"><button type="button" class="dv-state-btn" style="${estadoEstiloInline(estado)}" onclick="event.stopPropagation();toggleEstadoDropdown(this)">${esc(estado)}</button><div class="dv-state-menu">${opts}</div></div>`;
+}
+function toggleEstadoDropdown(btn){
+  const root=btn?.closest('.dv-state-dd');if(!root)return;
+  document.querySelectorAll('.dv-state-dd.open').forEach(x=>{if(x!==root)x.classList.remove('open')});
+  root.classList.toggle('open');
+}
+async function seleccionarEstadoServicioDropdown(option,id,estado){
+  const root=option?.closest('.dv-state-dd'); if(!root)return;
+  root.classList.remove('open');
+  const fake=document.createElement('select'); fake.value=estado; fake.dataset.idServicio=id; fake.dataset.previousValue=root.querySelector('.dv-state-btn')?.textContent||'';
+  try{ await window.cambiarEstadoServicio(fake); }catch(e){ console.error(e); }
+}
+
 function renderServicesTable(list,compact=false){
   if(!list.length)return'<div class="empty">No hay servicios detectados para este día.</div>';
   const estados=[
@@ -641,7 +673,7 @@ function renderServicesTable(list,compact=false){
     const id=String(s.idServicio||'');
     const options=estados.map(([value,label])=>`<option value="${esc(value)}" ${norm(value)===norm(estado)?'selected':''}>${esc(label)}</option>`).join('');
     const claseEstado={'PROGRAMADO':'estado-programado','RETRASADO':'estado-retrasado','INSPECCIONANDO':'estado-inspeccionando','LISTO PARA SALIR':'estado-listo','EN VIAJE':'estado-viaje','FINALIZADO':'estado-finalizado','SUSPENDIDO':'estado-suspendido','BLOQUEADO':'estado-bloqueado'}[norm(estado)]||'';
-    return `<tr><td>${esc(s.hora||'—')}</td><td><strong>${esc(s.descripcion||'Sin descripción')}</strong></td><td>${esc(s.destino||'—')}</td><td>${esc(s.dominio||'—')}</td><td>${esc(s.chofer||'—')}</td><td><div class="svc-status-editor"><select class="svc-status-select ${claseEstado}" data-id-servicio="${esc(id)}" onchange="cambiarEstadoServicio(this);estilizarSelectEstado(this)" aria-label="Cambiar estado del servicio">${options}</select></div></td></tr>`;
+    return `<tr><td>${esc(s.hora||'—')}</td><td><strong>${esc(s.descripcion||'Sin descripción')}</strong></td><td>${esc(s.destino||'—')}</td><td>${esc(s.dominio||'—')}</td><td>${esc(s.chofer||'—')}</td><td><div class="svc-status-editor">${crearDropdownEstadoServicio(id,estado)}</div></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 function renderServicios(){
@@ -654,7 +686,6 @@ function renderServicios(){
     return (!q||blob.includes(q))&&(!est||estadoEfectivoServicio(s)===est)&&(!veh||s.dominio===veh)&&(!ch||s.chofer===ch);
   });
   document.getElementById('serviciosTable').innerHTML=renderServicesTable(list);
-  document.querySelectorAll('#serviciosTable .svc-status-select').forEach(estilizarSelectEstado);
 }
 function fillServiceFilters(){
   const vs=uniqueSorted(servicesForDate().map(x=>x.dominio)), cs=uniqueSorted(servicesForDate().map(x=>x.chofer));
@@ -1404,7 +1435,6 @@ function renderFlota(){
         <td>${esc(v.ultimaFecha||'—')}</td>
       </tr>`;
     }).join('')+'</tbody></table></div>';
-  document.querySelectorAll('#flotaTable .estado-select').forEach(estilizarSelectEstado);
 }
 function estilizarSelectEstado(el){
   if(!el)return;
@@ -1766,7 +1796,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     const config=document.getElementById('v40ServicioConfig');
     const ruta=document.getElementById('v40Ruta');
     const hora=document.getElementById('v40Hora');
-    if(hora && !hora.value) hora.value=horaActualArgentinaHHMM();
 
     function filtrarRutas(){
       const cfg=config.value;
@@ -1781,7 +1810,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     function completarHora(){
       const o=config.selectedOptions[0];
       if(o?.dataset?.hora && !hora.value)hora.value=String(o.dataset.hora).slice(0,5);
-      if(!hora.value)hora.value=horaActualArgentinaHHMM();
     }
 
     tipo.addEventListener('change',()=>{
@@ -1873,7 +1901,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   /* =====================================================
      4B. CAMBIO MANUAL DE ESTADO DESDE SERVICIOS
      ===================================================== */
-  const V40_ESTADOS_EDITABLES=['PROGRAMADO','INSPECCIONANDO','LISTO PARA SALIR','EN VIAJE','FINALIZADO','SUSPENDIDO','BLOQUEADO'];
+  const V40_ESTADOS_EDITABLES=['PROGRAMADO','RETRASADO','INSPECCIONANDO','LISTO PARA SALIR','EN VIAJE','FINALIZADO','SUSPENDIDO','BLOQUEADO'];
   let v40EstadoFrame=null;
   let v40EstadoForm=null;
 
@@ -2655,7 +2683,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   };
 
-  function claseEstadoVehiculo(v){
+  async function seleccionarEstadoVehiculoDropdown(option,idUnidad,estado){
+  const root=option?.closest('.dv-state-dd');if(!root)return;
+  root.classList.remove('open');
+  const fake=document.createElement('select');fake.value=estado;fake.dataset.idUnidad=idUnidad;fake.dataset.previousValue=root.querySelector('.dv-state-btn')?.textContent||'';
+  try{await window.cambiarEstadoVehiculo(fake);}catch(e){console.error(e)}
+}
+document.addEventListener('click',()=>document.querySelectorAll('.dv-state-dd.open').forEach(x=>x.classList.remove('open')));
+
+function claseEstadoVehiculo(v){
     const e=norm(v||'');
     if(e==='OPERATIVO'||e==='ACTIVO') return 'estado-operativo';
     if(e==='CONDICIONAL') return 'estado-condicional';
@@ -2672,8 +2708,11 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(!list.length){box.innerHTML='<div class="empty">No hay vehículos que coincidan con los filtros.</div>';return;}
     const rows=list.map(v=>{
       const estadoSel=v.estadoReal==='Fuera de servicio'?'FUERA DE SERVICIO':(v.estadoReal==='Condicional'?'CONDICIONAL':'OPERATIVO');
-      const opciones=['OPERATIVO','CONDICIONAL','FUERA DE SERVICIO'].map(o=>`<option value="${o}" ${o===estadoSel?'selected':''}>${o==='FUERA DE SERVICIO'?'Fuera de servicio':(o==='OPERATIVO'?'Operativo':'Condicional')}</option>`).join('');
-      return `<tr class="v54-alert-row" onclick="v54AbrirFicha('${esc(v.idUnidad||v.dominio)}')"><td><strong>${esc(v.dominio||'—')}</strong></td><td>${esc(v.modelo||'—')}</td><td onclick="event.stopPropagation()"><select class="estado-select ${claseEstadoVehiculo(estadoSel)}" data-id-unidad="${esc(v.idUnidad||'')}" data-previous-value="${esc(estadoSel)}" onchange="cambiarEstadoVehiculo(this);estilizarSelectEstado(this)" aria-label="Cambiar estado de la unidad">${opciones}</select></td><td>${v.servicios}</td><td>${esc(v.choferes.slice(0,4).join(', ')||'—')}</td><td>${v.alertas?`<span class="v54-chip ${v.criticos?'crit':'att'}">${v.criticos?'🔴':'🟠'} ${v.alertas} alerta${v.alertas===1?'':'s'}</span>`:'<span class="muted">Sin alertas</span>'}</td><td>${esc(v.ultimaFecha||'—')}</td></tr>`;
+      const opcionesVeh=[['OPERATIVO','Operativo'],['CONDICIONAL','Condicional'],['FUERA DE SERVICIO','Fuera de servicio']];
+      const estadoVisible=estadoSel==='FUERA DE SERVICIO'?'Fuera de servicio':(estadoSel==='CONDICIONAL'?'Condicional':'Operativo');
+      const menuVeh=opcionesVeh.map(([val,label])=>`<button type="button" class="dv-state-option" style="${estadoEstiloInline(val)}" onclick="event.stopPropagation();seleccionarEstadoVehiculoDropdown(this,'${esc(v.idUnidad||'')}','${esc(val)}')">${esc(label)}</button>`).join('');
+      const estiloVeh=estadoEstiloInline(estadoVisible);
+      return `<tr class="v54-alert-row" onclick="v54AbrirFicha('${esc(v.idUnidad||v.dominio)}')"><td><strong>${esc(v.dominio||'—')}</strong></td><td>${esc(v.modelo||'—')}</td><td onclick="event.stopPropagation()"><div class="dv-state-dd" data-id-unidad="${esc(v.idUnidad||'')}"><button type="button" class="dv-state-btn" style="${estiloVeh}" onclick="event.stopPropagation();toggleEstadoDropdown(this)">${esc(estadoVisible)}</button><div class="dv-state-menu">${menuVeh}</div></div></td><td>${v.servicios}</td><td>${esc(v.choferes.slice(0,4).join(', ')||'—')}</td><td>${v.alertas?`<span class="v54-chip ${v.criticos?'crit':'att'}">${v.criticos?'🔴':'🟠'} ${v.alertas} alerta${v.alertas===1?'':'s'}</span>`:'<span class="muted">Sin alertas</span>'}</td><td>${esc(v.ultimaFecha||'—')}</td></tr>`;
     }).join('');
     box.innerHTML=`<div class="v54-alerts"><strong>Alertas de inspección: ${totalAlerts}</strong> · 🔴 Críticas: ${critical}<div class="v54-alert-list">${critical?'🔴 Hay unidades bloqueadas por estado CRÍTICO.':''}${totalAlerts?' Hacé clic sobre una unidad para abrir su ficha y ver el detalle.':' No hay alertas de inspección.'}</div></div><div class="raw-wrap"><table><thead><tr><th>Dominio</th><th>Modelo</th><th>Estado</th><th>Servicios</th><th>Choferes</th><th>Alertas</th><th>Última actividad</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   };
