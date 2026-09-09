@@ -335,6 +335,9 @@ function ahoraArgentinaClave(){
 function fechaHoraArgentinaTexto(){
   return new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());
 }
+function horaActualArgentinaHHMM(){
+  return new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());
+}
 function minutosHora(h){
   const m=String(h||'').match(/^(\d{1,2}):(\d{2})/);
   return m ? Number(m[1])*60+Number(m[2]) : null;
@@ -619,8 +622,7 @@ function renderInicio(){
   const alertas=state.servicios.filter(s=>!s.dominio||!s.chofer).length;
   document.getElementById('kAlertas').textContent=alertas;
   document.getElementById('hoyBox').innerHTML=renderServicesTable(hoy.slice(0,20),true);
-  const f=state.fuentes;
-  document.getElementById('fuentesBox').innerHTML=Object.keys(f).map(k=>`<div class="list-item"><span>${esc(k)}</span><strong>${f[k].rows?.length||0} filas</strong></div>`).join('')||'<div class="empty">Sin datos</div>';
+  // La sección 'Fuentes de datos' fue retirada de la interfaz; no intentar tocar un nodo inexistente.
 }
 function renderServicesTable(list,compact=false){
   if(!list.length)return'<div class="empty">No hay servicios detectados para este día.</div>';
@@ -652,6 +654,7 @@ function renderServicios(){
     return (!q||blob.includes(q))&&(!est||estadoEfectivoServicio(s)===est)&&(!veh||s.dominio===veh)&&(!ch||s.chofer===ch);
   });
   document.getElementById('serviciosTable').innerHTML=renderServicesTable(list);
+  document.querySelectorAll('#serviciosTable .svc-status-select').forEach(estilizarSelectEstado);
 }
 function fillServiceFilters(){
   const vs=uniqueSorted(servicesForDate().map(x=>x.dominio)), cs=uniqueSorted(servicesForDate().map(x=>x.chofer));
@@ -1401,6 +1404,7 @@ function renderFlota(){
         <td>${esc(v.ultimaFecha||'—')}</td>
       </tr>`;
     }).join('')+'</tbody></table></div>';
+  document.querySelectorAll('#flotaTable .estado-select').forEach(estilizarSelectEstado);
 }
 function estilizarSelectEstado(el){
   if(!el)return;
@@ -1762,6 +1766,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const config=document.getElementById('v40ServicioConfig');
     const ruta=document.getElementById('v40Ruta');
     const hora=document.getElementById('v40Hora');
+    if(hora && !hora.value) hora.value=horaActualArgentinaHHMM();
 
     function filtrarRutas(){
       const cfg=config.value;
@@ -1776,6 +1781,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     function completarHora(){
       const o=config.selectedOptions[0];
       if(o?.dataset?.hora && !hora.value)hora.value=String(o.dataset.hora).slice(0,5);
+      if(!hora.value)hora.value=horaActualArgentinaHHMM();
     }
 
     tipo.addEventListener('change',()=>{
