@@ -1932,9 +1932,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 
   async function postEstadoPanel_(accion,campos){
-    // Escritura compatible con Apps Script: formulario URL-encoded dentro de
-    // iframe oculto. No usamos fetch POST porque el Web App puede no exponer
-    // CORS al navegador. La confirmación se hace leyendo nuevamente el backend.
+    // Apps Script no garantiza CORS para POST desde GitHub Pages, por eso
+    // mantenemos el envío mediante formulario + iframe oculto. IMPORTANTE:
+    // no usamos el evento load del iframe como confirmación, porque puede
+    // dispararse por la carga inicial del frame antes de que el POST termine.
+    // La confirmación real se hace consultando nuevamente panelServicios.
     return await new Promise((resolve,reject)=>{
       const iframe=document.createElement('iframe');
       iframe.name='dv_post_'+Date.now()+'_'+Math.random().toString(36).slice(2);
@@ -1955,9 +1957,13 @@ document.addEventListener('DOMContentLoaded',()=>{
       let done=false;
       const cleanup=()=>{try{form.remove();iframe.remove()}catch(e){}};
       const finish=(ok,val)=>{if(done)return;done=true;clearTimeout(timer);cleanup();ok?resolve(val):reject(val)};
-      iframe.addEventListener('load',()=>finish(true,{submitted:true}),{once:true});
       const timer=setTimeout(()=>finish(false,new Error('Tiempo agotado enviando la actualización al backend.')),20000);
-      try{form.submit()}catch(e){finish(false,e)}
+      try{
+        form.submit();
+        // Dar tiempo al Web App para procesar el POST. La comprobación real
+        // ocurre en cambiarEstadoServicio/cambiarEstadoVehiculo.
+        setTimeout(()=>finish(true,{submitted:true}),1200);
+      }catch(e){finish(false,e)}
     });
   }
 
@@ -2693,7 +2699,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     return true;
   };
 
-  async function seleccionarEstadoVehiculoDropdown(option,idUnidad,estado){
+  window.seleccionarEstadoVehiculoDropdown=async function(option,idUnidad,estado){
     const root=option?.closest('.dv-state-dd');if(!root)return;
     const btn=root.querySelector('.dv-state-btn');
     const anterior=btn?.textContent?.trim()||'';
@@ -2706,7 +2712,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       console.error(e);
       alert('No se pudo cambiar el estado de la unidad: '+(e.message||e));
     }
-  }
+  };
 
 document.addEventListener('click',()=>document.querySelectorAll('.dv-state-dd.open').forEach(x=>x.classList.remove('open')));
 
