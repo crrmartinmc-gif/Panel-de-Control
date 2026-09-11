@@ -3915,98 +3915,19 @@ textarea.form-control{
     <div class="section-head">
         <div>
             <h2>Configuración</h2>
-            <p>Parámetros generales del sistema y de las aplicaciones</p>
+            <p>Parámetros generales del sistema</p>
         </div>
-        <div class="section-actions">
-            <button class="btn btn-secondary" type="button" onclick="cargarConfiguracion()">↻ Actualizar</button>
-        </div>
-    </div>
-
-    <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-label">TOTAL</div><div id="configTotal" class="kpi-value">0</div><div class="kpi-meta">Parámetros registrados</div></div>
-        <div class="kpi-card"><div class="kpi-label">ACTIVOS</div><div id="configActivos" class="kpi-value">0</div><div class="kpi-meta">Parámetros habilitados</div></div>
-        <div class="kpi-card"><div class="kpi-label">PANEL</div><div id="configPanel" class="kpi-value">0</div><div class="kpi-meta">Aplicación Panel</div></div>
-        <div class="kpi-card"><div class="kpi-label">APLICACIONES</div><div id="configApps" class="kpi-value">0</div><div class="kpi-meta">Aplicaciones con parámetros</div></div>
     </div>
 
     <div class="panel">
-        <div class="panel-head">
-            <div>
-                <div class="panel-title">Parámetros del sistema</div>
-                <div class="panel-subtitle">Valores almacenados en CONFIGURACION del Backend Maestro</div>
-            </div>
-            <span id="contadorConfiguracion" class="inspeccion-count">0 parámetros</span>
-        </div>
-
-        <div class="toolbar" style="margin-bottom:12px;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:10px;">
-            <input id="buscarConfiguracion" class="form-control" placeholder="Buscar parámetro, valor o descripción..." oninput="filtrarConfiguracion()">
-            <select id="filtroConfigTipo" class="form-control" onchange="filtrarConfiguracion()">
-                <option value="">Todos los tipos</option>
-            </select>
-            <select id="filtroConfigApp" class="form-control" onchange="filtrarConfiguracion()">
-                <option value="">Todas las aplicaciones</option>
-            </select>
-            <select id="filtroConfigEstado" class="form-control" onchange="filtrarConfiguracion()">
-                <option value="">Todos los estados</option>
-                <option value="SI">ACTIVOS</option>
-                <option value="NO">INACTIVOS</option>
-            </select>
-        </div>
-
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>PARÁMETRO</th>
-                        <th>VALOR</th>
-                        <th>TIPO</th>
-                        <th>APLICACIÓN</th>
-                        <th>DESCRIPCIÓN</th>
-                        <th>ESTADO</th>
-                        <th>DETALLE</th>
-                    </tr>
-                </thead>
-                <tbody id="tablaConfiguracion">
-                    <tr><td colspan="7"><div class="empty">Cargando configuración...</div></td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="panel" style="margin-top:14px;">
-        <div class="panel-head">
-            <div>
-                <div class="panel-title">Control de configuración</div>
-                <div class="panel-subtitle">La edición de parámetros queda reservada hasta incorporar la escritura específica al Backend.</div>
+        <div class="module-placeholder">
+            <div class="placeholder-icon">⚙</div>
+            <div class="placeholder-title">Configuración del sistema</div>
+            <div class="placeholder-text">
+                CONFIGURACION permitirá administrar parámetros
+                del Panel 2.0.
             </div>
         </div>
-        <div class="usuarios-password-protected" style="margin:0;">
-            ⚙️ Modo seguro: este módulo consulta CONFIGURACION y no realiza escrituras improvisadas. Cuando incorporemos el endpoint de actualización, podremos habilitar edición controlada y auditoría del cambio.
-        </div>
-    </div>
-</div>
-
-<div id="modalDetalleConfiguracion" class="modal-overlay" onclick="cerrarDetalleConfiguracion(event)">
-    <div class="modal" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <div>
-                <div class="modal-title">Detalle de configuración</div>
-                <div class="panel-subtitle">Parámetro registrado en el Backend Maestro</div>
-            </div>
-            <button class="modal-close" type="button" onclick="cerrarDetalleConfiguracion()">×</button>
-        </div>
-        <div class="modal-body">
-            <div class="form-grid">
-                <div class="form-group"><label class="form-label">ID configuración</label><div id="detalleConfigId" class="form-control">-</div></div>
-                <div class="form-group"><label class="form-label">Parámetro</label><div id="detalleConfigParametro" class="form-control">-</div></div>
-                <div class="form-group"><label class="form-label">Valor</label><div id="detalleConfigValor" class="form-control">-</div></div>
-                <div class="form-group"><label class="form-label">Tipo</label><div id="detalleConfigTipo" class="form-control">-</div></div>
-                <div class="form-group"><label class="form-label">Aplicación</label><div id="detalleConfigApp" class="form-control">-</div></div>
-                <div class="form-group"><label class="form-label">Activo</label><div id="detalleConfigActivo" class="form-control">-</div></div>
-                <div class="form-group full"><label class="form-label">Descripción</label><div id="detalleConfigDescripcion" class="form-control" style="min-height:70px;white-space:normal;">-</div></div>
-            </div>
-        </div>
-        <div class="modal-footer"><button class="btn btn-secondary" type="button" onclick="cerrarDetalleConfiguracion()">Cerrar</button></div>
     </div>
 </div>
 
@@ -9544,15 +9465,29 @@ function filtrarMantenimiento(){
     renderizarMantenimiento(filtrados);
 }
 
-function prepararFormularioMantenimiento(){
-
-    const vehiculos = Array.isArray(estadoPanel.vehiculos)
-        ? estadoPanel.vehiculos
-        : [];
+async function prepararFormularioMantenimiento(){
 
     const selectVehiculo = document.getElementById("mantenimientoVehiculo");
 
+    // Refrescamos vehículos directamente desde Backend al abrir el modal.
+    // No dependemos solamente de la caché de estadoPanel.
+    let vehiculos = Array.isArray(estadoPanel.vehiculos)
+        ? estadoPanel.vehiculos
+        : [];
+
     if(selectVehiculo){
+        selectVehiculo.innerHTML = '<option value="">Cargando vehículos...</option>';
+
+        try{
+            const resultadoVehiculos = await leerBackend("vehiculos");
+            if(resultadoVehiculos?.ok && Array.isArray(resultadoVehiculos.datos)){
+                vehiculos = resultadoVehiculos.datos;
+                estadoPanel.vehiculos = vehiculos;
+            }
+        }catch(error){
+            console.warn("No se pudieron actualizar los vehículos para mantenimiento:", error);
+        }
+
         selectVehiculo.innerHTML =
             '<option value="">Seleccionar vehículo...</option>' +
             vehiculos.map(v => {
@@ -9561,6 +9496,10 @@ function prepararFormularioMantenimiento(){
                 const interno = v.INTERNO ? ` · Int. ${v.INTERNO}` : "";
                 return `<option value="${escaparHTML(id)}">${escaparHTML(`${dominio}${interno} · ${id}`)}</option>`;
             }).join("");
+
+        if(vehiculos.length === 0){
+            selectVehiculo.innerHTML = '<option value="">No hay vehículos disponibles</option>';
+        }
     }
 
     const reportes = Array.isArray(estadoPanel.reportes)
@@ -9581,7 +9520,7 @@ function prepararFormularioMantenimiento(){
     }
 }
 
-function abrirModalMantenimiento(){
+async function abrirModalMantenimiento(){
 
     const modal = document.getElementById("modalMantenimiento");
     if(!modal) return;
@@ -9609,7 +9548,7 @@ function abrirModalMantenimiento(){
         mensaje.textContent = "";
     }
 
-    prepararFormularioMantenimiento();
+    await prepararFormularioMantenimiento();
     modal.classList.add("open");
 }
 
@@ -10199,145 +10138,6 @@ function cerrarDetalleUsuario(event){
     if(event && event.target !== event.currentTarget) return;
     const modal=document.getElementById("modalDetalleUsuario");
     if(modal) modal.classList.remove("active");
-}
-
-
-/* =========================================================
-   CONFIGURACIÓN
-   ========================================================= */
-
-let configuracionCache = [];
-let configuracionFiltrada = [];
-
-function normalizarTextoConfiguracion(valor){
-    return String(valor ?? "").trim().toUpperCase();
-}
-
-function cargarConfiguracion(){
-    const tbody=document.getElementById("tablaConfiguracion");
-    if(tbody){
-        tbody.innerHTML='<tr><td colspan="7"><div class="empty">Cargando configuración...</div></td></tr>';
-    }
-
-    leerBackend("configuracion").then(resultado=>{
-        if(!resultado || !resultado.ok){
-            configuracionCache=[];
-            configuracionFiltrada=[];
-            actualizarKPIsConfiguracion();
-            actualizarFiltrosConfiguracion();
-            if(tbody){
-                tbody.innerHTML='<tr><td colspan="7"><div class="empty">No se pudo cargar la configuración.</div></td></tr>';
-            }
-            return;
-        }
-
-        const datos=resultado.datos;
-        configuracionCache=Array.isArray(datos) ? datos : Array.isArray(datos?.configuracion) ? datos.configuracion : [];
-        actualizarKPIsConfiguracion();
-        actualizarFiltrosConfiguracion();
-        filtrarConfiguracion();
-    });
-}
-
-function actualizarKPIsConfiguracion(){
-    const total=configuracionCache.length;
-    const activos=configuracionCache.filter(x=>{
-        const v=normalizarTextoConfiguracion(x.ACTIVO);
-        return v==="SI" || v==="SÍ" || v==="ACTIVO" || v==="TRUE";
-    }).length;
-    const panel=configuracionCache.filter(x=>normalizarTextoConfiguracion(x.APLICACION)==="PANEL").length;
-    const apps=new Set(configuracionCache.map(x=>normalizarTextoConfiguracion(x.APLICACION)).filter(Boolean));
-
-    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
-    set("configTotal",total);
-    set("configActivos",activos);
-    set("configPanel",panel);
-    set("configApps",apps.size);
-}
-
-function actualizarFiltrosConfiguracion(){
-    const tipos=[...new Set(configuracionCache.map(x=>String(x.TIPO||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-    const apps=[...new Set(configuracionCache.map(x=>String(x.APLICACION||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-
-    const llenar=(id,lista,placeholder)=>{
-        const select=document.getElementById(id);
-        if(!select)return;
-        const actual=select.value;
-        select.innerHTML=`<option value="">${placeholder}</option>` + lista.map(v=>`<option value="${escaparHTML(v)}">${escaparHTML(v)}</option>`).join("");
-        if(lista.includes(actual))select.value=actual;
-    };
-
-    llenar("filtroConfigTipo",tipos,"Todos los tipos");
-    llenar("filtroConfigApp",apps,"Todas las aplicaciones");
-}
-
-function filtrarConfiguracion(){
-    const q=normalizarTextoConfiguracion(document.getElementById("buscarConfiguracion")?.value);
-    const tipo=normalizarTextoConfiguracion(document.getElementById("filtroConfigTipo")?.value);
-    const app=normalizarTextoConfiguracion(document.getElementById("filtroConfigApp")?.value);
-    const estado=normalizarTextoConfiguracion(document.getElementById("filtroConfigEstado")?.value);
-
-    configuracionFiltrada=configuracionCache.filter(x=>{
-        const texto=[x.ID_CONFIG,x.PARAMETRO,x.VALOR,x.TIPO,x.APLICACION,x.DESCRIPCION,x.ACTIVO].map(normalizarTextoConfiguracion).join(" ");
-        const activo=normalizarTextoConfiguracion(x.ACTIVO);
-        const estadoNormalizado=(activo==="SI"||activo==="SÍ"||activo==="ACTIVO"||activo==="TRUE")?"SI":"NO";
-        return (!q||texto.includes(q)) &&
-               (!tipo||normalizarTextoConfiguracion(x.TIPO)===tipo) &&
-               (!app||normalizarTextoConfiguracion(x.APLICACION)===app) &&
-               (!estado||estadoNormalizado===estado);
-    });
-
-    renderConfiguracion();
-}
-
-function renderConfiguracion(){
-    const tbody=document.getElementById("tablaConfiguracion");
-    const contador=document.getElementById("contadorConfiguracion");
-    if(!tbody)return;
-
-    if(contador){
-        contador.textContent=configuracionFiltrada.length+(configuracionFiltrada.length===1?" parámetro":" parámetros");
-    }
-
-    if(!configuracionFiltrada.length){
-        tbody.innerHTML='<tr><td colspan="7"><div class="empty">No hay parámetros que coincidan con los filtros.</div></td></tr>';
-        return;
-    }
-
-    tbody.innerHTML=configuracionFiltrada.map((x,index)=>{
-        const activo=normalizarTextoConfiguracion(x.ACTIVO);
-        const activoOk=activo==="SI"||activo==="SÍ"||activo==="ACTIVO"||activo==="TRUE";
-        return `<tr>
-            <td><strong>${escaparHTML(x.PARAMETRO||"-")}</strong><span class="punto-sub">${escaparHTML(x.ID_CONFIG||"")}</span></td>
-            <td>${escaparHTML(x.VALOR||"-")}</td>
-            <td><span class="status-pill">${escaparHTML(x.TIPO||"-")}</span></td>
-            <td>${escaparHTML(x.APLICACION||"-")}</td>
-            <td>${escaparHTML(x.DESCRIPCION||"-")}</td>
-            <td><span class="status-pill ${activoOk?"usuario-status-activo":"usuario-status-inactivo"}">${escaparHTML(x.ACTIVO||"-")}</span></td>
-            <td><button class="btn btn-secondary btn-sm" type="button" onclick="verConfiguracion(${index})">Ver</button></td>
-        </tr>`;
-    }).join("");
-}
-
-function verConfiguracion(index){
-    const x=configuracionFiltrada[index];
-    if(!x)return;
-    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||"-";};
-    set("detalleConfigId",x.ID_CONFIG);
-    set("detalleConfigParametro",x.PARAMETRO);
-    set("detalleConfigValor",x.VALOR);
-    set("detalleConfigTipo",x.TIPO);
-    set("detalleConfigApp",x.APLICACION);
-    set("detalleConfigActivo",x.ACTIVO);
-    set("detalleConfigDescripcion",x.DESCRIPCION);
-    const modal=document.getElementById("modalDetalleConfiguracion");
-    if(modal)modal.classList.add("active");
-}
-
-function cerrarDetalleConfiguracion(event){
-    if(event && event.target!==event.currentTarget)return;
-    const modal=document.getElementById("modalDetalleConfiguracion");
-    if(modal)modal.classList.remove("active");
 }
 
 </script>
