@@ -3337,21 +3337,72 @@ textarea.form-control{
 
 
 <div id="reportes" class="page">
+
     <div class="section-head">
         <div>
             <h2>Reportes</h2>
             <p>Incidentes, novedades y prioridades</p>
         </div>
-        <button class="btn btn-primary">+ Nuevo reporte</button>
+
+        <div style="display:flex;gap:8px;align-items:center">
+            <input id="filtroReportes" class="filter"
+                   placeholder="Buscar reporte, vehículo, chofer..."
+                   oninput="filtrarReportes()">
+
+            <button class="btn btn-secondary" type="button"
+                    onclick="cargarReportes()">↻ Actualizar</button>
+
+            <button class="btn btn-primary" type="button"
+                    onclick="abrirModalReporte()">+ Nuevo reporte</button>
+        </div>
+    </div>
+
+    <div class="inspeccion-kpis">
+        <div class="mini-card">
+            <div class="mini-label">Total</div>
+            <div id="kpiReportesTotal" class="mini-value">0</div>
+        </div>
+        <div class="mini-card">
+            <div class="mini-label">Pendientes</div>
+            <div id="kpiReportesPendientes" class="mini-value">0</div>
+        </div>
+        <div class="mini-card">
+            <div class="mini-label">Alta prioridad</div>
+            <div id="kpiReportesAlta" class="mini-value">0</div>
+        </div>
+        <div class="mini-card">
+            <div class="mini-label">Resueltos</div>
+            <div id="kpiReportesResueltos" class="mini-value">0</div>
+        </div>
     </div>
 
     <div class="panel">
-        <div class="module-placeholder">
-            <div class="placeholder-icon">⚠</div>
-            <div class="placeholder-title">Reportes</div>
-            <div class="placeholder-text">
-                Gestión de REPORTES y evidencias asociadas.
+        <div class="panel-head">
+            <div>
+                <div class="panel-title">Reportes registrados</div>
+                <div class="panel-subtitle">Incidentes y novedades informados por las aplicaciones</div>
             </div>
+            <span id="contadorReportes" class="inspeccion-count">0 reportes</span>
+        </div>
+
+        <div class="inspeccion-table-wrap">
+            <table class="inspeccion-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Origen</th>
+                        <th>Vehículo</th>
+                        <th>Chofer</th>
+                        <th>Descripción</th>
+                        <th>Prioridad</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaReportes">
+                    <tr><td colspan="8"><div class="empty">Cargando reportes...</div></td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -3669,6 +3720,10 @@ function mostrarPagina(id, boton){
     if(id === "inspecciones"){
         cargarInspecciones();
     }
+
+    if(id === "reportes"){
+        cargarReportes();
+    }
 }
 
 
@@ -3806,6 +3861,8 @@ let estadoPanel = {
     servicios:[],
     eventos:[],
     choferes:[],
+    reportes:[],
+    asignaciones:[],
     ultimaActualizacion:null
 };
 
@@ -3890,9 +3947,9 @@ async function llamarBackend(accion,datos={}){
                     "Content-Type":"text/plain;charset=utf-8"
                 },
                 body:JSON.stringify({
-                    accion: accion,
+                    accion:accion,
                     ...datos,
-                    datos: datos
+                    datos:datos
                 })
             }
         );
@@ -3909,6 +3966,7 @@ async function llamarBackend(accion,datos={}){
         return null;
     }
 }
+
 
 /* =========================================================
    ESTADO DE CONEXIÓN
@@ -7461,6 +7519,283 @@ async function guardarInspeccion(event){
 
 
 /* =========================================================
+   REPORTES
+   ========================================================= */
+
+function cargarReportes(){
+
+    const resultado = await leerBackend("reportes");
+
+    const tbody = document.getElementById("tablaReportes");
+
+    if(!resultado?.ok){
+        if(tbody){
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8">
+                        <div class="empty">No se pudieron cargar los reportes.</div>
+                    </td>
+                </tr>`;
+        }
+        return [];
+    }
+
+    const reportes = Array.isArray(resultado.datos)
+        ? resultado.datos
+        : [];
+
+    estadoPanel.reportes = reportes;
+    actualizarKPIsReportes(reportes);
+    renderizarReportes(reportes);
+
+    return reportes;
+}
+
+function clasePrioridadReporte(valor){
+    const p = normalizar(valor);
+    if(p === "CRITICA" || p === "CRÍTICA") return "inspeccion-rechazada";
+    if(p === "ALTA") return "inspeccion-observada";
+    if(p === "MEDIA") return "viaje-neutral";
+    return "inspeccion-aprobada";
+}
+
+function claseEstadoReporte(valor){
+    const e = normalizar(valor);
+    if(e === "RESUELTO" || e === "FINALIZADO") return "inspeccion-aprobada";
+    if(e === "PENDIENTE" || e === "EN ANALISIS" || e === "EN ANÁLISIS") return "inspeccion-observada";
+    if(e === "CANCELADO") return "inspeccion-rechazada";
+    return "viaje-neutral";
+}
+
+function actualizarKPIsReportes(reportes){
+    const total = reportes.length;
+    const pendientes = reportes.filter(r => {
+        const e = normalizar(r.ESTADO);
+        return e === "PENDIENTE" || e === "EN ANALISIS" || e === "EN ANÁLISIS";
+    }).length;
+    const alta = reportes.filter(r => {
+        const p = normalizar(r.PRIORIDAD);
+        return p === "ALTA" || p === "CRITICA" || p === "CRÍTICA";
+    }).length;
+    const resueltos = reportes.filter(r => normalizar(r.ESTADO) === "RESUELTO").length;
+
+    const set = (id,valor) => {
+        const el = document.getElementById(id);
+        if(el) el.textContent = valor;
+    };
+
+    set("kpiReportesTotal",total);
+    set("kpiReportesPendientes",pendientes);
+    set("kpiReportesAlta",alta);
+    set("kpiReportesResueltos",resueltos);
+}
+
+function renderizarReportes(reportes){
+    const tbody = document.getElementById("tablaReportes");
+    if(!tbody) return;
+
+    const contador = document.getElementById("contadorReportes");
+    if(contador) contador.textContent = `${reportes.length} reportes`;
+
+    if(!reportes.length){
+        tbody.innerHTML = `
+            <tr><td colspan="8"><div class="empty">Sin reportes registrados</div></td></tr>`;
+        return;
+    }
+
+    const ordenados = [...reportes].sort((a,b) => {
+        const fa = new Date(a.FECHA_HORA || 0).getTime() || 0;
+        const fb = new Date(b.FECHA_HORA || 0).getTime() || 0;
+        return fb-fa;
+    });
+
+    tbody.innerHTML = ordenados.map(r => `
+        <tr data-reporte="${escaparHTML(JSON.stringify({
+            id:r.ID_REPORTE || "",
+            tipo:r.TIPO_REPORTE || "",
+            origen:r.ORIGEN || "",
+            vehiculo:r.ID_VEHICULO || "",
+            chofer:r.ID_CHOFER || "",
+            descripcion:r.DESCRIPCION || "",
+            prioridad:r.PRIORIDAD || "",
+            estado:r.ESTADO || ""
+        }))}">
+            <td>${escaparHTML(formatearFecha(r.FECHA_HORA))}</td>
+            <td>
+                <span class="inspeccion-main">${escaparHTML(r.TIPO_REPORTE || "-")}</span>
+                <span class="inspeccion-sub">${escaparHTML(r.ID_REPORTE || "")}</span>
+            </td>
+            <td>${escaparHTML(r.ORIGEN || "-")}</td>
+            <td>${escaparHTML(r.ID_VEHICULO || "-")}</td>
+            <td>${escaparHTML(r.ID_CHOFER || "-")}</td>
+            <td style="white-space:normal;min-width:220px">${escaparHTML(r.DESCRIPCION || "-")}</td>
+            <td><span class="table-status ${clasePrioridadReporte(r.PRIORIDAD)}">${escaparHTML(r.PRIORIDAD || "MEDIA")}</span></td>
+            <td><span class="table-status ${claseEstadoReporte(r.ESTADO)}">${escaparHTML(r.ESTADO || "PENDIENTE")}</span></td>
+        </tr>
+    `).join("");
+}
+
+function filtrarReportes(){
+    const texto = normalizar(document.getElementById("filtroReportes")?.value || "");
+    const reportes = Array.isArray(estadoPanel.reportes) ? estadoPanel.reportes : [];
+    const filtrados = reportes.filter(r => {
+        const bolsa = normalizar([
+            r.ID_REPORTE,r.TIPO_REPORTE,r.ORIGEN,r.ID_VEHICULO,
+            r.ID_CHOFER,r.DESCRIPCION,r.PRIORIDAD,r.ESTADO,
+            r.ID_SERVICIO,r.ID_ASIGNACION,r.ID_VIAJE
+        ].join(" "));
+        return !texto || bolsa.includes(texto);
+    });
+    renderizarReportes(filtrados);
+}
+
+function sincronizarReporteAsignacion(){
+    const select = document.getElementById("reporteAsignacion");
+    const opcion = select?.selectedOptions?.[0];
+    const chofer = document.getElementById("reporteChofer");
+    const vehiculo = document.getElementById("reporteVehiculo");
+    const servicio = document.getElementById("reporteServicio");
+
+    if(chofer) chofer.value = opcion?.dataset?.chofer || "";
+    if(vehiculo) vehiculo.value = opcion?.dataset?.vehiculo || "";
+    if(servicio) servicio.value = opcion?.dataset?.servicio || "";
+}
+
+async function prepararFormularioReporte(){
+    const select = document.getElementById("reporteAsignacion");
+    if(!select) return;
+
+    const resultado = await leerBackend("asignaciones");
+    const asignaciones = resultado?.ok && Array.isArray(resultado.datos)
+        ? resultado.datos
+        : [];
+
+    estadoPanel.asignaciones = asignaciones;
+
+    select.innerHTML = '<option value="">Sin asignación</option>' +
+        asignaciones.map(a => {
+            const id = a.ID_ASIGNACION || "";
+            return `<option value="${escaparHTML(id)}"
+                data-chofer="${escaparHTML(a.ID_CHOFER || "")}"
+                data-vehiculo="${escaparHTML(a.ID_VEHICULO || "")}"
+                data-servicio="${escaparHTML(a.ID_SERVICIO || "")}">
+                ${escaparHTML(`${id} · ${a.ID_SERVICIO || "Sin servicio"} · ${a.ID_CHOFER || "Sin chofer"} · ${a.ID_VEHICULO || "Sin vehículo"}`)}
+            </option>`;
+        }).join("");
+}
+
+function abrirModalReporte(){
+    const modal = document.getElementById("modalReporte");
+    if(!modal) return;
+
+    document.getElementById("formReporte")?.reset();
+
+    const fecha = document.getElementById("reporteFechaHora");
+    if(fecha){
+        const ahora = new Date();
+        const local = new Date(ahora.getTime() - ahora.getTimezoneOffset()*60000);
+        fecha.value = local.toISOString().slice(0,16);
+    }
+
+    const origen = document.getElementById("reporteOrigen");
+    if(origen) origen.value = "PANEL";
+
+    const prioridad = document.getElementById("reportePrioridad");
+    if(prioridad) prioridad.value = "MEDIA";
+
+    const estado = document.getElementById("reporteEstado");
+    if(estado) estado.value = "PENDIENTE";
+
+    const mensaje = document.getElementById("reporteMensaje");
+    if(mensaje){
+        mensaje.style.display = "none";
+        mensaje.textContent = "";
+    }
+
+    modal.classList.add("open");
+    prepararFormularioReporte();
+}
+
+function cerrarModalReporte(event){
+    if(event && event.target && event.target.id !== "modalReporte") return;
+    document.getElementById("modalReporte")?.classList.remove("open");
+}
+
+function mostrarMensajeReporte(texto,tipo="info"){
+    const mensaje = document.getElementById("reporteMensaje");
+    if(!mensaje) return;
+    mensaje.style.display = "block";
+    mensaje.textContent = texto;
+    mensaje.style.color = tipo === "error"
+        ? "#f87171"
+        : tipo === "ok"
+            ? "#6ee7a0"
+            : "#91a0b5";
+}
+
+async function guardarReporte(event){
+    event.preventDefault();
+
+    const boton = document.getElementById("btnGuardarReporte");
+    if(boton){
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+    }
+
+    const datos = {
+        fechaHora: document.getElementById("reporteFechaHora")?.value,
+        origen: "PANEL",
+        tipoReporte: document.getElementById("reporteTipo")?.value,
+        idServicio: document.getElementById("reporteServicio")?.value,
+        idAsignacion: document.getElementById("reporteAsignacion")?.value,
+        idViaje: document.getElementById("reporteViaje")?.value.trim(),
+        idVehiculo: document.getElementById("reporteVehiculo")?.value,
+        idChofer: document.getElementById("reporteChofer")?.value,
+        descripcion: document.getElementById("reporteDescripcion")?.value.trim(),
+        prioridad: document.getElementById("reportePrioridad")?.value,
+        estado: document.getElementById("reporteEstado")?.value,
+        idMantenimiento: document.getElementById("reporteMantenimiento")?.value.trim(),
+        evidenciaId: document.getElementById("reporteEvidencia")?.value.trim(),
+        observaciones: document.getElementById("reporteObservaciones")?.value.trim()
+    };
+
+    if(!datos.tipoReporte){
+        mostrarMensajeReporte("Seleccioná el tipo de reporte.","error");
+        if(boton){boton.disabled=false;boton.textContent="Guardar reporte";}
+        return;
+    }
+
+    if(!datos.descripcion){
+        mostrarMensajeReporte("La descripción es obligatoria.","error");
+        if(boton){boton.disabled=false;boton.textContent="Guardar reporte";}
+        return;
+    }
+
+    mostrarMensajeReporte("Guardando reporte...","info");
+
+    const resultado = await llamarBackend("registrarReporte",datos);
+
+    if(!resultado?.ok){
+        mostrarMensajeReporte(
+            resultado?.error || "No se pudo guardar el reporte.",
+            "error"
+        );
+        if(boton){boton.disabled=false;boton.textContent="Guardar reporte";}
+        return;
+    }
+
+    mostrarMensajeReporte("Reporte registrado correctamente.","ok");
+
+    await cargarReportes();
+
+    setTimeout(() => {
+        cerrarModalReporte();
+        if(boton){boton.disabled=false;boton.textContent="Guardar reporte";}
+    },700);
+}
+
+
+/* =========================================================
    ACTUALIZAR TODO
    ========================================================= */
 
@@ -7502,6 +7837,7 @@ async function actualizarDatos(){
             cargarPuntosRuta(),
             cargarViajes(),
             cargarInspecciones(),
+            cargarReportes(),
             cargarEventos()
         ]);
 
@@ -8540,6 +8876,127 @@ document.addEventListener(
 
 </div>
 
+
+
+<!-- ======================================================
+     MODAL NUEVO REPORTE
+     ====================================================== -->
+<div id="modalReporte" class="modal-overlay" onclick="cerrarModalReporte(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title">Nuevo reporte</div>
+                <div class="panel-subtitle">Registro de incidente o novedad</div>
+            </div>
+            <button class="modal-close" type="button" onclick="cerrarModalReporte()">×</button>
+        </div>
+
+        <form id="formReporte" onsubmit="guardarReporte(event)">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Fecha y hora</label>
+                        <input id="reporteFechaHora" class="form-control" type="datetime-local">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Origen</label>
+                        <input id="reporteOrigen" class="form-control" value="PANEL" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tipo de reporte *</label>
+                        <select id="reporteTipo" class="form-control" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="AVERIA">AVERÍA</option>
+                            <option value="ACCIDENTE">ACCIDENTE</option>
+                            <option value="NOVEDAD">NOVEDAD</option>
+                            <option value="INCUMPLIMIENTO">INCUMPLIMIENTO</option>
+                            <option value="DAÑO">DAÑO</option>
+                            <option value="FALTA">FALTA</option>
+                            <option value="OTRO">OTRO</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Prioridad</label>
+                        <select id="reportePrioridad" class="form-control">
+                            <option value="BAJA">BAJA</option>
+                            <option value="MEDIA" selected>MEDIA</option>
+                            <option value="ALTA">ALTA</option>
+                            <option value="CRITICA">CRÍTICA</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">Asignación</label>
+                        <select id="reporteAsignacion" class="form-control" onchange="sincronizarReporteAsignacion()">
+                            <option value="">Sin asignación</option>
+                        </select>
+                        <div class="inspeccion-form-note">La asignación permite vincular automáticamente servicio, vehículo y chofer.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Servicio</label>
+                        <input id="reporteServicio" class="form-control" readonly placeholder="Se completa con la asignación">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Viaje</label>
+                        <input id="reporteViaje" class="form-control" placeholder="Opcional">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Vehículo</label>
+                        <input id="reporteVehiculo" class="form-control" readonly placeholder="Se completa con la asignación">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Chofer</label>
+                        <input id="reporteChofer" class="form-control" readonly placeholder="Se completa con la asignación">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Estado</label>
+                        <select id="reporteEstado" class="form-control">
+                            <option value="PENDIENTE" selected>PENDIENTE</option>
+                            <option value="EN ANALISIS">EN ANÁLISIS</option>
+                            <option value="RESUELTO">RESUELTO</option>
+                            <option value="CANCELADO">CANCELADO</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">ID mantenimiento</label>
+                        <input id="reporteMantenimiento" class="form-control" placeholder="Opcional">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">ID evidencia</label>
+                        <input id="reporteEvidencia" class="form-control" placeholder="Opcional">
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">Descripción *</label>
+                        <textarea id="reporteDescripcion" class="form-control" required placeholder="Describí el incidente o novedad..."></textarea>
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">Observaciones</label>
+                        <textarea id="reporteObservaciones" class="form-control" placeholder="Información adicional, medidas tomadas, referencias..."></textarea>
+                    </div>
+                </div>
+
+                <div id="reporteMensaje" style="display:none;margin-top:15px;font-size:11px;line-height:1.5"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModalReporte()">Cancelar</button>
+                <button id="btnGuardarReporte" type="submit" class="btn btn-primary">Guardar reporte</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 </body>
 </html>
