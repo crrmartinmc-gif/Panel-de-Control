@@ -1875,6 +1875,100 @@ textarea.form-control{
     }
 }
 
+
+
+/* =========================================================
+   USUARIOS
+   ========================================================= */
+.usuarios-kpis{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+}
+
+.usuarios-panel{
+    overflow:hidden;
+}
+
+.usuarios-filtros{
+    display:grid;
+    grid-template-columns:minmax(220px,1.7fr) repeat(3,minmax(150px,1fr));
+    gap:10px;
+    padding:0 0 14px;
+}
+
+.usuarios-table-wrap{
+    max-height:560px;
+    overflow:auto;
+}
+
+.usuarios-table th,
+.usuarios-table td{
+    white-space:nowrap;
+}
+
+.usuarios-table td:nth-child(2){
+    max-width:210px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.usuarios-security-note{
+    margin-top:14px;
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:14px 16px;
+    border:1px solid rgba(80,145,210,.18);
+    background:rgba(20,39,67,.48);
+    border-radius:10px;
+    color:#9aa9bd;
+    font-size:11px;
+    line-height:1.5;
+}
+
+.usuarios-security-note strong{
+    display:block;
+    color:#dce7f5;
+    margin-bottom:2px;
+}
+
+.usuarios-security-note span{
+    display:block;
+}
+
+.usuarios-security-icon{
+    font-size:18px;
+    line-height:1;
+}
+
+.usuarios-password-protected{
+    margin-top:18px;
+    padding:11px 13px;
+    border-radius:8px;
+    border:1px solid rgba(0,200,120,.18);
+    background:rgba(0,200,120,.05);
+    color:#8dddb8;
+    font-size:11px;
+}
+
+@media(max-width:900px){
+    .usuarios-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .usuarios-filtros{grid-template-columns:1fr 1fr;}
+}
+
+@media(max-width:600px){
+    .usuarios-kpis{grid-template-columns:1fr 1fr;}
+    .usuarios-filtros{grid-template-columns:1fr;}
+}
+
+.usuario-status-admin{color:#f87171;background:rgba(239,68,68,.12)}
+.usuario-status-supervisor{color:#fbbf24;background:rgba(245,158,11,.12)}
+.usuario-status-chofer{color:#60a5fa;background:rgba(59,130,246,.12)}
+.usuario-status-panel{color:#a8b3c2;background:rgba(148,163,184,.12)}
+.usuario-status-app{color:#60a5fa;background:rgba(59,130,246,.12)}
+.usuario-status-choferes{color:#6ee7a0;background:rgba(34,197,94,.12)}
+.usuario-status-activo{color:#6ee7a0;background:rgba(34,197,94,.12)}
+.usuario-status-inactivo{color:#f87171;background:rgba(239,68,68,.12)}
+
 </style>
 </head>
 
@@ -3699,23 +3793,123 @@ textarea.form-control{
     <div class="section-head">
         <div>
             <h2>Usuarios</h2>
-            <p>Usuarios, roles y aplicaciones</p>
+            <p>Administración de accesos, roles y aplicaciones</p>
         </div>
-        <button class="btn btn-primary">+ Nuevo usuario</button>
+        <div class="section-actions">
+            <button class="btn btn-secondary" type="button" onclick="cargarUsuarios()">↻ Actualizar</button>
+        </div>
     </div>
 
-    <div class="panel">
-        <div class="module-placeholder">
-            <div class="placeholder-icon">👤</div>
-            <div class="placeholder-title">Usuarios y permisos</div>
-            <div class="placeholder-text">
-                USUARIOS será utilizado para autenticación,
-                roles y permisos.
+    <div class="kpi-grid usuarios-kpis">
+        <div class="kpi-card">
+            <div class="kpi-label">TOTAL</div>
+            <div id="usuariosTotal" class="kpi-value">0</div>
+            <div class="kpi-meta">Usuarios registrados</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">ACTIVOS</div>
+            <div id="usuariosActivos" class="kpi-value">0</div>
+            <div class="kpi-meta">Con acceso habilitado</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">ADMIN</div>
+            <div id="usuariosAdmin" class="kpi-value">0</div>
+            <div class="kpi-meta">Rol administrativo</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">SUPERVISORES</div>
+            <div id="usuariosSupervisor" class="kpi-value">0</div>
+            <div class="kpi-meta">Rol de supervisión</div>
+        </div>
+    </div>
+
+    <div class="panel usuarios-panel">
+        <div class="panel-head">
+            <div>
+                <div class="panel-title">Directorio de usuarios</div>
+                <div class="panel-subtitle">La contraseña nunca se muestra en el Panel.</div>
             </div>
+            <span id="contadorUsuarios" class="inspeccion-count">0 usuarios</span>
+        </div>
+
+        <div class="usuarios-filtros">
+            <input id="buscarUsuarios" class="form-control" placeholder="Buscar usuario, nombre o ID..." oninput="filtrarUsuarios()">
+            <select id="filtroUsuarioRol" class="form-control" onchange="filtrarUsuarios()">
+                <option value="">Todos los roles</option>
+                <option value="ADMIN">ADMIN</option>
+                <option value="SUPERVISOR">SUPERVISOR</option>
+                <option value="CHOFER">CHOFER</option>
+            </select>
+            <select id="filtroUsuarioApp" class="form-control" onchange="filtrarUsuarios()">
+                <option value="">Todas las aplicaciones</option>
+                <option value="PANEL">PANEL</option>
+                <option value="DIA_VERDE">DIA_VERDE</option>
+                <option value="CHOFERES">CHOFERES</option>
+            </select>
+            <select id="filtroUsuarioEstado" class="form-control" onchange="filtrarUsuarios()">
+                <option value="">Todos los estados</option>
+                <option value="ACTIVO">ACTIVO</option>
+                <option value="INACTIVO">INACTIVO</option>
+            </select>
+        </div>
+
+        <div class="inspeccion-table-wrap usuarios-table-wrap">
+            <table class="inspeccion-table usuarios-table">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Nombre</th>
+                        <th>Rol</th>
+                        <th>Aplicación</th>
+                        <th>Chofer vinculado</th>
+                        <th>Estado</th>
+                        <th>Alta</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaUsuarios">
+                    <tr><td colspan="8"><div class="empty">Cargando usuarios...</div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="usuarios-security-note">
+        <div class="usuarios-security-icon">🔐</div>
+        <div>
+            <strong>Seguridad de credenciales</strong>
+            <span>El campo CONTRASENA se mantiene fuera de la interfaz. El módulo utiliza los datos del directorio para administración y auditoría, sin exponer credenciales.</span>
         </div>
     </div>
 </div>
 
+
+<div id="modalDetalleUsuario" class="modal-overlay" onclick="cerrarDetalleUsuario(event)">
+    <div class="modal" style="width:min(760px,100%)" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title">Detalle del usuario</div>
+                <div style="font-size:10px;color:#7f8da3;margin-top:3px">Información de acceso y asociación operativa</div>
+            </div>
+            <button class="modal-close" type="button" onclick="cerrarDetalleUsuario()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="evento-detail-grid">
+                <div class="evento-detail-item"><div class="evento-detail-label">ID usuario</div><div id="detalleUsuarioId" class="evento-detail-value">-</div></div>
+                <div class="evento-detail-item"><div class="evento-detail-label">Usuario</div><div id="detalleUsuarioLogin" class="evento-detail-value">-</div></div>
+                <div class="evento-detail-item"><div class="evento-detail-label">Nombre</div><div id="detalleUsuarioNombre" class="evento-detail-value">-</div></div>
+                <div class="evento-detail-item"><div class="evento-detail-label">Rol</div><div id="detalleUsuarioRol" class="evento-detail-value">-</div></div>
+                <div class="evento-detail-item"><div class="evento-detail-label">Aplicación</div><div id="detalleUsuarioApp" class="evento-detail-value">-</div></div>
+                <div class="evento-detail-item"><div class="evento-detail-label">ID chofer</div><div id="detalleUsuarioChofer" class="evento-detail-value">-</div></div>
+                <div class="evento-detail-item"><div class="evento-detail-label">Estado</div><div id="detalleUsuarioEstado" class="evento-detail-value">-</div></div>
+                <div class="evento-detail-item"><div class="evento-detail-label">Fecha de alta</div><div id="detalleUsuarioAlta" class="evento-detail-value">-</div></div>
+            </div>
+            <div class="usuarios-password-protected">
+                🔒 Credencial protegida — la contraseña no se visualiza ni se devuelve a la interfaz.
+            </div>
+        </div>
+    </div>
+</div>
 
 <div id="configuracion" class="page">
     <div class="section-head">
@@ -3983,6 +4177,10 @@ function mostrarPagina(id, boton){
 
     if(id === "mantenimiento"){
         cargarMantenimiento();
+    }
+
+    if(id === "usuarios"){
+        cargarUsuarios();
     }
 }
 
@@ -9742,7 +9940,8 @@ async function actualizarDatos(){
             cargarInspecciones(),
             cargarReportes(),
             cargarMantenimiento(),
-            cargarEventos()
+            cargarEventos(),
+            cargarUsuarios()
         ]);
 
         estadoPanel.ultimaActualizacion =
@@ -9779,6 +9978,149 @@ document.addEventListener(
 
     }
 );
+
+
+
+/* =========================================================
+   USUARIOS
+   ========================================================= */
+
+let usuariosCache = [];
+let usuariosFiltrados = [];
+
+function normalizarTextoUsuario(valor){
+    return String(valor ?? "").trim().toUpperCase();
+}
+
+function cargarUsuarios(){
+    const tbody = document.getElementById("tablaUsuarios");
+    if(tbody){
+        tbody.innerHTML = '<tr><td colspan="8"><div class="empty">Cargando usuarios...</div></td></tr>';
+    }
+
+    leerBackend("usuarios").then(resultado => {
+        if(!resultado || !resultado.ok){
+            usuariosCache = [];
+            usuariosFiltrados = [];
+            actualizarKPIsUsuarios();
+            if(tbody){
+                tbody.innerHTML = '<tr><td colspan="8"><div class="empty">No se pudieron cargar los usuarios.</div></td></tr>';
+            }
+            return;
+        }
+
+        const datos = resultado.datos;
+        usuariosCache = Array.isArray(datos)
+            ? datos
+            : Array.isArray(datos?.usuarios)
+                ? datos.usuarios
+                : [];
+
+        actualizarKPIsUsuarios();
+        filtrarUsuarios();
+    });
+}
+
+function actualizarKPIsUsuarios(){
+    const total = usuariosCache.length;
+    const activos = usuariosCache.filter(u => normalizarTextoUsuario(u.ESTADO) === "ACTIVO").length;
+    const admin = usuariosCache.filter(u => normalizarTextoUsuario(u.ROL) === "ADMIN").length;
+    const supervisor = usuariosCache.filter(u => normalizarTextoUsuario(u.ROL) === "SUPERVISOR").length;
+
+    const set = (id,valor) => {
+        const el=document.getElementById(id);
+        if(el) el.textContent=valor;
+    };
+
+    set("usuariosTotal",total);
+    set("usuariosActivos",activos);
+    set("usuariosAdmin",admin);
+    set("usuariosSupervisor",supervisor);
+}
+
+function filtrarUsuarios(){
+    const q = normalizarTextoUsuario(document.getElementById("buscarUsuarios")?.value);
+    const rol = normalizarTextoUsuario(document.getElementById("filtroUsuarioRol")?.value);
+    const app = normalizarTextoUsuario(document.getElementById("filtroUsuarioApp")?.value);
+    const estado = normalizarTextoUsuario(document.getElementById("filtroUsuarioEstado")?.value);
+
+    usuariosFiltrados = usuariosCache.filter(u => {
+        const texto = [u.ID_USUARIO,u.USUARIO,u.NOMBRE,u.ID_CHOFER]
+            .map(normalizarTextoUsuario)
+            .join(" ");
+
+        return (!q || texto.includes(q)) &&
+               (!rol || normalizarTextoUsuario(u.ROL) === rol) &&
+               (!app || normalizarTextoUsuario(u.APLICACION) === app) &&
+               (!estado || normalizarTextoUsuario(u.ESTADO) === estado);
+    });
+
+    renderUsuarios();
+}
+
+function renderUsuarios(){
+    const tbody=document.getElementById("tablaUsuarios");
+    const contador=document.getElementById("contadorUsuarios");
+    if(!tbody) return;
+
+    if(contador){
+        contador.textContent = usuariosFiltrados.length +
+            (usuariosFiltrados.length === 1 ? " usuario" : " usuarios");
+    }
+
+    if(!usuariosFiltrados.length){
+        tbody.innerHTML='<tr><td colspan="8"><div class="empty">No hay usuarios que coincidan con los filtros.</div></td></tr>';
+        return;
+    }
+
+    tbody.innerHTML=usuariosFiltrados.map((u,index)=>{
+        const estado=normalizarTextoUsuario(u.ESTADO);
+        const rol=normalizarTextoUsuario(u.ROL);
+        const app=normalizarTextoUsuario(u.APLICACION);
+        const estadoClass=estado === "ACTIVO" ? "usuario-status-activo" : "usuario-status-inactivo";
+        const rolClass=rol === "ADMIN" ? "usuario-status-admin" : rol === "SUPERVISOR" ? "usuario-status-supervisor" : "usuario-status-chofer";
+        const appClass=app === "DIA_VERDE" ? "usuario-status-app" : app === "CHOFERES" ? "usuario-status-choferes" : "usuario-status-panel";
+
+        return `<tr>
+            <td><strong>${escaparHTML(u.USUARIO || "-")}</strong></td>
+            <td>${escaparHTML(u.NOMBRE || "-")}</td>
+            <td><span class="status-pill ${rolClass}">${escaparHTML(rol || "-")}</span></td>
+            <td><span class="status-pill ${appClass}">${escaparHTML(app || "-")}</span></td>
+            <td>${escaparHTML(u.ID_CHOFER || "-")}</td>
+            <td><span class="status-pill ${estadoClass}">${escaparHTML(estado || "-")}</span></td>
+            <td>${escaparHTML(formatearFecha(u.FECHA_ALTA))}</td>
+            <td><button class="btn btn-secondary btn-sm" type="button" onclick="verUsuario(${index})">Ver</button></td>
+        </tr>`;
+    }).join("");
+}
+
+function verUsuario(index){
+    const u=usuariosFiltrados[index];
+    if(!u) return;
+
+    const set=(id,valor)=>{
+        const el=document.getElementById(id);
+        if(el) el.textContent=valor || "-";
+    };
+
+    set("detalleUsuarioId",u.ID_USUARIO);
+    set("detalleUsuarioLogin",u.USUARIO);
+    set("detalleUsuarioNombre",u.NOMBRE);
+    set("detalleUsuarioRol",u.ROL);
+    set("detalleUsuarioApp",u.APLICACION);
+    set("detalleUsuarioChofer",u.ID_CHOFER);
+    set("detalleUsuarioEstado",u.ESTADO);
+    set("detalleUsuarioAlta",formatearFecha(u.FECHA_ALTA));
+
+    const modal=document.getElementById("modalDetalleUsuario");
+    if(modal) modal.classList.add("active");
+}
+
+function cerrarDetalleUsuario(event){
+    if(event && event.target !== event.currentTarget) return;
+    const modal=document.getElementById("modalDetalleUsuario");
+    if(modal) modal.classList.remove("active");
+}
 
 </script>
 
