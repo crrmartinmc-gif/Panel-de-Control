@@ -2433,23 +2433,66 @@ async function probarConexion(){
     }
 
 
-    const resultado =
-        await llamarBackend("ping");
+    try{
+
+        const respuesta = await fetch(
+            BACKEND_URL + "?action=ping",
+            {
+                method:"GET",
+                cache:"no-store"
+            }
+        );
 
 
-    if(resultado?.ok){
+        if(!respuesta.ok){
+            throw new Error(
+                "HTTP " + respuesta.status
+            );
+        }
 
-        dot.classList.add("online");
 
-        texto.textContent =
-            "Backend conectado";
+        const resultado =
+            await respuesta.json();
 
-    }else{
+
+        console.log(
+            "Respuesta Backend Maestro:",
+            resultado
+        );
+
+
+        if(resultado && resultado.ok){
+
+            dot.classList.add("online");
+
+            texto.textContent =
+                "Backend conectado";
+
+        }else{
+
+            dot.classList.remove("online");
+
+            texto.textContent =
+                "Sin conexión";
+
+            console.warn(
+                "Backend respondió pero no confirmó OK:",
+                resultado
+            );
+        }
+
+
+    }catch(error){
 
         dot.classList.remove("online");
 
         texto.textContent =
             "Sin conexión";
+
+        console.error(
+            "Error conectando Backend Maestro:",
+            error
+        );
 
     }
 
