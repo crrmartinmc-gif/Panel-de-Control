@@ -1142,6 +1142,72 @@ textarea.form-control{
     }
 }
 
+
+/* =========================================================
+   MÓDULO CHOFERES
+   ========================================================= */
+
+.chofer-toolbar{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    flex-wrap:wrap;
+}
+
+.chofer-count{
+    font-size:10px;
+    color:var(--muted);
+}
+
+.chofer-table-wrap{
+    overflow-x:auto;
+}
+
+.chofer-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.chofer-table th{
+    text-align:left;
+    padding:11px 10px;
+    font-size:9px;
+    color:#718198;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    border-bottom:1px solid var(--border);
+}
+
+.chofer-table td{
+    padding:11px 10px;
+    font-size:10px;
+    border-bottom:1px solid rgba(255,255,255,.045);
+    color:#dce5ef;
+}
+
+.chofer-table tr:hover td{
+    background:rgba(255,255,255,.018);
+}
+
+.chofer-search{
+    width:260px;
+}
+
+.status-active{
+    color:#6ee7a0;
+    background:rgba(34,197,94,.12);
+}
+
+.status-inactive{
+    color:#f87171;
+    background:rgba(239,68,68,.12);
+}
+
+/* Modal compartido para Choferes */
+#modalChofer .modal{
+    width:min(620px,100%);
+}
+
 </style>
 </head>
 
@@ -2105,25 +2171,85 @@ textarea.form-control{
      ====================================================== -->
 
 <div id="choferes" class="page">
+
     <div class="section-head">
+
         <div>
             <h2>Choferes</h2>
             <p>Administración de conductores</p>
         </div>
-        <button class="btn btn-primary">+ Nuevo chofer</button>
+
+        <div class="chofer-toolbar">
+
+            <input
+                id="filtroChofer"
+                class="filter chofer-search"
+                placeholder="Buscar nombre, DNI o legajo..."
+                oninput="filtrarChoferes()"
+            >
+
+            <button
+                class="btn btn-primary"
+                onclick="abrirModalChofer()">
+                + Nuevo chofer
+            </button>
+
+        </div>
+
     </div>
 
     <div class="panel">
-        <div class="module-placeholder">
-            <div class="placeholder-icon">👤</div>
-            <div class="placeholder-title">Módulo de Choferes</div>
-            <div class="placeholder-text">
-                Este módulo será conectado a la tabla CHOFERES
-                del Backend Maestro.
+
+        <div class="panel-head">
+
+            <div>
+                <div class="panel-title">Conductores registrados</div>
+                <div class="panel-subtitle">
+                    Datos de la tabla CHOFERES
+                </div>
             </div>
+
+            <span id="contadorChoferes" class="chofer-count">
+                0 choferes
+            </span>
+
         </div>
+
+        <div class="chofer-table-wrap">
+
+            <table class="chofer-table">
+
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>DNI</th>
+                        <th>Teléfono</th>
+                        <th>Legajo</th>
+                        <th>Estado</th>
+                        <th>Observaciones</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tablaChoferes">
+
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty">
+                                Cargando choferes...
+                            </div>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
     </div>
+
 </div>
+
 
 
 <div id="servicios" class="page">
@@ -2694,6 +2820,7 @@ let estadoPanel = {
     vehiculos:[],
     servicios:[],
     eventos:[],
+    choferes:[],
     ultimaActualizacion:null
 };
 
@@ -3768,6 +3895,394 @@ function filtrarVehiculos(){
 }
 
 
+
+/* =========================================================
+   MÓDULO CHOFERES
+   ========================================================= */
+
+async function cargarChoferes(){
+
+    const resultado =
+        await leerBackend("choferes");
+
+    if(!resultado?.ok){
+        return [];
+    }
+
+    const choferes =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.choferes = choferes;
+
+    renderizarChoferes(choferes);
+
+    return choferes;
+}
+
+
+function claseEstadoChofer(estado){
+
+    return normalizar(estado) === "ACTIVO"
+        ? "status-active"
+        : "status-inactive";
+}
+
+
+function renderizarChoferes(choferes){
+
+    const tbody =
+        document.getElementById("tablaChoferes");
+
+    if(!tbody){
+        return;
+    }
+
+    const contador =
+        document.getElementById("contadorChoferes");
+
+    if(contador){
+
+        contador.textContent =
+            `${Array.isArray(choferes) ? choferes.length : 0} choferes`;
+    }
+
+    if(!Array.isArray(choferes) || choferes.length === 0){
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6">
+                    <div class="empty">
+                        Sin choferes registrados en el Backend Maestro
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    tbody.innerHTML =
+        choferes.map(chofer => {
+
+            const estado =
+                chofer.ESTADO || "SIN ESTADO";
+
+            const clase =
+                claseEstadoChofer(estado);
+
+            return `
+                <tr>
+
+                    <td>
+                        <strong>
+                            ${escaparHTML(
+                                chofer.NOMBRE || "-"
+                            )}
+                        </strong>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            chofer.DNI || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            chofer.TELEFONO || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            chofer.LEGAJO || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        <span class="table-status ${clase}">
+                            ${escaparHTML(
+                                estado
+                            )}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            chofer.OBSERVACIONES || "-"
+                        )}
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+}
+
+
+function filtrarChoferes(){
+
+    const texto =
+        normalizar(
+            document.getElementById("filtroChofer")?.value
+        );
+
+    const filtrados =
+        (estadoPanel.choferes || [])
+            .filter(chofer => {
+
+                const contenido = [
+                    chofer.NOMBRE,
+                    chofer.DNI,
+                    chofer.TELEFONO,
+                    chofer.LEGAJO,
+                    chofer.ESTADO
+                ]
+                .map(normalizar)
+                .join(" ");
+
+                return !texto ||
+                    contenido.includes(texto);
+            });
+
+    renderizarChoferes(filtrados);
+}
+
+
+function abrirModalChofer(){
+
+    const modal =
+        document.getElementById("modalChofer");
+
+    if(!modal){
+        return;
+    }
+
+    const form =
+        document.getElementById("formChofer");
+
+    if(form){
+        form.reset();
+    }
+
+    const estado =
+        document.getElementById("choferEstado");
+
+    if(estado){
+        estado.value = "ACTIVO";
+    }
+
+    const mensaje =
+        document.getElementById("choferMensaje");
+
+    if(mensaje){
+        mensaje.style.display = "none";
+        mensaje.textContent = "";
+    }
+
+    modal.classList.add("open");
+
+    setTimeout(() => {
+
+        const nombre =
+            document.getElementById("choferNombre");
+
+        if(nombre){
+            nombre.focus();
+        }
+
+    },50);
+}
+
+
+function cerrarModalChofer(event){
+
+    if(event &&
+       event.target &&
+       event.target.id !== "modalChofer"){
+
+        return;
+    }
+
+    const modal =
+        document.getElementById("modalChofer");
+
+    if(modal){
+        modal.classList.remove("open");
+    }
+}
+
+
+function mostrarMensajeChofer(texto,tipo="info"){
+
+    const mensaje =
+        document.getElementById("choferMensaje");
+
+    if(!mensaje){
+        return;
+    }
+
+    mensaje.style.display = "block";
+    mensaje.textContent = texto;
+
+    if(tipo === "error"){
+        mensaje.style.color = "#f87171";
+    }else if(tipo === "ok"){
+        mensaje.style.color = "#6ee7a0";
+    }else{
+        mensaje.style.color = "#91a0b5";
+    }
+}
+
+
+async function guardarChofer(event){
+
+    event.preventDefault();
+
+    const boton =
+        document.getElementById("btnGuardarChofer");
+
+    const datos = {
+
+        nombre:
+            document.getElementById("choferNombre")
+                ?.value.trim(),
+
+        dni:
+            document.getElementById("choferDni")
+                ?.value.trim(),
+
+        telefono:
+            document.getElementById("choferTelefono")
+                ?.value.trim(),
+
+        legajo:
+            document.getElementById("choferLegajo")
+                ?.value.trim(),
+
+        estado:
+            document.getElementById("choferEstado")
+                ?.value || "ACTIVO",
+
+        observaciones:
+            document.getElementById("choferObservaciones")
+                ?.value.trim()
+    };
+
+    if(!datos.nombre){
+
+        mostrarMensajeChofer(
+            "El nombre es obligatorio.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(!datos.dni){
+
+        mostrarMensajeChofer(
+            "El DNI es obligatorio.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(boton){
+
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+    }
+
+    mostrarMensajeChofer(
+        "Registrando chofer en el Backend Maestro..."
+    );
+
+    try{
+
+        /*
+           El Backend Maestro espera los campos directamente
+           junto a "accion".
+        */
+        const respuesta =
+            await fetch(
+                BACKEND_URL,
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        accion:"crearChofer",
+                        ...datos
+                    })
+                }
+            );
+
+        if(!respuesta.ok){
+
+            throw new Error(
+                "HTTP " + respuesta.status
+            );
+        }
+
+        const resultado =
+            await respuesta.json();
+
+        if(!resultado?.ok){
+
+            throw new Error(
+                resultado?.error ||
+                "No se pudo crear el chofer."
+            );
+        }
+
+        mostrarMensajeChofer(
+            "Chofer creado correctamente.",
+            "ok"
+        );
+
+        if(boton){
+
+            boton.disabled = false;
+            boton.textContent = "Guardar chofer";
+        }
+
+        cerrarModalChofer();
+
+        Promise.allSettled([
+            cargarResumenPanel(),
+            cargarChoferes()
+        ]).then(() => {
+
+            filtrarChoferes();
+
+        });
+
+    }catch(error){
+
+        console.error(
+            "Error creando chofer:",
+            error
+        );
+
+        mostrarMensajeChofer(
+            "No se pudo guardar: " +
+            error.message,
+            "error"
+        );
+
+    }finally{
+
+        if(boton){
+
+            boton.disabled = false;
+            boton.textContent = "Guardar chofer";
+        }
+    }
+}
+
+
 /* =========================================================
    ACTUALIZAR TODO
    ========================================================= */
@@ -3803,6 +4318,7 @@ async function actualizarDatos(){
         await Promise.all([
             cargarResumenPanel(),
             cargarVehiculos(),
+            cargarChoferes(),
             cargarServicios(),
             cargarEventos()
         ]);
@@ -3843,5 +4359,159 @@ document.addEventListener(
 );
 
 </script>
+
+
+
+<!-- ======================================================
+     MODAL NUEVO CHOFER
+     ====================================================== -->
+
+<div
+    id="modalChofer"
+    class="modal-overlay"
+    onclick="cerrarModalChofer(event)">
+
+    <div
+        class="modal"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-header">
+
+            <div>
+                <div class="modal-title">Nuevo chofer</div>
+                <div class="panel-subtitle">
+                    Alta de conductor en el Backend Maestro
+                </div>
+            </div>
+
+            <button
+                class="modal-close"
+                type="button"
+                onclick="cerrarModalChofer()">
+                ×
+            </button>
+
+        </div>
+
+        <form
+            id="formChofer"
+            onsubmit="guardarChofer(event)">
+
+            <div class="modal-body">
+
+                <div class="form-grid">
+
+                    <div class="form-group full">
+                        <label class="form-label">
+                            Nombre completo *
+                        </label>
+
+                        <input
+                            id="choferNombre"
+                            class="form-control"
+                            required
+                            placeholder="Nombre y apellido">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            DNI *
+                        </label>
+
+                        <input
+                            id="choferDni"
+                            class="form-control"
+                            required
+                            inputmode="numeric"
+                            placeholder="DNI">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Teléfono
+                        </label>
+
+                        <input
+                            id="choferTelefono"
+                            class="form-control"
+                            placeholder="Teléfono">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Legajo
+                        </label>
+
+                        <input
+                            id="choferLegajo"
+                            class="form-control"
+                            placeholder="Legajo municipal">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Estado
+                        </label>
+
+                        <select
+                            id="choferEstado"
+                            class="form-control">
+
+                            <option value="ACTIVO">
+                                ACTIVO
+                            </option>
+
+                            <option value="INACTIVO">
+                                INACTIVO
+                            </option>
+
+                        </select>
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">
+                            Observaciones
+                        </label>
+
+                        <textarea
+                            id="choferObservaciones"
+                            class="form-control"
+                            placeholder="Observaciones del conductor"></textarea>
+                    </div>
+
+                </div>
+
+                <div
+                    id="choferMensaje"
+                    style="display:none;margin-top:15px;font-size:11px;line-height:1.5">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="cerrarModalChofer()">
+                    Cancelar
+                </button>
+
+                <button
+                    id="btnGuardarChofer"
+                    type="submit"
+                    class="btn btn-primary">
+                    Guardar chofer
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
 </body>
 </html>
