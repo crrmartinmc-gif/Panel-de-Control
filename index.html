@@ -972,6 +972,46 @@ tr:hover td{
     }
 }
 
+
+/* =========================================================
+   DATOS EN VIVO
+   ========================================================= */
+
+.data-loading{
+    opacity:.65;
+    transition:opacity .2s;
+}
+
+.table-status{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:5px 8px;
+    border-radius:20px;
+    font-size:9px;
+    font-weight:800;
+}
+
+.table-status.online{
+    color:#6ee7a0;
+    background:rgba(34,197,94,.12);
+}
+
+.table-status.warning{
+    color:#fbbf24;
+    background:rgba(245,158,11,.12);
+}
+
+.table-status.danger{
+    color:#f87171;
+    background:rgba(239,68,68,.12);
+}
+
+.refreshing{
+    pointer-events:none;
+    opacity:.75;
+}
+
 </style>
 </head>
 
@@ -1711,9 +1751,7 @@ tr:hover td{
 
                     </div>
 
-                    <span class="status-badge badge-yellow">
-                        0
-                    </span>
+                    <span class="status-badge badge-yellow"><span id="serviciosProgramados">0</span></span>
 
                 </div>
 
@@ -1732,9 +1770,7 @@ tr:hover td{
 
                     </div>
 
-                    <span class="status-badge badge-blue">
-                        0
-                    </span>
+                    <span class="status-badge badge-blue"><span id="serviciosCurso">0</span></span>
 
                 </div>
 
@@ -1753,9 +1789,7 @@ tr:hover td{
 
                     </div>
 
-                    <span class="status-badge badge-green">
-                        0
-                    </span>
+                    <span class="status-badge badge-green"><span id="serviciosFinalizados">0</span></span>
 
                 </div>
 
@@ -2206,18 +2240,6 @@ tr:hover td{
    CONFIGURACIÓN
    ========================================================= */
 
-/*
-   IMPORTANTE:
-
-   NO colocar todavía la URL del backend viejo.
-
-   Cuando terminemos la API del Backend Maestro,
-   colocaremos aquí la nueva URL.
-*/
-
-const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwyYCijQU4B2Ih8HrMgNbg_Zk3KvCirdDZHVtH_uWS4L3o7_pKql_4SrIothZvJA-TD/exec";
-
-
 /* =========================================================
    NAVEGACIÓN
    ========================================================= */
@@ -2356,43 +2378,115 @@ function actualizarTitulo(id){
 
 
 /* =========================================================
-   BACKEND
+   BACKEND MAESTRO
    ========================================================= */
 
-async function llamarBackend(accion,datos={}){
+/*
+   El Panel de Control consume el Backend Maestro.
+   IMPORTANTE:
+   - Las lecturas usan GET para evitar preflight CORS innecesario.
+   - El backend recibe el parámetro "accion" (no "action").
+   - Las respuestas vienen dentro de resultado.datos.
+   - El GPS se consume únicamente desde los datos generados por Día Verde.
+*/
+
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwyYCijQU4B2Ih8HrMgNbg_Zk3KvCirdDZHVtH_uWS4L3o7_pKql_4SrIothZvJA-TD/exec";
+
+let estadoPanel = {
+    conectado:false,
+    resumen:null,
+    vehiculos:[],
+    servicios:[],
+    eventos:[],
+    ultimaActualizacion:null
+};
+
+
+/* =========================================================
+   LECTURAS DEL BACKEND
+   ========================================================= */
+
+async function leerBackend(accion, parametros={}){
 
     if(!BACKEND_URL){
+        return null;
+    }
 
-        console.log(
-            "Backend todavía no conectado:",
+    try{
+
+        const query = new URLSearchParams();
+
+        query.set("accion",accion);
+
+        Object.entries(parametros || {}).forEach(([clave,valor]) => {
+
+            if(valor !== undefined && valor !== null && valor !== ""){
+                query.set(clave,String(valor));
+            }
+
+        });
+
+        const respuesta = await fetch(
+            BACKEND_URL + "?" + query.toString(),
+            {
+                method:"GET",
+                cache:"no-store"
+            }
+        );
+
+        if(!respuesta.ok){
+            throw new Error("HTTP " + respuesta.status);
+        }
+
+        const resultado = await respuesta.json();
+
+        if(!resultado?.ok){
+            throw new Error(
+                resultado?.error ||
+                "El Backend Maestro respondió con error."
+            );
+        }
+
+        return resultado;
+
+    }catch(error){
+
+        console.error(
+            "Error leyendo Backend Maestro:",
             accion,
-            datos
+            error
         );
 
         return null;
     }
+}
 
+
+/*
+   Se conserva para futuras operaciones administrativas.
+   Las lecturas del Panel usan leerBackend().
+*/
+async function llamarBackend(accion,datos={}){
+
+    if(!BACKEND_URL){
+        return null;
+    }
 
     try{
 
-        const respuesta = await fetch(BACKEND_URL,{
-
-            method:"POST",
-
-            headers:{
-                "Content-Type":"application/json"
-            },
-
-            body:JSON.stringify({
-
-                accion:accion,
-
-                datos:datos
-
-            })
-
-        });
-
+        const respuesta = await fetch(
+            BACKEND_URL,
+            {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    accion:accion,
+                    datos:datos
+                })
+            }
+        );
 
         return await respuesta.json();
 
@@ -2405,7 +2499,6 @@ async function llamarBackend(accion,datos={}){
 
         return null;
     }
-
 }
 
 
@@ -2421,138 +2514,718 @@ async function probarConexion(){
     const texto =
         document.getElementById("connectionText");
 
-
     if(!BACKEND_URL){
 
-        dot.classList.remove("online");
+        estadoPanel.conectado = false;
 
-        texto.textContent =
-            "Backend pendiente";
+        if(dot){
+            dot.classList.remove("online");
+        }
 
-        return;
+        if(texto){
+            texto.textContent = "Backend pendiente";
+        }
+
+        return false;
     }
-
 
     try{
 
-        const respuesta = await fetch(
-            BACKEND_URL + "?action=ping",
-            {
-                method:"GET",
-                cache:"no-store"
-            }
-        );
-
-
-        if(!respuesta.ok){
-            throw new Error(
-                "HTTP " + respuesta.status
-            );
-        }
-
-
+        /*
+           El Backend Maestro usa "accion".
+           "estado" es una lectura real de conexión.
+        */
         const resultado =
-            await respuesta.json();
+            await leerBackend("estado");
 
+        if(resultado?.ok){
 
-        console.log(
-            "Respuesta Backend Maestro:",
-            resultado
-        );
+            estadoPanel.conectado = true;
 
+            if(dot){
+                dot.classList.add("online");
+            }
 
-        if(resultado && resultado.ok){
+            if(texto){
+                texto.textContent = "Backend conectado";
+            }
 
-            dot.classList.add("online");
-
-            texto.textContent =
-                "Backend conectado";
-
-        }else{
-
-            dot.classList.remove("online");
-
-            texto.textContent =
-                "Sin conexión";
-
-            console.warn(
-                "Backend respondió pero no confirmó OK:",
-                resultado
-            );
+            return true;
         }
 
+        throw new Error("Respuesta inválida del Backend Maestro.");
 
     }catch(error){
 
-        dot.classList.remove("online");
+        estadoPanel.conectado = false;
 
-        texto.textContent =
-            "Sin conexión";
+        if(dot){
+            dot.classList.remove("online");
+        }
+
+        if(texto){
+            texto.textContent = "Sin conexión";
+        }
 
         console.error(
             "Error conectando Backend Maestro:",
             error
         );
 
+        return false;
     }
-
 }
 
 
 /* =========================================================
-   ACTUALIZAR DATOS
+   RESUMEN DEL PANEL
+   ========================================================= */
+
+async function cargarResumenPanel(){
+
+    const resultado =
+        await leerBackend("resumenPanel");
+
+    if(!resultado?.ok){
+        return null;
+    }
+
+    const datos = resultado.datos || {};
+
+    estadoPanel.resumen = datos;
+
+    actualizarKPIs(datos);
+
+    return datos;
+}
+
+
+function actualizarKPIs(datos){
+
+    const vehiculos = datos.vehiculos || {};
+    const servicios = datos.servicios || {};
+    const viajes = datos.viajes || {};
+    const reportes = datos.reportes || {};
+
+    /*
+       VEHÍCULOS OPERATIVOS = DISPONIBLES.
+       Es el estado operativo real de la flota.
+    */
+    const kpiVehiculos =
+        document.getElementById("kpiVehiculos");
+
+    if(kpiVehiculos){
+        kpiVehiculos.textContent =
+            Number(vehiculos.disponibles || 0);
+    }
+
+    const kpiServicios =
+        document.getElementById("kpiServicios");
+
+    if(kpiServicios){
+        kpiServicios.textContent =
+            Number(servicios.total || 0);
+    }
+
+    const kpiViajes =
+        document.getElementById("kpiViajes");
+
+    if(kpiViajes){
+        kpiViajes.textContent =
+            Number(viajes.activos || 0);
+    }
+
+    const kpiAlertas =
+        document.getElementById("kpiAlertas");
+
+    if(kpiAlertas){
+        kpiAlertas.textContent =
+            Number(reportes.pendientes || 0);
+    }
+
+    /*
+       Estado de flota.
+    */
+    const estadoOperativos =
+        document.getElementById("estadoOperativos");
+
+    if(estadoOperativos){
+        estadoOperativos.textContent =
+            Number(vehiculos.disponibles || 0);
+    }
+
+    const estadoTaller =
+        document.getElementById("estadoTaller");
+
+    if(estadoTaller){
+        estadoTaller.textContent =
+            Number(vehiculos.taller || 0);
+    }
+
+    const fueraServicio =
+        Math.max(
+            0,
+            Number(vehiculos.total || 0) -
+            Number(vehiculos.disponibles || 0) -
+            Number(vehiculos.taller || 0)
+        );
+
+    const estadoFueraServicio =
+        document.getElementById("estadoFueraServicio");
+
+    if(estadoFueraServicio){
+        estadoFueraServicio.textContent =
+            fueraServicio;
+    }
+
+    /*
+       Resumen general de servicios.
+       El backend devuelve total / pendientes / curso / finalizados.
+       Luego cargarServicios() calcula específicamente la jornada actual.
+    */
+    const serviciosProgramados =
+        document.getElementById("serviciosProgramados");
+
+    if(serviciosProgramados){
+        serviciosProgramados.textContent =
+            Number(servicios.pendientes || 0);
+    }
+
+    const serviciosCurso =
+        document.getElementById("serviciosCurso");
+
+    if(serviciosCurso){
+        serviciosCurso.textContent =
+            Number(servicios.curso || 0);
+    }
+
+    const serviciosFinalizados =
+        document.getElementById("serviciosFinalizados");
+
+    if(serviciosFinalizados){
+        serviciosFinalizados.textContent =
+            Number(servicios.finalizados || 0);
+    }
+}
+
+
+/* =========================================================
+   SERVICIOS DEL DÍA
+   ========================================================= */
+
+async function cargarServicios(){
+
+    const resultado =
+        await leerBackend("servicios");
+
+    if(!resultado?.ok){
+        return [];
+    }
+
+    const servicios =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.servicios = servicios;
+
+    actualizarServiciosDelDia(servicios);
+
+    return servicios;
+}
+
+
+function actualizarServiciosDelDia(servicios){
+
+    const hoy = fechaLocalISO();
+
+    const delDia = servicios.filter(servicio => {
+
+        const fecha =
+            String(servicio.FECHA || "")
+                .trim()
+                .substring(0,10);
+
+        return fecha === hoy;
+    });
+
+    /*
+       Si el backend tiene fechas que el navegador no puede
+       interpretar, no rompemos el panel: usamos el resumen general.
+    */
+    if(delDia.length === 0){
+
+        return;
+    }
+
+    const programados =
+        delDia.filter(s => {
+
+            const estado = normalizar(s.ESTADO);
+
+            return (
+                estado === "PENDIENTE" ||
+                estado === "PROGRAMADO" ||
+                estado === "ASIGNADO"
+            );
+        }).length;
+
+    const curso =
+        delDia.filter(s => {
+
+            const estado = normalizar(s.ESTADO);
+
+            return (
+                estado === "EN CURSO" ||
+                estado === "EN_CURSO" ||
+                estado === "INICIADO"
+            );
+        }).length;
+
+    const finalizados =
+        delDia.filter(s => {
+
+            const estado = normalizar(s.ESTADO);
+
+            return estado === "FINALIZADO" ||
+                   estado === "FINALIZADOS";
+        }).length;
+
+    const serviciosProgramados =
+        document.getElementById("serviciosProgramados");
+
+    const serviciosCurso =
+        document.getElementById("serviciosCurso");
+
+    const serviciosFinalizados =
+        document.getElementById("serviciosFinalizados");
+
+    if(serviciosProgramados){
+        serviciosProgramados.textContent = programados;
+    }
+
+    if(serviciosCurso){
+        serviciosCurso.textContent = curso;
+    }
+
+    if(serviciosFinalizados){
+        serviciosFinalizados.textContent = finalizados;
+    }
+
+    const kpiServicios =
+        document.getElementById("kpiServicios");
+
+    if(kpiServicios){
+        kpiServicios.textContent = delDia.length;
+    }
+}
+
+
+/* =========================================================
+   VEHÍCULOS
+   ========================================================= */
+
+async function cargarVehiculos(){
+
+    const resultado =
+        await leerBackend("vehiculos");
+
+    if(!resultado?.ok){
+        return [];
+    }
+
+    const vehiculos =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.vehiculos = vehiculos;
+
+    renderizarVehiculos(vehiculos);
+
+    return vehiculos;
+}
+
+
+function claseEstadoVehiculo(estado){
+
+    const e = normalizar(estado);
+
+    if(e === "DISPONIBLE" ||
+       e === "OPERATIVO"){
+
+        return "online";
+    }
+
+    if(e === "EN TALLER"){
+        return "warning";
+    }
+
+    return "danger";
+}
+
+
+function textoEstadoVehiculo(estado){
+
+    const e = normalizar(estado);
+
+    if(e === "DISPONIBLE"){
+        return "DISPONIBLE";
+    }
+
+    if(e === "EN TALLER"){
+        return "EN TALLER";
+    }
+
+    if(e === "OPERATIVO"){
+        return "OPERATIVO";
+    }
+
+    if(!e){
+        return "SIN ESTADO";
+    }
+
+    return e;
+}
+
+
+function renderizarVehiculos(vehiculos){
+
+    const tbody =
+        document.getElementById("tablaVehiculos");
+
+    if(!tbody){
+        return;
+    }
+
+    if(!Array.isArray(vehiculos) || vehiculos.length === 0){
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    <div class="empty">
+                        Sin vehículos cargados en el Backend Maestro
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    tbody.innerHTML =
+        vehiculos.map(vehiculo => {
+
+            const estado =
+                textoEstadoVehiculo(
+                    vehiculo.ESTADO_OPERATIVO
+                );
+
+            const clase =
+                claseEstadoVehiculo(
+                    vehiculo.ESTADO_OPERATIVO
+                );
+
+            const gps =
+                vehiculo.GPS_ID
+                    ? "🛰 ACTIVO"
+                    : "—";
+
+            const marcaModelo =
+                [
+                    vehiculo.MARCA,
+                    vehiculo.MODELO
+                ]
+                .filter(Boolean)
+                .join(" ");
+
+            return `
+                <tr>
+                    <td>
+                        <strong>
+                            ${escaparHTML(vehiculo.DOMINIO || "-")}
+                        </strong>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(vehiculo.INTERNO || "-")}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(marcaModelo || "-")}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(vehiculo.TIPO || "-")}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(vehiculo.AREA || "-")}
+                    </td>
+
+                    <td>
+                        <span class="table-status ${clase}">
+                            ${escaparHTML(estado)}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(gps)}
+                    </td>
+                </tr>
+            `;
+
+        }).join("");
+}
+
+
+/* =========================================================
+   EVENTOS / ACTIVIDAD RECIENTE
+   ========================================================= */
+
+async function cargarEventos(){
+
+    const resultado =
+        await leerBackend("eventos");
+
+    if(!resultado?.ok){
+        return [];
+    }
+
+    const eventos =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.eventos = eventos;
+
+    renderizarActividad(eventos);
+
+    return eventos;
+}
+
+
+function iconoEvento(tipo){
+
+    const e = normalizar(tipo);
+
+    if(e.includes("GPS")){
+        return "🛰";
+    }
+
+    if(e.includes("VIAJE")){
+        return "🚦";
+    }
+
+    if(e.includes("REPORTE")){
+        return "⚠";
+    }
+
+    if(e.includes("INSPECCION")){
+        return "✓";
+    }
+
+    if(e.includes("ASIGNACION")){
+        return "🔗";
+    }
+
+    if(e.includes("MANTENIMIENTO")){
+        return "🔧";
+    }
+
+    return "◷";
+}
+
+
+function claseEvento(tipo){
+
+    const e = normalizar(tipo);
+
+    if(e.includes("REPORTE") ||
+       e.includes("ALERTA") ||
+       e.includes("ERROR")){
+
+        return "red";
+    }
+
+    if(e.includes("GPS") ||
+       e.includes("VIAJE")){
+
+        return "cyan";
+    }
+
+    if(e.includes("ASIGNACION")){
+        return "blue";
+    }
+
+    if(e.includes("MANTENIMIENTO")){
+        return "yellow";
+    }
+
+    return "green";
+}
+
+
+function renderizarActividad(eventos){
+
+    const contenedor =
+        document.querySelector("#inicio .activity");
+
+    if(!contenedor){
+        return;
+    }
+
+    if(!Array.isArray(eventos) || eventos.length === 0){
+
+        contenedor.innerHTML = `
+            <div class="activity-item">
+                <div class="activity-icon green">✓</div>
+                <div>
+                    <div class="activity-text">
+                        Sistema conectado al Backend Maestro
+                    </div>
+                    <div class="activity-time">
+                        Sin eventos recientes
+                    </div>
+                </div>
+            </div>
+
+            <div class="activity-item">
+                <div class="activity-icon blue">🔗</div>
+                <div>
+                    <div class="activity-text">
+                        Arquitectura Panel 2.0 operativa
+                    </div>
+                    <div class="activity-time">
+                        Backend Maestro
+                    </div>
+                </div>
+            </div>
+
+            <div class="activity-item">
+                <div class="activity-icon cyan">🛰</div>
+                <div>
+                    <div class="activity-text">
+                        GPS reservado exclusivamente para Día Verde
+                    </div>
+                    <div class="activity-time">
+                        Política de arquitectura
+                    </div>
+                </div>
+            </div>
+        `;
+
+        return;
+    }
+
+    const ultimos =
+        [...eventos]
+            .sort((a,b) => {
+
+                const fa =
+                    new Date(a.FECHA_HORA || 0).getTime();
+
+                const fb =
+                    new Date(b.FECHA_HORA || 0).getTime();
+
+                return fb - fa;
+            })
+            .slice(0,5);
+
+    contenedor.innerHTML =
+        ultimos.map(evento => {
+
+            const tipo =
+                evento.TIPO_EVENTO || "EVENTO";
+
+            const descripcion =
+                evento.DESCRIPCION ||
+                tipo;
+
+            const clase =
+                claseEvento(tipo);
+
+            return `
+                <div class="activity-item">
+
+                    <div class="activity-icon ${clase}">
+                        ${iconoEvento(tipo)}
+                    </div>
+
+                    <div>
+
+                        <div class="activity-text">
+                            ${escaparHTML(descripcion)}
+                        </div>
+
+                        <div class="activity-time">
+                            ${escaparHTML(
+                                formatearFecha(evento.FECHA_HORA)
+                            )}
+                        </div>
+
+                    </div>
+
+                </div>
+            `;
+
+        }).join("");
+}
+
+
+/* =========================================================
+   ACTUALIZAR TODO
    ========================================================= */
 
 async function actualizarDatos(){
 
-    await probarConexion();
+    const botonActualizar =
+        document.querySelector(
+            'button[onclick="actualizarDatos()"]'
+        );
 
-    if(!BACKEND_URL){
+    if(botonActualizar){
+        botonActualizar.classList.add("refreshing");
+    }
+
+    try{
+
+        const conectado =
+            await probarConexion();
+
+        if(!conectado){
+
+            console.warn(
+                "El Backend Maestro no está disponible."
+            );
+
+            return;
+        }
+
+        /*
+           Cargamos en paralelo las lecturas principales.
+        */
+        await Promise.all([
+            cargarResumenPanel(),
+            cargarVehiculos(),
+            cargarServicios(),
+            cargarEventos()
+        ]);
+
+        estadoPanel.ultimaActualizacion =
+            new Date();
 
         console.log(
-            "Panel 2.0 preparado. Falta conectar Backend Maestro."
+            "Panel 2.0 actualizado:",
+            estadoPanel.ultimaActualizacion
         );
 
-        return;
+    }finally{
+
+        if(botonActualizar){
+            botonActualizar.classList.remove("refreshing");
+        }
     }
-
-
-    /*
-       ACÁ vamos a traer:
-
-       VEHICULOS
-       CHOFERES
-       SERVICIOS
-       ASIGNACIONES
-       VIAJES
-       GPS
-       REPORTES
-       MANTENIMIENTO
-       EVENTOS
-    */
-
-
-    const resultado =
-        await llamarBackend(
-            "dashboard"
-        );
-
-
-    if(!resultado?.ok){
-
-        console.warn(
-            "No se pudieron obtener los datos."
-        );
-
-        return;
-    }
-
-
-    /*
-       Cuando definamos el contrato definitivo
-       del endpoint dashboard, llenamos los KPIs.
-    */
-
 }
 
 
@@ -2562,14 +3235,18 @@ async function actualizarDatos(){
 
 document.addEventListener(
     "DOMContentLoaded",
-    () => {
+    async () => {
 
         actualizarTitulo("inicio");
 
-        probarConexion();
+        /*
+           Primera carga real contra el Backend Maestro.
+        */
+        await actualizarDatos();
 
     }
 );
+
 
 </script>
 
