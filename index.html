@@ -1330,6 +1330,89 @@ textarea.form-control{
     width:min(760px,100%);
 }
 
+
+/* =========================================================
+   MÓDULO RUTAS
+   ========================================================= */
+
+.ruta-toolbar{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    flex-wrap:wrap;
+}
+
+.ruta-search{
+    width:270px;
+}
+
+.ruta-count{
+    font-size:10px;
+    color:var(--muted);
+}
+
+.ruta-table-wrap{
+    overflow-x:auto;
+}
+
+.ruta-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.ruta-table th{
+    text-align:left;
+    padding:11px 10px;
+    font-size:9px;
+    color:#718198;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+}
+
+.ruta-table td{
+    padding:11px 10px;
+    font-size:10px;
+    border-bottom:1px solid rgba(255,255,255,.045);
+    color:#dce5ef;
+}
+
+.ruta-table tr:hover td{
+    background:rgba(255,255,255,.018);
+}
+
+.ruta-main{
+    font-weight:600;
+    color:#eef4fb;
+}
+
+.ruta-sub{
+    display:block;
+    margin-top:3px;
+    font-size:9px;
+    color:#718198;
+}
+
+.ruta-active{
+    color:#6ee7a0;
+    background:rgba(34,197,94,.12);
+}
+
+.ruta-inactive{
+    color:#f87171;
+    background:rgba(239,68,68,.12);
+}
+
+.ruta-neutral{
+    color:#a8b3c2;
+    background:rgba(148,163,184,.12);
+}
+
+#modalRuta .modal{
+    width:min(760px,100%);
+}
+
 </style>
 </head>
 
@@ -2509,23 +2592,85 @@ textarea.form-control{
 
 
 <div id="rutas" class="page">
+
     <div class="section-head">
+
         <div>
             <h2>Rutas</h2>
             <p>Rutas y puntos de recorrido</p>
         </div>
-        <button class="btn btn-primary">+ Nueva ruta</button>
+
+        <div class="ruta-toolbar">
+
+            <input
+                id="filtroRuta"
+                class="filter ruta-search"
+                placeholder="Buscar ruta, zona o CGM..."
+                oninput="filtrarRutas()">
+
+            <button
+                class="btn btn-primary"
+                type="button"
+                onclick="abrirModalRuta()">
+                + Nueva ruta
+            </button>
+
+        </div>
+
     </div>
 
     <div class="panel">
-        <div class="module-placeholder">
-            <div class="placeholder-icon">📍</div>
-            <div class="placeholder-title">Rutas</div>
-            <div class="placeholder-text">
-                RUTAS y PUNTOS_RUTA serán administrados desde este módulo.
+
+        <div class="panel-head">
+
+            <div>
+                <div class="panel-title">Rutas registradas</div>
+                <div class="panel-subtitle">
+                    Configuración de recorridos operativos
+                </div>
             </div>
+
+            <span
+                id="contadorRutas"
+                class="ruta-count">
+                0 rutas
+            </span>
+
         </div>
+
+        <div class="ruta-table-wrap">
+
+            <table class="ruta-table">
+
+                <thead>
+                    <tr>
+                        <th>Ruta</th>
+                        <th>Tipo de servicio</th>
+                        <th>Zona</th>
+                        <th>CGM</th>
+                        <th>Descripción</th>
+                        <th>Activa</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tablaRutas">
+
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty">
+                                Cargando rutas...
+                            </div>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
     </div>
+
 </div>
 
 
@@ -2900,8 +3045,21 @@ function mostrarPagina(id, boton){
         boton.classList.add('active');
     }
 
-
     actualizarTitulo(id);
+
+    /*
+       Cada vez que entramos a ASIGNACIONES,
+       volvemos a consultar el Backend Maestro.
+       Así la tabla nunca queda mostrando
+       "Cargando asignaciones..." indefinidamente.
+    */
+    if(id === "asignaciones"){
+        cargarAsignaciones();
+    }
+
+    if(id === "rutas"){
+        cargarRutas();
+    }
 }
 
 
@@ -3769,7 +3927,24 @@ async function cargarAsignaciones(){
     const resultado =
         await leerBackend("asignaciones");
 
+    const tbody =
+        document.getElementById("tablaAsignaciones");
+
     if(!resultado?.ok){
+
+        if(tbody){
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        <div class="empty">
+                            No se pudieron cargar las asignaciones.
+                            Revisá la conexión con el Backend Maestro.
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
         return [];
     }
 
@@ -4520,6 +4695,498 @@ async function guardarAsignacion(
 }
 
 
+
+/* =========================================================
+   MÓDULO RUTAS
+   ========================================================= */
+
+async function cargarRutas(){
+
+    const resultado =
+        await leerBackend("rutas");
+
+    const tbody =
+        document.getElementById("tablaRutas");
+
+    if(!resultado?.ok){
+
+        if(tbody){
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        <div class="empty">
+                            No se pudieron cargar las rutas.
+                            Revisá la conexión con el Backend Maestro.
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        return [];
+    }
+
+    const rutas =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.rutas =
+        rutas;
+
+    renderizarRutas(rutas);
+
+    return rutas;
+}
+
+
+function claseEstadoRuta(activa){
+
+    const estado =
+        normalizar(activa);
+
+    if(
+        estado === "SI" ||
+        estado === "SÍ" ||
+        estado === "ACTIVA" ||
+        estado === "ACTIVO"
+    ){
+        return "ruta-active";
+    }
+
+    if(
+        estado === "NO" ||
+        estado === "INACTIVA" ||
+        estado === "INACTIVO"
+    ){
+        return "ruta-inactive";
+    }
+
+    return "ruta-neutral";
+}
+
+
+function renderizarRutas(rutas){
+
+    const tbody =
+        document.getElementById(
+            "tablaRutas"
+        );
+
+    if(!tbody){
+        return;
+    }
+
+    const contador =
+        document.getElementById(
+            "contadorRutas"
+        );
+
+    if(contador){
+
+        contador.textContent =
+            `${Array.isArray(rutas)
+                ? rutas.length
+                : 0} rutas`;
+    }
+
+    if(
+        !Array.isArray(rutas) ||
+        rutas.length === 0
+    ){
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6">
+                    <div class="empty">
+                        Sin rutas registradas
+                        en el Backend Maestro
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    tbody.innerHTML =
+        rutas.map(ruta => {
+
+            const activa =
+                ruta.ACTIVA || "";
+
+            return `
+                <tr>
+
+                    <td>
+                        <span class="ruta-main">
+                            ${escaparHTML(
+                                ruta.NOMBRE_RUTA || "-"
+                            )}
+                        </span>
+
+                        <span class="ruta-sub">
+                            ${escaparHTML(
+                                ruta.ID_RUTA || ""
+                            )}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            ruta.TIPO_SERVICIO || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            ruta.ZONA || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            ruta.CGM || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            ruta.DESCRIPCION || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        <span class="table-status ${
+                            claseEstadoRuta(activa)
+                        }">
+                            ${escaparHTML(
+                                activa || "SIN ESTADO"
+                            )}
+                        </span>
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+}
+
+
+function filtrarRutas(){
+
+    const texto =
+        normalizar(
+            document.getElementById(
+                "filtroRuta"
+            )?.value
+        );
+
+    const filtradas =
+        (
+            estadoPanel.rutas ||
+            []
+        ).filter(ruta => {
+
+            const contenido = [
+
+                ruta.ID_RUTA,
+                ruta.NOMBRE_RUTA,
+                ruta.TIPO_SERVICIO,
+                ruta.ZONA,
+                ruta.CGM,
+                ruta.DESCRIPCION,
+                ruta.ACTIVA
+
+            ]
+            .map(normalizar)
+            .join(" ");
+
+            return !texto ||
+                contenido.includes(texto);
+        });
+
+    renderizarRutas(
+        filtradas
+    );
+}
+
+
+function abrirModalRuta(){
+
+    const modal =
+        document.getElementById(
+            "modalRuta"
+        );
+
+    if(!modal){
+        return;
+    }
+
+    const form =
+        document.getElementById(
+            "formRuta"
+        );
+
+    if(form){
+        form.reset();
+    }
+
+    const activa =
+        document.getElementById(
+            "rutaActiva"
+        );
+
+    if(activa){
+        activa.value = "SI";
+    }
+
+    const mensaje =
+        document.getElementById(
+            "rutaMensaje"
+        );
+
+    if(mensaje){
+
+        mensaje.style.display =
+            "none";
+
+        mensaje.textContent =
+            "";
+    }
+
+    modal.classList.add(
+        "open"
+    );
+
+    setTimeout(() => {
+
+        const nombre =
+            document.getElementById(
+                "rutaNombre"
+            );
+
+        if(nombre){
+            nombre.focus();
+        }
+
+    },50);
+}
+
+
+function cerrarModalRuta(event){
+
+    if(
+        event &&
+        event.target &&
+        event.target.id !==
+            "modalRuta"
+    ){
+        return;
+    }
+
+    const modal =
+        document.getElementById(
+            "modalRuta"
+        );
+
+    if(modal){
+        modal.classList.remove(
+            "open"
+        );
+    }
+}
+
+
+function mostrarMensajeRuta(
+    texto,
+    tipo="info"
+){
+
+    const mensaje =
+        document.getElementById(
+            "rutaMensaje"
+        );
+
+    if(!mensaje){
+        return;
+    }
+
+    mensaje.style.display =
+        "block";
+
+    mensaje.textContent =
+        texto;
+
+    mensaje.style.color =
+        tipo === "error"
+            ? "#f87171"
+            : tipo === "ok"
+                ? "#6ee7a0"
+                : "#91a0b5";
+}
+
+
+async function guardarRuta(event){
+
+    event.preventDefault();
+
+    const boton =
+        document.getElementById(
+            "btnGuardarRuta"
+        );
+
+    const datos = {
+
+        nombreRuta:
+            document.getElementById(
+                "rutaNombre"
+            )?.value.trim(),
+
+        tipoServicio:
+            document.getElementById(
+                "rutaTipoServicio"
+            )?.value.trim(),
+
+        zona:
+            document.getElementById(
+                "rutaZona"
+            )?.value.trim(),
+
+        cgm:
+            document.getElementById(
+                "rutaCGM"
+            )?.value.trim(),
+
+        descripcion:
+            document.getElementById(
+                "rutaDescripcion"
+            )?.value.trim(),
+
+        activa:
+            document.getElementById(
+                "rutaActiva"
+            )?.value
+
+    };
+
+
+    if(!datos.nombreRuta){
+
+        mostrarMensajeRuta(
+            "El nombre de la ruta es obligatorio.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(!datos.tipoServicio){
+
+        mostrarMensajeRuta(
+            "El tipo de servicio es obligatorio.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    if(boton){
+
+        boton.disabled = true;
+        boton.textContent =
+            "Guardando...";
+    }
+
+    mostrarMensajeRuta(
+        "Registrando ruta en el Backend Maestro..."
+    );
+
+
+    try{
+
+        const respuesta =
+            await fetch(
+                BACKEND_URL,
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+
+                        accion:
+                            "crearRuta",
+
+                        ...datos
+
+                    })
+                }
+            );
+
+
+        if(!respuesta.ok){
+
+            throw new Error(
+                "HTTP " +
+                respuesta.status
+            );
+        }
+
+
+        const resultado =
+            await respuesta.json();
+
+
+        if(!resultado?.ok){
+
+            throw new Error(
+                resultado?.error ||
+                "No se pudo crear la ruta."
+            );
+        }
+
+
+        cerrarModalRuta();
+
+
+        await Promise.allSettled([
+
+            cargarRutas(),
+
+            cargarResumenPanel(),
+
+            cargarServicios()
+
+        ]);
+
+
+        filtrarRutas();
+
+
+    }catch(error){
+
+        console.error(
+            "Error creando ruta:",
+            error
+        );
+
+        mostrarMensajeRuta(
+            "No se pudo guardar: " +
+            error.message,
+            "error"
+        );
+
+    }finally{
+
+        if(boton){
+
+            boton.disabled = false;
+            boton.textContent =
+                "Guardar ruta";
+        }
+    }
+}
+
+
 /* =========================================================
    ACTUALIZAR TODO
    ========================================================= */
@@ -4558,6 +5225,7 @@ async function actualizarDatos(){
             cargarChoferes(),
             cargarServicios(),
             cargarAsignaciones(),
+            cargarRutas(),
             cargarEventos()
         ]);
 
@@ -5008,6 +5676,159 @@ document.addEventListener(
                     type="submit"
                     class="btn btn-primary">
                     Guardar asignación
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+
+
+
+<!-- ======================================================
+     MODAL NUEVA RUTA
+     ====================================================== -->
+
+<div
+    id="modalRuta"
+    class="modal-overlay"
+    onclick="cerrarModalRuta(event)">
+
+    <div
+        class="modal"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-header">
+
+            <div>
+                <div class="modal-title">Nueva ruta</div>
+                <div class="panel-subtitle">
+                    Alta de recorrido en el Backend Maestro
+                </div>
+            </div>
+
+            <button
+                class="modal-close"
+                type="button"
+                onclick="cerrarModalRuta()">
+                ×
+            </button>
+
+        </div>
+
+        <form
+            id="formRuta"
+            onsubmit="guardarRuta(event)">
+
+            <div class="modal-body">
+
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Nombre de ruta *
+                        </label>
+
+                        <input
+                            id="rutaNombre"
+                            class="form-control"
+                            required
+                            placeholder="Ej.: Ruta Norte 01">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Tipo de servicio *
+                        </label>
+
+                        <input
+                            id="rutaTipoServicio"
+                            class="form-control"
+                            required
+                            placeholder="Ej.: DÍA VERDE">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Zona
+                        </label>
+
+                        <input
+                            id="rutaZona"
+                            class="form-control"
+                            placeholder="Ej.: Zona Norte">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            CGM
+                        </label>
+
+                        <input
+                            id="rutaCGM"
+                            class="form-control"
+                            placeholder="Ej.: CGM Fiori">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Estado
+                        </label>
+
+                        <select
+                            id="rutaActiva"
+                            class="form-control">
+
+                            <option value="SI">
+                                ACTIVA
+                            </option>
+
+                            <option value="NO">
+                                INACTIVA
+                            </option>
+
+                        </select>
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">
+                            Descripción
+                        </label>
+
+                        <textarea
+                            id="rutaDescripcion"
+                            class="form-control"
+                            placeholder="Descripción del recorrido, zonas o referencias"></textarea>
+                    </div>
+
+                </div>
+
+                <div
+                    id="rutaMensaje"
+                    style="display:none;margin-top:15px;font-size:11px;line-height:1.5">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="cerrarModalRuta()">
+                    Cancelar
+                </button>
+
+                <button
+                    id="btnGuardarRuta"
+                    type="submit"
+                    class="btn btn-primary">
+                    Guardar ruta
                 </button>
 
             </div>
