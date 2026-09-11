@@ -7661,7 +7661,7 @@ function sincronizarReporteAsignacion(){
     if(servicio) servicio.value = opcion?.dataset?.servicio || "";
 }
 
-async async function prepararFormularioReporte(){
+async function prepararFormularioReporte(){
     const select = document.getElementById("reporteAsignacion");
     if(!select) return;
 
@@ -7733,7 +7733,7 @@ function mostrarMensajeReporte(texto,tipo="info"){
             : "#91a0b5";
 }
 
-async async function guardarReporte(event){
+async function guardarReporte(event){
     event.preventDefault();
 
     const boton = document.getElementById("btnGuardarReporte");
@@ -7799,7 +7799,7 @@ async async function guardarReporte(event){
    ACTUALIZAR TODO
    ========================================================= */
 
-async async function actualizarDatos(){
+async function actualizarDatos(){
 
     const botonActualizar =
         document.querySelector(
