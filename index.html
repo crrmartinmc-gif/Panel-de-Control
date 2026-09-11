@@ -1413,6 +1413,94 @@ textarea.form-control{
     width:min(760px,100%);
 }
 
+
+/* =========================================================
+   MÓDULO PUNTOS DE RUTA
+   ========================================================= */
+
+.punto-toolbar{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    flex-wrap:wrap;
+}
+
+.punto-search{
+    width:270px;
+}
+
+.punto-count{
+    font-size:10px;
+    color:var(--muted);
+}
+
+.punto-table-wrap{
+    overflow-x:auto;
+}
+
+.punto-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.punto-table th{
+    text-align:left;
+    padding:11px 10px;
+    font-size:9px;
+    color:#718198;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+}
+
+.punto-table td{
+    padding:11px 10px;
+    font-size:10px;
+    border-bottom:1px solid rgba(255,255,255,.045);
+    color:#dce5ef;
+}
+
+.punto-table tr:hover td{
+    background:rgba(255,255,255,.018);
+}
+
+.punto-order{
+    font-weight:700;
+    color:#eef4fb;
+}
+
+.punto-main{
+    font-weight:600;
+    color:#eef4fb;
+}
+
+.punto-sub{
+    display:block;
+    margin-top:3px;
+    font-size:9px;
+    color:#718198;
+}
+
+.punto-active{
+    color:#6ee7a0;
+    background:rgba(34,197,94,.12);
+}
+
+.punto-inactive{
+    color:#f87171;
+    background:rgba(239,68,68,.12);
+}
+
+.punto-neutral{
+    color:#a8b3c2;
+    background:rgba(148,163,184,.12);
+}
+
+#modalPuntoRuta .modal{
+    width:min(800px,100%);
+}
+
 </style>
 </head>
 
@@ -1493,6 +1581,11 @@ textarea.form-control{
         <button onclick="mostrarPagina('rutas',this)">
             <span class="menu-icon">📍</span>
             <span>Rutas</span>
+        </button>
+
+        <button onclick="mostrarPagina('puntosRuta',this)">
+            <span class="menu-icon">📌</span>
+            <span>Puntos de ruta</span>
         </button>
 
         <button onclick="mostrarPagina('viajes',this)">
@@ -2674,6 +2767,90 @@ textarea.form-control{
 </div>
 
 
+<div id="puntosRuta" class="page">
+
+    <div class="section-head">
+
+        <div>
+            <h2>Puntos de ruta</h2>
+            <p>Direcciones y coordenadas de cada recorrido</p>
+        </div>
+
+        <div class="punto-toolbar">
+
+            <input
+                id="filtroPuntoRuta"
+                class="filter punto-search"
+                placeholder="Buscar ruta, dirección o zona..."
+                oninput="filtrarPuntosRuta()">
+
+            <button
+                class="btn btn-primary"
+                type="button"
+                onclick="abrirModalPuntoRuta()">
+                + Nuevo punto
+            </button>
+
+        </div>
+
+    </div>
+
+    <div class="panel">
+
+        <div class="panel-head">
+
+            <div>
+                <div class="panel-title">Puntos registrados</div>
+                <div class="panel-subtitle">
+                    Secuencia geográfica de cada ruta
+                </div>
+            </div>
+
+            <span
+                id="contadorPuntosRuta"
+                class="punto-count">
+                0 puntos
+            </span>
+
+        </div>
+
+        <div class="punto-table-wrap">
+
+            <table class="punto-table">
+
+                <thead>
+                    <tr>
+                        <th>Orden</th>
+                        <th>Ruta</th>
+                        <th>Zona</th>
+                        <th>Dirección</th>
+                        <th>Latitud</th>
+                        <th>Longitud</th>
+                        <th>Activo</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tablaPuntosRuta">
+
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty">
+                                Cargando puntos de ruta...
+                            </div>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
 <div id="viajes" class="page">
     <div class="section-head">
         <div>
@@ -3060,6 +3237,10 @@ function mostrarPagina(id, boton){
     if(id === "rutas"){
         cargarRutas();
     }
+
+    if(id === "puntosRuta"){
+        cargarPuntosRuta();
+    }
 }
 
 
@@ -3111,6 +3292,11 @@ const titulos = {
     rutas:[
         "Rutas",
         "Rutas y puntos de recorrido"
+    ],
+
+    puntosRuta:[
+        "Puntos de ruta",
+        "Direcciones y coordenadas de cada recorrido"
     ],
 
     viajes:[
@@ -5187,6 +5373,627 @@ async function guardarRuta(event){
 }
 
 
+
+/* =========================================================
+   MÓDULO PUNTOS DE RUTA
+   ========================================================= */
+
+async function cargarPuntosRuta(){
+
+    const resultado =
+        await leerBackend("puntosRuta");
+
+    const tbody =
+        document.getElementById("tablaPuntosRuta");
+
+    if(!resultado?.ok){
+
+        if(tbody){
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        <div class="empty">
+                            No se pudieron cargar los puntos de ruta.
+                            Revisá la conexión con el Backend Maestro.
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        return [];
+    }
+
+    const puntos =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.puntosRuta =
+        puntos;
+
+    renderizarPuntosRuta(puntos);
+
+    return puntos;
+}
+
+
+function claseEstadoPunto(activo){
+
+    const estado =
+        normalizar(activo);
+
+    if(
+        estado === "SI" ||
+        estado === "SÍ" ||
+        estado === "ACTIVO" ||
+        estado === "ACTIVA"
+    ){
+        return "punto-active";
+    }
+
+    if(
+        estado === "NO" ||
+        estado === "INACTIVO" ||
+        estado === "INACTIVA"
+    ){
+        return "punto-inactive";
+    }
+
+    return "punto-neutral";
+}
+
+
+function renderizarPuntosRuta(puntos){
+
+    const tbody =
+        document.getElementById(
+            "tablaPuntosRuta"
+        );
+
+    if(!tbody){
+        return;
+    }
+
+    const contador =
+        document.getElementById(
+            "contadorPuntosRuta"
+        );
+
+    if(contador){
+
+        contador.textContent =
+            `${Array.isArray(puntos)
+                ? puntos.length
+                : 0} puntos`;
+    }
+
+    if(
+        !Array.isArray(puntos) ||
+        puntos.length === 0
+    ){
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    <div class="empty">
+                        Sin puntos de ruta registrados
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    const ordenados =
+        [...puntos].sort(
+            (a,b) =>
+                Number(a.ORDEN || 0) -
+                Number(b.ORDEN || 0)
+        );
+
+    tbody.innerHTML =
+        ordenados.map(punto => {
+
+            const activo =
+                punto.ACTIVO || "";
+
+            return `
+                <tr>
+
+                    <td>
+                        <span class="punto-order">
+                            ${escaparHTML(
+                                punto.ORDEN || "-"
+                            )}
+                        </span>
+                    </td>
+
+                    <td>
+                        <span class="punto-main">
+                            ${escaparHTML(
+                                punto.ID_RUTA || "-"
+                            )}
+                        </span>
+
+                        <span class="punto-sub">
+                            ${escaparHTML(
+                                punto.ID_PUNTO || ""
+                            )}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            punto.ZONA || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        <span class="punto-main">
+                            ${escaparHTML(
+                                punto.DIRECCION || "-"
+                            )}
+                        </span>
+
+                        ${
+                            punto.OBSERVACIONES
+                            ? `
+                                <span class="punto-sub">
+                                    ${escaparHTML(
+                                        punto.OBSERVACIONES
+                                    )}
+                                </span>
+                            `
+                            : ""
+                        }
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            punto.LATITUD || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            punto.LONGITUD || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        <span class="table-status ${
+                            claseEstadoPunto(activo)
+                        }">
+                            ${escaparHTML(
+                                activo || "SIN ESTADO"
+                            )}
+                        </span>
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+}
+
+
+function filtrarPuntosRuta(){
+
+    const texto =
+        normalizar(
+            document.getElementById(
+                "filtroPuntoRuta"
+            )?.value
+        );
+
+    const filtrados =
+        (
+            estadoPanel.puntosRuta ||
+            []
+        ).filter(punto => {
+
+            const contenido = [
+
+                punto.ID_PUNTO,
+                punto.ID_RUTA,
+                punto.ORDEN,
+                punto.ZONA,
+                punto.DIRECCION,
+                punto.LATITUD,
+                punto.LONGITUD,
+                punto.ACTIVO,
+                punto.OBSERVACIONES
+
+            ]
+            .map(normalizar)
+            .join(" ");
+
+            return !texto ||
+                contenido.includes(texto);
+        });
+
+    renderizarPuntosRuta(
+        filtrados
+    );
+}
+
+
+async function cargarRutasParaPunto(){
+
+    const resultado =
+        await leerBackend("rutas");
+
+    const select =
+        document.getElementById(
+            "puntoRutaIdRuta"
+        );
+
+    if(!select){
+        return;
+    }
+
+    const rutas =
+        resultado?.ok &&
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    select.innerHTML =
+        '<option value="">Seleccionar ruta</option>' +
+        rutas
+            .filter(ruta =>
+                normalizar(ruta.ACTIVA) !== "NO"
+            )
+            .map(ruta => {
+
+                const id =
+                    ruta.ID_RUTA || "";
+
+                const nombre =
+                    ruta.NOMBRE_RUTA ||
+                    id;
+
+                const zona =
+                    ruta.ZONA
+                        ? ` · ${ruta.ZONA}`
+                        : "";
+
+                return `
+                    <option value="${escaparHTML(id)}">
+                        ${escaparHTML(
+                            nombre + zona
+                        )}
+                    </option>
+                `;
+
+            }).join("");
+}
+
+
+function abrirModalPuntoRuta(){
+
+    const modal =
+        document.getElementById(
+            "modalPuntoRuta"
+        );
+
+    if(!modal){
+        return;
+    }
+
+    const form =
+        document.getElementById(
+            "formPuntoRuta"
+        );
+
+    if(form){
+        form.reset();
+    }
+
+    const activo =
+        document.getElementById(
+            "puntoRutaActivo"
+        );
+
+    if(activo){
+        activo.value = "SI";
+    }
+
+    const orden =
+        document.getElementById(
+            "puntoRutaOrden"
+        );
+
+    if(orden){
+
+        const puntos =
+            estadoPanel.puntosRuta ||
+            [];
+
+        const max =
+            puntos.reduce(
+                (m,p) =>
+                    Math.max(
+                        m,
+                        Number(p.ORDEN || 0)
+                    ),
+                0
+            );
+
+        orden.value =
+            String(max + 1);
+    }
+
+    const mensaje =
+        document.getElementById(
+            "puntoRutaMensaje"
+        );
+
+    if(mensaje){
+
+        mensaje.style.display =
+            "none";
+
+        mensaje.textContent =
+            "";
+    }
+
+    modal.classList.add(
+        "open"
+    );
+
+    cargarRutasParaPunto();
+
+    setTimeout(() => {
+
+        const select =
+            document.getElementById(
+                "puntoRutaIdRuta"
+            );
+
+        if(select){
+            select.focus();
+        }
+
+    },50);
+}
+
+
+function cerrarModalPuntoRuta(event){
+
+    if(
+        event &&
+        event.target &&
+        event.target.id !==
+            "modalPuntoRuta"
+    ){
+        return;
+    }
+
+    const modal =
+        document.getElementById(
+            "modalPuntoRuta"
+        );
+
+    if(modal){
+        modal.classList.remove(
+            "open"
+        );
+    }
+}
+
+
+function mostrarMensajePuntoRuta(
+    texto,
+    tipo="info"
+){
+
+    const mensaje =
+        document.getElementById(
+            "puntoRutaMensaje"
+        );
+
+    if(!mensaje){
+        return;
+    }
+
+    mensaje.style.display =
+        "block";
+
+    mensaje.textContent =
+        texto;
+
+    mensaje.style.color =
+        tipo === "error"
+            ? "#f87171"
+            : tipo === "ok"
+                ? "#6ee7a0"
+                : "#91a0b5";
+}
+
+
+async function guardarPuntoRuta(event){
+
+    event.preventDefault();
+
+    const boton =
+        document.getElementById(
+            "btnGuardarPuntoRuta"
+        );
+
+    const datos = {
+
+        idRuta:
+            document.getElementById(
+                "puntoRutaIdRuta"
+            )?.value,
+
+        orden:
+            document.getElementById(
+                "puntoRutaOrden"
+            )?.value,
+
+        zona:
+            document.getElementById(
+                "puntoRutaZona"
+            )?.value.trim(),
+
+        direccion:
+            document.getElementById(
+                "puntoRutaDireccion"
+            )?.value.trim(),
+
+        latitud:
+            document.getElementById(
+                "puntoRutaLatitud"
+            )?.value,
+
+        longitud:
+            document.getElementById(
+                "puntoRutaLongitud"
+            )?.value,
+
+        activo:
+            document.getElementById(
+                "puntoRutaActivo"
+            )?.value,
+
+        observaciones:
+            document.getElementById(
+                "puntoRutaObservaciones"
+            )?.value.trim()
+    };
+
+
+    if(!datos.idRuta){
+
+        mostrarMensajePuntoRuta(
+            "Seleccioná una ruta.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(
+        datos.orden === "" ||
+        datos.orden == null ||
+        Number(datos.orden) < 1
+    ){
+
+        mostrarMensajePuntoRuta(
+            "El orden debe ser un número mayor a 0.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(!datos.direccion){
+
+        mostrarMensajePuntoRuta(
+            "La dirección es obligatoria.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    if(boton){
+
+        boton.disabled = true;
+        boton.textContent =
+            "Guardando...";
+    }
+
+    mostrarMensajePuntoRuta(
+        "Registrando punto en el Backend Maestro..."
+    );
+
+
+    try{
+
+        const respuesta =
+            await fetch(
+                BACKEND_URL,
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+
+                        accion:
+                            "crearPuntoRuta",
+
+                        ...datos
+
+                    })
+                }
+            );
+
+
+        if(!respuesta.ok){
+
+            throw new Error(
+                "HTTP " +
+                respuesta.status
+            );
+        }
+
+
+        const resultado =
+            await respuesta.json();
+
+
+        if(!resultado?.ok){
+
+            throw new Error(
+                resultado?.error ||
+                "No se pudo crear el punto."
+            );
+        }
+
+
+        cerrarModalPuntoRuta();
+
+
+        await Promise.allSettled([
+
+            cargarPuntosRuta(),
+
+            cargarRutas()
+
+        ]);
+
+        filtrarPuntosRuta();
+
+
+    }catch(error){
+
+        console.error(
+            "Error creando punto de ruta:",
+            error
+        );
+
+        mostrarMensajePuntoRuta(
+            "No se pudo guardar: " +
+            error.message,
+            "error"
+        );
+
+    }finally{
+
+        if(boton){
+
+            boton.disabled = false;
+            boton.textContent =
+                "Guardar punto";
+        }
+    }
+}
+
+
 /* =========================================================
    ACTUALIZAR TODO
    ========================================================= */
@@ -5226,6 +6033,7 @@ async function actualizarDatos(){
             cargarServicios(),
             cargarAsignaciones(),
             cargarRutas(),
+            cargarPuntosRuta(),
             cargarEventos()
         ]);
 
@@ -5829,6 +6637,192 @@ document.addEventListener(
                     type="submit"
                     class="btn btn-primary">
                     Guardar ruta
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+
+<!-- ======================================================
+     MODAL NUEVO PUNTO DE RUTA
+     ====================================================== -->
+
+<div
+    id="modalPuntoRuta"
+    class="modal-overlay"
+    onclick="cerrarModalPuntoRuta(event)">
+
+    <div
+        class="modal"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-header">
+
+            <div>
+                <div class="modal-title">Nuevo punto de ruta</div>
+                <div class="panel-subtitle">
+                    Agregar una ubicación al recorrido
+                </div>
+            </div>
+
+            <button
+                class="modal-close"
+                type="button"
+                onclick="cerrarModalPuntoRuta()">
+                ×
+            </button>
+
+        </div>
+
+        <form
+            id="formPuntoRuta"
+            onsubmit="guardarPuntoRuta(event)">
+
+            <div class="modal-body">
+
+                <div class="form-grid">
+
+                    <div class="form-group full">
+                        <label class="form-label">
+                            Ruta *
+                        </label>
+
+                        <select
+                            id="puntoRutaIdRuta"
+                            class="form-control"
+                            required>
+
+                            <option value="">
+                                Cargando rutas...
+                            </option>
+
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Orden *
+                        </label>
+
+                        <input
+                            id="puntoRutaOrden"
+                            class="form-control"
+                            type="number"
+                            min="1"
+                            step="1"
+                            required
+                            placeholder="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Zona
+                        </label>
+
+                        <input
+                            id="puntoRutaZona"
+                            class="form-control"
+                            placeholder="Ej.: Este">
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">
+                            Dirección *
+                        </label>
+
+                        <input
+                            id="puntoRutaDireccion"
+                            class="form-control"
+                            required
+                            placeholder="Ej.: Av. Hipólito Yrigoyen 1234">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Latitud
+                        </label>
+
+                        <input
+                            id="puntoRutaLatitud"
+                            class="form-control"
+                            type="number"
+                            step="any"
+                            placeholder="-34.760000">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Longitud
+                        </label>
+
+                        <input
+                            id="puntoRutaLongitud"
+                            class="form-control"
+                            type="number"
+                            step="any"
+                            placeholder="-58.410000">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Estado
+                        </label>
+
+                        <select
+                            id="puntoRutaActivo"
+                            class="form-control">
+
+                            <option value="SI">
+                                ACTIVO
+                            </option>
+
+                            <option value="NO">
+                                INACTIVO
+                            </option>
+
+                        </select>
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">
+                            Observaciones
+                        </label>
+
+                        <textarea
+                            id="puntoRutaObservaciones"
+                            class="form-control"
+                            placeholder="Referencias del punto, esquina, indicaciones, etc."></textarea>
+                    </div>
+
+                </div>
+
+                <div
+                    id="puntoRutaMensaje"
+                    style="display:none;margin-top:15px;font-size:11px;line-height:1.5">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="cerrarModalPuntoRuta()">
+                    Cancelar
+                </button>
+
+                <button
+                    id="btnGuardarPuntoRuta"
+                    type="submit"
+                    class="btn btn-primary">
+                    Guardar punto
                 </button>
 
             </div>
