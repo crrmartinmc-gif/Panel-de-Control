@@ -1501,6 +1501,129 @@ textarea.form-control{
     width:min(800px,100%);
 }
 
+
+/* =========================================================
+   MÓDULO VIAJES
+   ========================================================= */
+
+.viaje-toolbar{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    flex-wrap:wrap;
+}
+
+.viaje-search{
+    width:310px;
+}
+
+.viaje-count{
+    font-size:10px;
+    color:var(--muted);
+}
+
+.viaje-kpis{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+    margin-bottom:12px;
+}
+
+.mini-card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:13px 15px;
+}
+
+.mini-label{
+    color:#718198;
+    font-size:9px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+}
+
+.mini-value{
+    margin-top:5px;
+    color:#eef4fb;
+    font-size:22px;
+    font-weight:700;
+}
+
+.viaje-table-wrap{
+    overflow-x:auto;
+}
+
+.viaje-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.viaje-table th{
+    text-align:left;
+    padding:11px 10px;
+    font-size:9px;
+    color:#718198;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+}
+
+.viaje-table td{
+    padding:11px 10px;
+    font-size:10px;
+    border-bottom:1px solid rgba(255,255,255,.045);
+    color:#dce5ef;
+    white-space:nowrap;
+}
+
+.viaje-table tr:hover td{
+    background:rgba(255,255,255,.018);
+}
+
+.viaje-main{
+    font-weight:600;
+    color:#eef4fb;
+}
+
+.viaje-sub{
+    display:block;
+    margin-top:3px;
+    font-size:9px;
+    color:#718198;
+}
+
+.viaje-activo{
+    color:#6ee7a0;
+    background:rgba(34,197,94,.12);
+}
+
+.viaje-finalizado{
+    color:#60a5fa;
+    background:rgba(59,130,246,.12);
+}
+
+.viaje-cancelado{
+    color:#f87171;
+    background:rgba(239,68,68,.12);
+}
+
+.viaje-neutral{
+    color:#a8b3c2;
+    background:rgba(148,163,184,.12);
+}
+
+@media(max-width:760px){
+    .viaje-kpis{
+        grid-template-columns:1fr;
+    }
+
+    .viaje-search{
+        width:100%;
+    }
+}
+
 </style>
 </head>
 
@@ -2852,23 +2975,106 @@ textarea.form-control{
 
 
 <div id="viajes" class="page">
+
     <div class="section-head">
+
         <div>
             <h2>Viajes</h2>
             <p>Seguimiento de viajes operativos</p>
         </div>
+
+        <div class="viaje-toolbar">
+
+            <input
+                id="filtroViaje"
+                class="filter viaje-search"
+                placeholder="Buscar viaje, servicio, chofer o vehículo..."
+                oninput="filtrarViajes()">
+
+            <button
+                class="btn btn-secondary"
+                type="button"
+                onclick="cargarViajes()">
+                ↻ Actualizar
+            </button>
+
+        </div>
+
+    </div>
+
+    <div class="viaje-kpis">
+
+        <div class="mini-card">
+            <div class="mini-label">Viajes activos</div>
+            <div id="kpiViajesActivos" class="mini-value">0</div>
+        </div>
+
+        <div class="mini-card">
+            <div class="mini-label">Finalizados</div>
+            <div id="kpiViajesFinalizados" class="mini-value">0</div>
+        </div>
+
+        <div class="mini-card">
+            <div class="mini-label">Total</div>
+            <div id="kpiViajesTotal" class="mini-value">0</div>
+        </div>
+
     </div>
 
     <div class="panel">
-        <div class="module-placeholder">
-            <div class="placeholder-icon">🚦</div>
-            <div class="placeholder-title">Viajes</div>
-            <div class="placeholder-text">
-                Los viajes serán alimentados por Día Verde
-                y el resto de las aplicaciones autorizadas.
+
+        <div class="panel-head">
+
+            <div>
+                <div class="panel-title">Viajes registrados</div>
+                <div class="panel-subtitle">
+                    Información generada por las aplicaciones operativas
+                </div>
             </div>
+
+            <span
+                id="contadorViajes"
+                class="viaje-count">
+                0 viajes
+            </span>
+
         </div>
+
+        <div class="viaje-table-wrap">
+
+            <table class="viaje-table">
+
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Servicio</th>
+                        <th>Chofer</th>
+                        <th>Vehículo</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                        <th>KM recorrido</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tablaViajes">
+
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty">
+                                Cargando viajes...
+                            </div>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
     </div>
+
 </div>
 
 
@@ -3240,6 +3446,10 @@ function mostrarPagina(id, boton){
 
     if(id === "puntosRuta"){
         cargarPuntosRuta();
+    }
+
+    if(id === "viajes"){
+        cargarViajes();
     }
 }
 
@@ -5994,6 +6204,330 @@ async function guardarPuntoRuta(event){
 }
 
 
+
+/* =========================================================
+   MÓDULO VIAJES
+   ========================================================= */
+
+async function cargarViajes(){
+
+    const resultado =
+        await leerBackend("viajes");
+
+    const tbody =
+        document.getElementById("tablaViajes");
+
+    if(!resultado?.ok){
+
+        if(tbody){
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8">
+                        <div class="empty">
+                            No se pudieron cargar los viajes.
+                            Revisá la conexión con el Backend Maestro.
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        return [];
+    }
+
+    const viajes =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.viajes =
+        viajes;
+
+    actualizarKPIsViajes(viajes);
+
+    renderizarViajes(viajes);
+
+    return viajes;
+}
+
+
+function claseEstadoViaje(estado){
+
+    const e =
+        normalizar(estado);
+
+    if(
+        e === "ACTIVO" ||
+        e === "EN CURSO" ||
+        e === "INICIADO"
+    ){
+        return "viaje-activo";
+    }
+
+    if(e === "FINALIZADO"){
+        return "viaje-finalizado";
+    }
+
+    if(
+        e === "CANCELADO" ||
+        e === "CANCELADA"
+    ){
+        return "viaje-cancelado";
+    }
+
+    return "viaje-neutral";
+}
+
+
+function actualizarKPIsViajes(viajes){
+
+    const activos =
+        viajes.filter(v => {
+
+            const e =
+                normalizar(v.ESTADO);
+
+            return (
+                e === "ACTIVO" ||
+                e === "EN CURSO" ||
+                e === "INICIADO"
+            );
+
+        }).length;
+
+    const finalizados =
+        viajes.filter(v =>
+            normalizar(v.ESTADO) ===
+            "FINALIZADO"
+        ).length;
+
+    const total =
+        viajes.length;
+
+    const activoEl =
+        document.getElementById(
+            "kpiViajesActivos"
+        );
+
+    const finalizadoEl =
+        document.getElementById(
+            "kpiViajesFinalizados"
+        );
+
+    const totalEl =
+        document.getElementById(
+            "kpiViajesTotal"
+        );
+
+    if(activoEl)
+        activoEl.textContent =
+            activos;
+
+    if(finalizadoEl)
+        finalizadoEl.textContent =
+            finalizados;
+
+    if(totalEl)
+        totalEl.textContent =
+            total;
+}
+
+
+function renderizarViajes(viajes){
+
+    const tbody =
+        document.getElementById(
+            "tablaViajes"
+        );
+
+    if(!tbody){
+        return;
+    }
+
+    const contador =
+        document.getElementById(
+            "contadorViajes"
+        );
+
+    if(contador){
+
+        contador.textContent =
+            `${Array.isArray(viajes)
+                ? viajes.length
+                : 0} viajes`;
+    }
+
+    if(
+        !Array.isArray(viajes) ||
+        viajes.length === 0
+    ){
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8">
+                    <div class="empty">
+                        Sin viajes registrados
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    const ordenados =
+        [...viajes].sort(
+            (a,b) => {
+
+                const fa =
+                    new Date(
+                        a.FECHA ||
+                        a.HORA_INICIO ||
+                        0
+                    ).getTime() || 0;
+
+                const fb =
+                    new Date(
+                        b.FECHA ||
+                        b.HORA_INICIO ||
+                        0
+                    ).getTime() || 0;
+
+                return fb - fa;
+            }
+        );
+
+    tbody.innerHTML =
+        ordenados.map(viaje => {
+
+            const estado =
+                normalizar(
+                    viaje.ESTADO
+                ) || "SIN ESTADO";
+
+            return `
+                <tr>
+
+                    <td>
+                        ${escaparHTML(
+                            formatearFecha(viaje.FECHA)
+                        )}
+                    </td>
+
+                    <td>
+                        <span class="viaje-main">
+                            ${escaparHTML(
+                                viaje.ID_SERVICIO || "-"
+                            )}
+                        </span>
+
+                        <span class="viaje-sub">
+                            ${escaparHTML(
+                                viaje.ID_VIAJE || ""
+                            )}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            viaje.ID_CHOFER || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            viaje.ID_VEHICULO || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            formatearFechaHora(
+                                viaje.HORA_INICIO
+                            )
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            formatearFechaHora(
+                                viaje.HORA_FIN
+                            )
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            viaje.KM_RECORRIDO ?? "-"
+                        )}
+                    </td>
+
+                    <td>
+                        <span class="table-status ${
+                            claseEstadoViaje(
+                                estado
+                            )
+                        }">
+                            ${escaparHTML(
+                                estado
+                            )}
+                        </span>
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+}
+
+
+function filtrarViajes(){
+
+    const texto =
+        normalizar(
+            document.getElementById(
+                "filtroViaje"
+            )?.value
+        );
+
+    const filtrados =
+        (
+            estadoPanel.viajes ||
+            []
+        ).filter(viaje => {
+
+            const contenido = [
+
+                viaje.ID_VIAJE,
+                viaje.ID_SERVICIO,
+                viaje.ID_ASIGNACION,
+                viaje.ID_VEHICULO,
+                viaje.ID_CHOFER,
+                viaje.FECHA,
+                viaje.HORA_INICIO,
+                viaje.HORA_FIN,
+                viaje.KM_RECORRIDO,
+                viaje.ESTADO,
+                viaje.OBSERVACIONES
+
+            ]
+            .map(normalizar)
+            .join(" ");
+
+            return !texto ||
+                contenido.includes(texto);
+        });
+
+    actualizarKPIsViajes(
+        filtrados
+    );
+
+    renderizarViajes(
+        filtrados
+    );
+}
+
+
 /* =========================================================
    ACTUALIZAR TODO
    ========================================================= */
@@ -6034,6 +6568,7 @@ async function actualizarDatos(){
             cargarAsignaciones(),
             cargarRutas(),
             cargarPuntosRuta(),
+            cargarViajes(),
             cargarEventos()
         ]);
 
