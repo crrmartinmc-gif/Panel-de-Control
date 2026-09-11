@@ -1776,7 +1776,7 @@ textarea.form-control{
 
                     </div>
 
-                    <span class="status-badge badge-green">
+                    <span id="estadoOperativos" class="status-badge badge-green">
                         0
                     </span>
 
@@ -1805,7 +1805,7 @@ textarea.form-control{
 
                     </div>
 
-                    <span class="status-badge badge-yellow">
+                    <span id="estadoTaller" class="status-badge badge-yellow">
                         0
                     </span>
 
@@ -1834,7 +1834,7 @@ textarea.form-control{
 
                     </div>
 
-                    <span class="status-badge badge-red">
+                    <span id="estadoFueraServicio" class="status-badge badge-red">
                         0
                     </span>
 
@@ -2365,92 +2365,6 @@ textarea.form-control{
 
 
 
-            <div class="activity-item">
-                <div class="activity-icon blue">🔗</div>
-                <div>
-                    <div class="activity-text">
-                        Arquitectura Panel 2.0 operativa
-                    </div>
-                    <div class="activity-time">
-                        Backend Maestro
-                    </div>
-                </div>
-            </div>
-
-            <div class="activity-item">
-                <div class="activity-icon cyan">🛰</div>
-                <div>
-                    <div class="activity-text">
-                        GPS reservado exclusivamente para Día Verde
-                    </div>
-                    <div class="activity-time">
-                        Política de arquitectura
-                    </div>
-                </div>
-            </div>
-        `;
-
-        return;
-    }
-
-    const ultimos =
-        [...eventos]
-            .sort((a,b) => {
-
-                const fa =
-                    new Date(a.FECHA_HORA || 0).getTime();
-
-                const fb =
-                    new Date(b.FECHA_HORA || 0).getTime();
-
-                return fb - fa;
-            })
-            .slice(0,5);
-
-    contenedor.innerHTML =
-        ultimos.map(evento => {
-
-            const tipo =
-                evento.TIPO_EVENTO || "EVENTO";
-
-            const descripcion =
-                evento.DESCRIPCION ||
-                tipo;
-
-            const clase =
-                claseEvento(tipo);
-
-            return `
-                <div class="activity-item">
-
-                    <div class="activity-icon ${clase}">
-                        ${iconoEvento(tipo)}
-                    </div>
-
-                    <div>
-
-                        <div class="activity-text">
-                            ${escaparHTML(descripcion)}
-                        </div>
-
-                        <div class="activity-time">
-                            ${escaparHTML(
-                                formatearFecha(evento.FECHA_HORA)
-                            )}
-                        </div>
-
-                    </div>
-
-                </div>
-            `;
-
-        }).join("");
-}
-
-
-
-
-
 
 
 <!-- ======================================================
@@ -2579,6 +2493,44 @@ textarea.form-control{
 
 
 <script>
+
+/* =========================================================
+   FUNCIONES AUXILIARES
+   ========================================================= */
+function normalizar(valor){
+    return String(valor ?? "")
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"");
+}
+
+function escaparHTML(valor){
+    return String(valor ?? "")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+}
+
+function fechaLocalISO(){
+    const ahora = new Date();
+    const offset = ahora.getTimezoneOffset();
+    const local = new Date(ahora.getTime() - offset * 60000);
+    return local.toISOString().slice(0,10);
+}
+
+function formatearFecha(valor){
+    if(!valor) return "-";
+    const fecha = new Date(valor);
+    if(Number.isNaN(fecha.getTime())) return String(valor);
+    return fecha.toLocaleString("es-AR",{
+        day:"2-digit",month:"2-digit",year:"numeric",
+        hour:"2-digit",minute:"2-digit"
+    });
+}
+
 
 /* =========================================================
    CONFIGURACIÓN
@@ -3686,9 +3638,9 @@ async function guardarVehiculo(event){
                 {
                     method:"POST",
                     body:JSON.stringify({
-                        accion:"crearVehiculo",
-                        datos:datos
-                    })
+                         accion:"crearVehiculo",
+                         ...datos
+                     })
                 }
             );
 
@@ -3709,26 +3661,8 @@ async function guardarVehiculo(event){
             );
         }
 
-        mostrarMensajeVehiculo(
-            "Vehículo creado correctamente.",
-            "ok"
-        );
-
-        /*
-           Cerramos el modal inmediatamente después de confirmar
-           que el Backend creó la unidad. La actualización visual
-           se ejecuta después y no puede dejar el botón en "Guardando...".
-        */
-        if(boton){
-            boton.disabled = false;
-            boton.textContent = "Guardar vehículo";
-        }
-
         cerrarModalVehiculo();
 
-        /*
-           Refrescamos los datos sin bloquear el cierre del formulario.
-        */
         Promise.allSettled([
             cargarResumenPanel(),
             cargarVehiculos()
