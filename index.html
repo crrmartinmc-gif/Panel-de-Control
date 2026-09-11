@@ -1744,6 +1744,137 @@ textarea.form-control{
     }
 }
 
+/* =========================================================
+   MÓDULO EVENTOS
+   ========================================================= */
+.eventos-kpis{
+    grid-template-columns:repeat(5,1fr);
+}
+
+.eventos-table-wrap{
+    overflow-x:auto;
+}
+
+.eventos-table{
+    min-width:1100px;
+}
+
+.evento-row{
+    cursor:pointer;
+    transition:background .15s ease;
+}
+
+.evento-row:hover{
+    background:rgba(255,255,255,.025);
+}
+
+.evento-tipo{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:5px 8px;
+    border-radius:999px;
+    font-size:9px;
+    font-weight:800;
+    white-space:nowrap;
+}
+
+.evento-tipo.green{color:#6ee7a0;background:rgba(34,197,94,.12)}
+.evento-tipo.cyan{color:#67e8f9;background:rgba(6,182,212,.12)}
+.evento-tipo.blue{color:#93c5fd;background:rgba(59,130,246,.12)}
+.evento-tipo.yellow{color:#fbbf24;background:rgba(245,158,11,.12)}
+.evento-tipo.red{color:#f87171;background:rgba(239,68,68,.12)}
+
+.evento-origen{
+    font-size:9px;
+    font-weight:800;
+    color:#b8c5d8;
+    white-space:nowrap;
+}
+
+.evento-descripcion{
+    max-width:340px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.evento-detalle-btn{
+    border:1px solid var(--border);
+    background:#16253a;
+    color:#cbd5e1;
+    border-radius:7px;
+    padding:6px 9px;
+    font-size:9px;
+    cursor:pointer;
+}
+
+.evento-detalle-btn:hover{
+    border-color:var(--green);
+    color:white;
+}
+
+.evento-detail-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+}
+
+.evento-detail-item{
+    border:1px solid var(--border);
+    background:#0c1727;
+    border-radius:10px;
+    padding:11px 12px;
+}
+
+.evento-detail-item.full{
+    grid-column:1/-1;
+}
+
+.evento-detail-label{
+    font-size:9px;
+    color:#7f8da3;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    font-weight:800;
+    margin-bottom:5px;
+}
+
+.evento-detail-value{
+    font-size:11px;
+    color:#e7edf5;
+    line-height:1.45;
+    word-break:break-word;
+}
+
+.evento-datos{
+    margin:0;
+    white-space:pre-wrap;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+    font-size:10px;
+    color:#b9c7d9;
+    max-height:220px;
+    overflow:auto;
+}
+
+@media(max-width:900px){
+    .eventos-kpis{
+        grid-template-columns:repeat(2,1fr);
+    }
+}
+
+@media(max-width:600px){
+    .eventos-kpis{
+        grid-template-columns:1fr;
+    }
+    .evento-detail-grid{
+        grid-template-columns:1fr;
+    }
+    .evento-detail-item.full{
+        grid-column:auto;
+    }
+}
+
 </style>
 </head>
 
@@ -3481,21 +3612,84 @@ textarea.form-control{
 
 
 <div id="eventos" class="page">
+
     <div class="section-head">
         <div>
             <h2>Eventos</h2>
-            <p>Registro de actividad del sistema</p>
+            <p>Auditoría y trazabilidad de toda la operación</p>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input id="filtroEventos" class="filter"
+                   placeholder="Buscar evento, vehículo, chofer..."
+                   oninput="filtrarEventos()">
+
+            <select id="filtroOrigenEventos" class="filter" onchange="filtrarEventos()">
+                <option value="">Todos los orígenes</option>
+                <option value="PANEL">Panel</option>
+                <option value="DIA VERDE">Día Verde</option>
+                <option value="CHOFERES">Choferes</option>
+            </select>
+
+            <select id="filtroTipoEventos" class="filter" onchange="filtrarEventos()">
+                <option value="">Todos los tipos</option>
+            </select>
+
+            <button class="btn btn-secondary" type="button"
+                    onclick="cargarEventos()">↻ Actualizar</button>
+        </div>
+    </div>
+
+    <div class="inspeccion-kpis eventos-kpis">
+        <div class="mini-card">
+            <div class="mini-label">Total</div>
+            <div id="kpiEventosTotal" class="mini-value">0</div>
+        </div>
+        <div class="mini-card">
+            <div class="mini-label">Hoy</div>
+            <div id="kpiEventosHoy" class="mini-value">0</div>
+        </div>
+        <div class="mini-card">
+            <div class="mini-label">Día Verde</div>
+            <div id="kpiEventosDiaVerde" class="mini-value">0</div>
+        </div>
+        <div class="mini-card">
+            <div class="mini-label">Choferes</div>
+            <div id="kpiEventosChoferes" class="mini-value">0</div>
+        </div>
+        <div class="mini-card">
+            <div class="mini-label">Panel</div>
+            <div id="kpiEventosPanel" class="mini-value">0</div>
         </div>
     </div>
 
     <div class="panel">
-        <div class="module-placeholder">
-            <div class="placeholder-icon">◷</div>
-            <div class="placeholder-title">Auditoría de eventos</div>
-            <div class="placeholder-text">
-                EVENTOS será el registro histórico y de auditoría
-                de las aplicaciones.
+        <div class="panel-head">
+            <div>
+                <div class="panel-title">Bitácora de actividad</div>
+                <div class="panel-subtitle">Cada registro permite reconstruir qué ocurrió, cuándo y desde qué aplicación.</div>
             </div>
+            <span id="contadorEventos" class="inspeccion-count">0 eventos</span>
+        </div>
+
+        <div class="inspeccion-table-wrap eventos-table-wrap">
+            <table class="inspeccion-table eventos-table">
+                <thead>
+                    <tr>
+                        <th>Fecha y hora</th>
+                        <th>Tipo</th>
+                        <th>Origen</th>
+                        <th>Vehículo</th>
+                        <th>Chofer</th>
+                        <th>Servicio</th>
+                        <th>Descripción</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaEventos">
+                    <tr><td colspan="8"><div class="empty">Cargando eventos...</div></td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -3773,6 +3967,10 @@ function mostrarPagina(id, boton){
 
     if(id === "viajes"){
         cargarViajes();
+    }
+
+    if(id === "eventos"){
+        cargarEventos();
     }
 
     if(id === "inspecciones"){
@@ -7778,6 +7976,8 @@ async function cargarEventos(){
         await leerBackend("eventos");
 
     if(!resultado?.ok){
+        actualizarKPIsEventos([]);
+        renderizarTablaEventos([]);
         return [];
     }
 
@@ -7788,7 +7988,10 @@ async function cargarEventos(){
 
     estadoPanel.eventos = eventos;
 
+    actualizarTiposEventos(eventos);
+    actualizarKPIsEventos(eventos);
     renderizarActividad(eventos);
+    filtrarEventos();
 
     return eventos;
 }
@@ -7940,6 +8143,306 @@ function renderizarActividad(eventos){
             `;
 
         }).join("");
+}
+
+
+/* =========================================================
+   MÓDULO EVENTOS — AUDITORÍA Y TRAZABILIDAD
+   ========================================================= */
+
+function fechaEventoParaFiltro(valor){
+    if(!valor) return null;
+
+    const fecha = new Date(valor);
+
+    if(!Number.isNaN(fecha.getTime())){
+        return fecha;
+    }
+
+    const texto = String(valor).trim();
+    const match = texto.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+
+    if(match){
+        const d = new Date(
+            Number(match[1]),
+            Number(match[2])-1,
+            Number(match[3])
+        );
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    return null;
+}
+
+function esEventoDeHoy(evento){
+    const fecha = fechaEventoParaFiltro(evento?.FECHA_HORA);
+    if(!fecha) return false;
+
+    const hoy = new Date();
+
+    return fecha.getFullYear() === hoy.getFullYear() &&
+           fecha.getMonth() === hoy.getMonth() &&
+           fecha.getDate() === hoy.getDate();
+}
+
+function origenEventoNormalizado(valor){
+    const o = normalizar(valor);
+
+    if(o.includes("DIA VERDE") || o.includes("DIA_VERDE") || o.includes("DIAVERDE")){
+        return "DIA VERDE";
+    }
+
+    if(o.includes("CHOFER")){
+        return "CHOFERES";
+    }
+
+    if(o.includes("PANEL")){
+        return "PANEL";
+    }
+
+    return String(valor || "-").trim().toUpperCase();
+}
+
+function etiquetaOrigenEvento(valor){
+    const o = origenEventoNormalizado(valor);
+
+    if(o === "DIA VERDE") return "Día Verde";
+    if(o === "CHOFERES") return "Choferes";
+    if(o === "PANEL") return "Panel";
+
+    return o || "-";
+}
+
+function actualizarTiposEventos(eventos){
+    const select = document.getElementById("filtroTipoEventos");
+    if(!select) return;
+
+    const actual = select.value;
+    const tipos = [...new Set(
+        (Array.isArray(eventos) ? eventos : [])
+            .map(e => String(e?.TIPO_EVENTO || "EVENTO").trim())
+            .filter(Boolean)
+    )].sort((a,b) => a.localeCompare(b,"es"));
+
+    select.innerHTML =
+        '<option value="">Todos los tipos</option>' +
+        tipos.map(tipo =>
+            `<option value="${escaparHTML(tipo)}">${escaparHTML(tipo)}</option>`
+        ).join("");
+
+    if(tipos.includes(actual)){
+        select.value = actual;
+    }
+}
+
+function actualizarKPIsEventos(eventos){
+    const lista = Array.isArray(eventos) ? eventos : [];
+
+    const total = lista.length;
+    const hoy = lista.filter(esEventoDeHoy).length;
+    const diaVerde = lista.filter(e => origenEventoNormalizado(e?.ORIGEN) === "DIA VERDE").length;
+    const choferes = lista.filter(e => origenEventoNormalizado(e?.ORIGEN) === "CHOFERES").length;
+    const panel = lista.filter(e => origenEventoNormalizado(e?.ORIGEN) === "PANEL").length;
+
+    const valores = {
+        kpiEventosTotal: total,
+        kpiEventosHoy: hoy,
+        kpiEventosDiaVerde: diaVerde,
+        kpiEventosChoferes: choferes,
+        kpiEventosPanel: panel
+    };
+
+    Object.entries(valores).forEach(([id,valor]) => {
+        const el = document.getElementById(id);
+        if(el) el.textContent = valor;
+    });
+}
+
+function textoEvento(valor){
+    if(valor === null || valor === undefined || valor === "") return "-";
+    return String(valor);
+}
+
+function datosEventoFormateados(datos){
+    if(datos === null || datos === undefined || datos === "") return "-";
+
+    if(typeof datos === "object"){
+        try{
+            return JSON.stringify(datos,null,2);
+        }catch(e){
+            return String(datos);
+        }
+    }
+
+    const texto = String(datos);
+
+    try{
+        return JSON.stringify(JSON.parse(texto),null,2);
+    }catch(e){
+        return texto;
+    }
+}
+
+function filtrarEventos(){
+    const lista = Array.isArray(estadoPanel.eventos)
+        ? estadoPanel.eventos
+        : [];
+
+    const input = document.getElementById("filtroEventos");
+    const origen = document.getElementById("filtroOrigenEventos");
+    const tipo = document.getElementById("filtroTipoEventos");
+
+    const texto = normalizar(input?.value || "");
+    const filtroOrigen = normalizar(origen?.value || "");
+    const filtroTipo = normalizar(tipo?.value || "");
+
+    const filtrados = lista.filter(evento => {
+
+        const origenEvento = origenEventoNormalizado(evento?.ORIGEN);
+        const tipoEvento = normalizar(evento?.TIPO_EVENTO || "EVENTO");
+
+        if(filtroOrigen && normalizar(origenEvento) !== filtroOrigen){
+            return false;
+        }
+
+        if(filtroTipo && tipoEvento !== filtroTipo){
+            return false;
+        }
+
+        if(!texto){
+            return true;
+        }
+
+        const contenido = [
+            evento?.FECHA_HORA,
+            evento?.TIPO_EVENTO,
+            evento?.ORIGEN,
+            evento?.ID_USUARIO,
+            evento?.ID_SERVICIO,
+            evento?.ID_ASIGNACION,
+            evento?.ID_VIAJE,
+            evento?.ID_VEHICULO,
+            evento?.ID_CHOFER,
+            evento?.DESCRIPCION,
+            evento?.DATOS
+        ].map(normalizar).join(" ");
+
+        return contenido.includes(texto);
+    });
+
+    renderizarTablaEventos(filtrados);
+}
+
+function renderizarTablaEventos(eventos){
+    const tbody = document.getElementById("tablaEventos");
+    const contador = document.getElementById("contadorEventos");
+
+    if(!tbody) return;
+
+    const lista = Array.isArray(eventos)
+        ? [...eventos]
+        : [];
+
+    lista.sort((a,b) => {
+        const fa = fechaEventoParaFiltro(a?.FECHA_HORA)?.getTime() || 0;
+        const fb = fechaEventoParaFiltro(b?.FECHA_HORA)?.getTime() || 0;
+        return fb - fa;
+    });
+
+    if(contador){
+        contador.textContent =
+            `${lista.length} ${lista.length === 1 ? "evento" : "eventos"}`;
+    }
+
+    if(lista.length === 0){
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8">
+                    <div class="empty">No hay eventos que coincidan con los filtros.</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = lista.map((evento,index) => {
+
+        const tipo = textoEvento(evento?.TIPO_EVENTO || "EVENTO");
+        const origen = etiquetaOrigenEvento(evento?.ORIGEN);
+        const descripcion = textoEvento(evento?.DESCRIPCION || tipo);
+        const clase = claseEvento(tipo);
+        const vehiculo = textoEvento(evento?.ID_VEHICULO);
+        const chofer = textoEvento(evento?.ID_CHOFER);
+        const servicio = textoEvento(evento?.ID_SERVICIO);
+
+        return `
+            <tr class="evento-row" onclick="abrirDetalleEvento(${index}, window.__eventosRenderizados || [])">
+                <td>${escaparHTML(formatearFecha(evento?.FECHA_HORA))}</td>
+                <td>
+                    <span class="evento-tipo ${clase}">
+                        ${iconoEvento(tipo)}
+                        ${escaparHTML(tipo)}
+                    </span>
+                </td>
+                <td><span class="evento-origen">${escaparHTML(origen)}</span></td>
+                <td>${escaparHTML(vehiculo)}</td>
+                <td>${escaparHTML(chofer)}</td>
+                <td>${escaparHTML(servicio)}</td>
+                <td class="evento-descripcion" title="${escaparHTML(descripcion)}">${escaparHTML(descripcion)}</td>
+                <td>
+                    <button type="button" class="evento-detalle-btn" onclick="event.stopPropagation();abrirDetalleEvento(${index}, window.__eventosRenderizados || [])">Ver</button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    window.__eventosRenderizados = lista;
+}
+
+function abrirDetalleEvento(index, lista){
+    const eventos = Array.isArray(lista) ? lista : [];
+    const evento = eventos[index];
+    const modal = document.getElementById("modalDetalleEvento");
+
+    if(!evento || !modal) return;
+
+    const asignacion = textoEvento(evento.ID_ASIGNACION);
+    const viaje = textoEvento(evento.ID_VIAJE);
+    const usuario = textoEvento(evento.ID_USUARIO);
+
+    const set = (id,valor) => {
+        const el = document.getElementById(id);
+        if(el) el.textContent = textoEvento(valor);
+    };
+
+    set("detalleEventoFecha",formatearFecha(evento.FECHA_HORA));
+    set("detalleEventoTipo",evento.TIPO_EVENTO || "EVENTO");
+    set("detalleEventoOrigen",etiquetaOrigenEvento(evento.ORIGEN));
+    set("detalleEventoUsuario",usuario);
+    set("detalleEventoServicio",evento.ID_SERVICIO);
+    set("detalleEventoAsignacion",asignacion);
+    set("detalleEventoViaje",viaje);
+    set("detalleEventoVehiculo",evento.ID_VEHICULO);
+    set("detalleEventoChofer",evento.ID_CHOFER);
+    set("detalleEventoDescripcion",evento.DESCRIPCION || evento.TIPO_EVENTO || "-");
+
+    const datos = document.getElementById("detalleEventoDatos");
+    if(datos){
+        datos.textContent = datosEventoFormateados(evento.DATOS);
+    }
+
+    modal.classList.add("open");
+}
+
+function cerrarDetalleEvento(event){
+    if(event && event.target && event.target.id !== "modalDetalleEvento"){
+        return;
+    }
+
+    const modal = document.getElementById("modalDetalleEvento");
+    if(modal){
+        modal.classList.remove("open");
+    }
 }
 
 
@@ -10517,6 +11020,84 @@ document.addEventListener(
                 <button id="btnGuardarReporte" type="submit" class="btn btn-primary">Guardar reporte</button>
             </div>
         </form>
+    </div>
+</div>
+
+
+<div id="modalDetalleEvento" class="modal-overlay" onclick="cerrarDetalleEvento(event)">
+    <div class="modal" style="width:min(820px,100%)" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title">Detalle del evento</div>
+                <div style="font-size:10px;color:#7f8da3;margin-top:3px">Trazabilidad registrada por el Backend Maestro</div>
+            </div>
+            <button class="modal-close" type="button" onclick="cerrarDetalleEvento()">×</button>
+        </div>
+
+        <div class="modal-body">
+            <div class="evento-detail-grid">
+
+                <div class="evento-detail-item">
+                    <div class="evento-detail-label">Fecha y hora</div>
+                    <div id="detalleEventoFecha" class="evento-detail-value">-</div>
+                </div>
+
+                <div class="evento-detail-item">
+                    <div class="evento-detail-label">Tipo de evento</div>
+                    <div id="detalleEventoTipo" class="evento-detail-value">-</div>
+                </div>
+
+                <div class="evento-detail-item">
+                    <div class="evento-detail-label">Origen</div>
+                    <div id="detalleEventoOrigen" class="evento-detail-value">-</div>
+                </div>
+
+                <div class="evento-detail-item">
+                    <div class="evento-detail-label">Usuario</div>
+                    <div id="detalleEventoUsuario" class="evento-detail-value">-</div>
+                </div>
+
+                <div class="evento-detail-item">
+                    <div class="evento-detail-label">Servicio</div>
+                    <div id="detalleEventoServicio" class="evento-detail-value">-</div>
+                </div>
+
+                <div class="evento-detail-item">
+                    <div class="evento-detail-label">Asignación</div>
+                    <div id="detalleEventoAsignacion" class="evento-detail-value">-</div>
+                </div>
+
+                <div class="evento-detail-item">
+                    <div class="evento-detail-label">Viaje</div>
+                    <div id="detalleEventoViaje" class="evento-detail-value">-</div>
+                </div>
+
+                <div class="evento-detail-item">
+                    <div class="evento-detail-label">Vehículo</div>
+                    <div id="detalleEventoVehiculo" class="evento-detail-value">-</div>
+                </div>
+
+                <div class="evento-detail-item">
+                    <div class="evento-detail-label">Chofer</div>
+                    <div id="detalleEventoChofer" class="evento-detail-value">-</div>
+                </div>
+
+                <div class="evento-detail-item full">
+                    <div class="evento-detail-label">Descripción</div>
+                    <div id="detalleEventoDescripcion" class="evento-detail-value">-</div>
+                </div>
+
+                <div class="evento-detail-item full">
+                    <div class="evento-detail-label">Datos técnicos</div>
+                    <pre id="detalleEventoDatos" class="evento-datos">-</pre>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="cerrarDetalleEvento()">Cerrar</button>
+        </div>
     </div>
 </div>
 
