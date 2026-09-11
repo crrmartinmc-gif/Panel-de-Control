@@ -3890,8 +3890,9 @@ async function llamarBackend(accion,datos={}){
                     "Content-Type":"application/json"
                 },
                 body:JSON.stringify({
-                    accion:accion,
-                    datos:datos
+                    accion: accion,
+                    ...datos,
+                    datos: datos
                 })
             }
         );
