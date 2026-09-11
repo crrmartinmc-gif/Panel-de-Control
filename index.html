@@ -1012,6 +1012,136 @@ tr:hover td{
     opacity:.75;
 }
 
+
+/* =========================================================
+   MODAL VEHÍCULOS
+   ========================================================= */
+
+.modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(2,8,18,.72);
+    backdrop-filter:blur(6px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:200;
+    padding:20px;
+}
+
+.modal-overlay.open{
+    display:flex;
+}
+
+.modal{
+    width:min(680px,100%);
+    max-height:90vh;
+    overflow:auto;
+    background:#101d2e;
+    border:1px solid var(--border);
+    border-radius:18px;
+    box-shadow:0 25px 80px rgba(0,0,0,.5);
+}
+
+.modal-header{
+    padding:18px 20px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.modal-title{
+    font-size:16px;
+    font-weight:800;
+}
+
+.modal-close{
+    width:34px;
+    height:34px;
+    border:1px solid var(--border);
+    background:#16253a;
+    color:white;
+    border-radius:9px;
+    cursor:pointer;
+    font-size:17px;
+}
+
+.modal-body{
+    padding:20px;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:13px;
+}
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+
+.form-group.full{
+    grid-column:1/-1;
+}
+
+.form-label{
+    font-size:10px;
+    color:#91a0b5;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+}
+
+.form-control{
+    width:100%;
+    height:38px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:#0c1727;
+    color:#e7edf5;
+    padding:0 11px;
+    outline:none;
+    font-family:inherit;
+    font-size:11px;
+}
+
+textarea.form-control{
+    height:80px;
+    padding:10px 11px;
+    resize:vertical;
+}
+
+.form-control:focus{
+    border-color:var(--green);
+    box-shadow:0 0 0 3px rgba(34,197,94,.08);
+}
+
+.modal-footer{
+    padding:15px 20px;
+    border-top:1px solid var(--border);
+    display:flex;
+    justify-content:flex-end;
+    gap:9px;
+}
+
+.vehicle-count{
+    color:var(--muted);
+    font-size:10px;
+}
+
+@media(max-width:600px){
+    .form-grid{
+        grid-template-columns:1fr;
+    }
+
+    .form-group.full{
+        grid-column:auto;
+    }
+}
+
 </style>
 </head>
 
@@ -1886,7 +2016,7 @@ tr:hover td{
 
         </div>
 
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" onclick="abrirModalVehiculo()">
             + Nuevo vehículo
         </button>
 
@@ -1901,19 +2031,24 @@ tr:hover td{
 
                 <input
                     class="filter"
+                    id="filtroDominio"
                     placeholder="Buscar dominio..."
+                    oninput="filtrarVehiculos()"
                 >
 
-                <select class="filter">
-                    <option>Todos los estados</option>
-                    <option>OPERATIVO</option>
-                    <option>EN TALLER</option>
-                    <option>FUERA DE SERVICIO</option>
+                <select class="filter" id="filtroEstado" onchange="filtrarVehiculos()">
+                    <option value="">Todos los estados</option>
+                    <option value="DISPONIBLE">DISPONIBLE</option>
+                    <option value="EN TALLER">EN TALLER</option>
+                    <option value="FUERA DE SERVICIO">FUERA DE SERVICIO</option>
                 </select>
 
-                <select class="filter">
-                    <option>Todas las áreas</option>
+                <select class="filter" id="filtroArea" onchange="filtrarVehiculos()">
+                    <option value="">Todas las áreas</option>
                 </select>
+                <span id="contadorVehiculos" class="vehicle-count">
+                    0 vehículos
+                </span>
 
             </div>
 
@@ -2226,6 +2361,125 @@ tr:hover td{
     </div>
 </div>
 
+
+
+<!-- ======================================================
+     MODAL NUEVO VEHÍCULO
+     ====================================================== -->
+
+<div id="modalVehiculo" class="modal-overlay" onclick="cerrarModalVehiculo(event)">
+
+    <div class="modal" onclick="event.stopPropagation()">
+
+        <div class="modal-header">
+
+            <div>
+                <div class="modal-title">Nuevo vehículo</div>
+                <div class="panel-subtitle">
+                    Alta de unidad en el Backend Maestro
+                </div>
+            </div>
+
+            <button class="modal-close" onclick="cerrarModalVehiculo()">
+                ×
+            </button>
+
+        </div>
+
+        <form id="formVehiculo" onsubmit="guardarVehiculo(event)">
+
+            <div class="modal-body">
+
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label class="form-label">Dominio *</label>
+                        <input id="vehDominio" class="form-control"
+                               required maxlength="12"
+                               placeholder="AB123CD">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Interno</label>
+                        <input id="vehInterno" class="form-control"
+                               placeholder="Interno municipal">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Marca</label>
+                        <input id="vehMarca" class="form-control"
+                               placeholder="Marca">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Modelo</label>
+                        <input id="vehModelo" class="form-control"
+                               placeholder="Modelo">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tipo</label>
+                        <input id="vehTipo" class="form-control"
+                               placeholder="Camioneta, camión, auto...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Área</label>
+                        <input id="vehArea" class="form-control"
+                               placeholder="Área asignada">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Estado operativo</label>
+                        <select id="vehEstado" class="form-control">
+                            <option value="DISPONIBLE">DISPONIBLE</option>
+                            <option value="EN TALLER">EN TALLER</option>
+                            <option value="FUERA DE SERVICIO">FUERA DE SERVICIO</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">GPS ID</label>
+                        <input id="vehGps" class="form-control"
+                               placeholder="Opcional">
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">Observaciones</label>
+                        <textarea id="vehObservaciones"
+                                  class="form-control"
+                                  placeholder="Observaciones de la unidad"></textarea>
+                    </div>
+
+                </div>
+
+                <div id="vehiculoMensaje"
+                     style="display:none;margin-top:15px;font-size:11px;line-height:1.5">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button"
+                        class="btn btn-secondary"
+                        onclick="cerrarModalVehiculo()">
+                    Cancelar
+                </button>
+
+                <button id="btnGuardarVehiculo"
+                        type="submit"
+                        class="btn btn-primary">
+                    Guardar vehículo
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
 
 </section>
 
@@ -2841,6 +3095,8 @@ async function cargarVehiculos(){
 
     estadoPanel.vehiculos = vehiculos;
 
+    actualizarFiltroAreas(vehiculos);
+
     renderizarVehiculos(vehiculos);
 
     return vehiculos;
@@ -2898,13 +3154,25 @@ function renderizarVehiculos(vehiculos){
         return;
     }
 
+    actualizarFiltroAreas(
+        estadoPanel.vehiculos || []
+    );
+
+    const contador =
+        document.getElementById("contadorVehiculos");
+
+    if(contador){
+        contador.textContent =
+            `${Array.isArray(vehiculos) ? vehiculos.length : 0} vehículos`;
+    }
+
     if(!Array.isArray(vehiculos) || vehiculos.length === 0){
 
         tbody.innerHTML = `
             <tr>
                 <td colspan="7">
                     <div class="empty">
-                        Sin vehículos cargados en el Backend Maestro
+                        Sin vehículos que coincidan con el filtro
                     </div>
                 </td>
             </tr>
@@ -2941,26 +3209,37 @@ function renderizarVehiculos(vehiculos){
 
             return `
                 <tr>
+
                     <td>
                         <strong>
-                            ${escaparHTML(vehiculo.DOMINIO || "-")}
+                            ${escaparHTML(
+                                vehiculo.DOMINIO || "-"
+                            )}
                         </strong>
                     </td>
 
                     <td>
-                        ${escaparHTML(vehiculo.INTERNO || "-")}
+                        ${escaparHTML(
+                            vehiculo.INTERNO || "-"
+                        )}
                     </td>
 
                     <td>
-                        ${escaparHTML(marcaModelo || "-")}
+                        ${escaparHTML(
+                            marcaModelo || "-"
+                        )}
                     </td>
 
                     <td>
-                        ${escaparHTML(vehiculo.TIPO || "-")}
+                        ${escaparHTML(
+                            vehiculo.TIPO || "-"
+                        )}
                     </td>
 
                     <td>
-                        ${escaparHTML(vehiculo.AREA || "-")}
+                        ${escaparHTML(
+                            vehiculo.AREA || "-"
+                        )}
                     </td>
 
                     <td>
@@ -2972,11 +3251,15 @@ function renderizarVehiculos(vehiculos){
                     <td>
                         ${escaparHTML(gps)}
                     </td>
+
                 </tr>
             `;
 
         }).join("");
 }
+
+
+
 
 
 /* =========================================================
@@ -3171,6 +3454,301 @@ function renderizarActividad(eventos){
 
         }).join("");
 }
+
+
+
+/* =========================================================
+   MÓDULO VEHÍCULOS
+   ========================================================= */
+
+function abrirModalVehiculo(){
+
+    const modal =
+        document.getElementById("modalVehiculo");
+
+    if(!modal){
+        return;
+    }
+
+    const form =
+        document.getElementById("formVehiculo");
+
+    if(form){
+        form.reset();
+    }
+
+    const estado =
+        document.getElementById("vehEstado");
+
+    if(estado){
+        estado.value = "DISPONIBLE";
+    }
+
+    const mensaje =
+        document.getElementById("vehiculoMensaje");
+
+    if(mensaje){
+        mensaje.style.display = "none";
+        mensaje.textContent = "";
+    }
+
+    modal.classList.add("open");
+
+    setTimeout(() => {
+
+        const dominio =
+            document.getElementById("vehDominio");
+
+        if(dominio){
+            dominio.focus();
+        }
+
+    },50);
+}
+
+
+function cerrarModalVehiculo(event){
+
+    if(event && event.target &&
+       event.target.id !== "modalVehiculo"){
+
+        return;
+    }
+
+    const modal =
+        document.getElementById("modalVehiculo");
+
+    if(modal){
+        modal.classList.remove("open");
+    }
+}
+
+
+function mostrarMensajeVehiculo(texto,tipo="info"){
+
+    const mensaje =
+        document.getElementById("vehiculoMensaje");
+
+    if(!mensaje){
+        return;
+    }
+
+    mensaje.style.display = "block";
+    mensaje.textContent = texto;
+
+    if(tipo === "error"){
+        mensaje.style.color = "#f87171";
+    }else if(tipo === "ok"){
+        mensaje.style.color = "#6ee7a0";
+    }else{
+        mensaje.style.color = "#91a0b5";
+    }
+}
+
+
+async function guardarVehiculo(event){
+
+    event.preventDefault();
+
+    const boton =
+        document.getElementById("btnGuardarVehiculo");
+
+    const datos = {
+        dominio:
+            document.getElementById("vehDominio")?.value.trim(),
+
+        interno:
+            document.getElementById("vehInterno")?.value.trim(),
+
+        marca:
+            document.getElementById("vehMarca")?.value.trim(),
+
+        modelo:
+            document.getElementById("vehModelo")?.value.trim(),
+
+        tipo:
+            document.getElementById("vehTipo")?.value.trim(),
+
+        area:
+            document.getElementById("vehArea")?.value.trim(),
+
+        estadoOperativo:
+            document.getElementById("vehEstado")?.value,
+
+        gpsId:
+            document.getElementById("vehGps")?.value.trim(),
+
+        activo:"SI",
+
+        observaciones:
+            document.getElementById("vehObservaciones")?.value.trim()
+    };
+
+    if(!datos.dominio){
+
+        mostrarMensajeVehiculo(
+            "El dominio es obligatorio.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(boton){
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+    }
+
+    mostrarMensajeVehiculo(
+        "Registrando unidad en el Backend Maestro..."
+    );
+
+    try{
+
+        /*
+           POST sin header Content-Type.
+           Así evitamos un preflight CORS innecesario.
+           El Backend Maestro procesa el JSON del cuerpo.
+        */
+        const respuesta =
+            await fetch(
+                BACKEND_URL,
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        accion:"crearVehiculo",
+                        datos:datos
+                    })
+                }
+            );
+
+        if(!respuesta.ok){
+            throw new Error(
+                "HTTP " + respuesta.status
+            );
+        }
+
+        const resultado =
+            await respuesta.json();
+
+        if(!resultado?.ok){
+
+            throw new Error(
+                resultado?.error ||
+                "No se pudo crear el vehículo."
+            );
+        }
+
+        mostrarMensajeVehiculo(
+            "Vehículo creado correctamente.",
+            "ok"
+        );
+
+        await cargarResumenPanel();
+        await cargarVehiculos();
+
+        setTimeout(
+            cerrarModalVehiculo,
+            700
+        );
+
+    }catch(error){
+
+        console.error(
+            "Error creando vehículo:",
+            error
+        );
+
+        mostrarMensajeVehiculo(
+            "No se pudo guardar: " +
+            error.message,
+            "error"
+        );
+
+    }finally{
+
+        if(boton){
+            boton.disabled = false;
+            boton.textContent = "Guardar vehículo";
+        }
+    }
+}
+
+
+function actualizarFiltroAreas(vehiculos){
+
+    const select =
+        document.getElementById("filtroArea");
+
+    if(!select){
+        return;
+    }
+
+    const actual =
+        select.value;
+
+    const areas =
+        [...new Set(
+            (vehiculos || [])
+                .map(v => String(v.AREA || "").trim())
+                .filter(Boolean)
+        )]
+        .sort((a,b) =>
+            a.localeCompare(b,"es")
+        );
+
+    select.innerHTML =
+        '<option value="">Todas las áreas</option>' +
+        areas.map(area =>
+            `<option value="${escaparHTML(area)}">${escaparHTML(area)}</option>`
+        ).join("");
+
+    if(areas.includes(actual)){
+        select.value = actual;
+    }
+}
+
+
+function filtrarVehiculos(){
+
+    const dominio =
+        normalizar(
+            document.getElementById("filtroDominio")?.value
+        );
+
+    const estado =
+        normalizar(
+            document.getElementById("filtroEstado")?.value
+        );
+
+    const area =
+        normalizar(
+            document.getElementById("filtroArea")?.value
+        );
+
+    const filtrados =
+        (estadoPanel.vehiculos || [])
+            .filter(v => {
+
+                const vDominio =
+                    normalizar(v.DOMINIO);
+
+                const vEstado =
+                    normalizar(v.ESTADO_OPERATIVO);
+
+                const vArea =
+                    normalizar(v.AREA);
+
+                return (
+                    (!dominio || vDominio.includes(dominio)) &&
+                    (!estado || vEstado === estado) &&
+                    (!area || vArea === area)
+                );
+            });
+
+    renderizarVehiculos(filtrados);
+}
+
 
 
 /* =========================================================
