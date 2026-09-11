@@ -3463,6 +3463,68 @@ function renderizarActividad(eventos){
                 </div>
             </div>
 
+            <div class="activity-item">
+                <div class="activity-icon blue">🔗</div>
+                <div>
+                    <div class="activity-text">
+                        Arquitectura Panel 2.0 operativa
+                    </div>
+                    <div class="activity-time">
+                        Backend Maestro
+                    </div>
+                </div>
+            </div>
+
+            <div class="activity-item">
+                <div class="activity-icon cyan">🛰</div>
+                <div>
+                    <div class="activity-text">
+                        GPS reservado exclusivamente para Día Verde
+                    </div>
+                    <div class="activity-time">
+                        Política de arquitectura
+                    </div>
+                </div>
+            </div>
+        `;
+
+        return;
+    }
+
+    const ultimos =
+        [...eventos]
+            .sort((a,b) => {
+                const fa = new Date(a.FECHA_HORA || 0).getTime();
+                const fb = new Date(b.FECHA_HORA || 0).getTime();
+                return fb - fa;
+            })
+            .slice(0,5);
+
+    contenedor.innerHTML =
+        ultimos.map(evento => {
+
+            const tipo = evento.TIPO_EVENTO || "EVENTO";
+            const descripcion = evento.DESCRIPCION || tipo;
+            const clase = claseEvento(tipo);
+
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon ${clase}">
+                        ${iconoEvento(tipo)}
+                    </div>
+                    <div>
+                        <div class="activity-text">
+                            ${escaparHTML(descripcion)}
+                        </div>
+                        <div class="activity-time">
+                            ${escaparHTML(formatearFecha(evento.FECHA_HORA))}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+        }).join("");
+}
 
 
 /* =========================================================
@@ -3625,7 +3687,7 @@ async function guardarVehiculo(event){
                     method:"POST",
                     body:JSON.stringify({
                         accion:"crearVehiculo",
-                        ...datos
+                        datos:datos
                     })
                 }
             );
@@ -3770,7 +3832,6 @@ function filtrarVehiculos(){
 
     renderizarVehiculos(filtrados);
 }
-
 
 
 /* =========================================================
