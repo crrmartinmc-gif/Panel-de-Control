@@ -3751,6 +3751,14 @@ function mostrarPagina(id, boton){
        Así la tabla nunca queda mostrando
        "Cargando asignaciones..." indefinidamente.
     */
+    if(id === "vehiculos") {
+        cargarVehiculos();
+    }
+
+    if(id === "choferes") {
+        cargarChoferes();
+    }
+
     if(id === "asignaciones"){
         cargarAsignaciones();
     }
@@ -7571,6 +7579,1049 @@ async function guardarInspeccion(event){
 
     },700);
 }
+
+
+/* =========================================================
+   VEHÍCULOS
+   ========================================================= */
+
+async function cargarVehiculos(){
+
+    const resultado =
+        await leerBackend("vehiculos");
+
+    if(!resultado?.ok){
+        return [];
+    }
+
+    const vehiculos =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.vehiculos = vehiculos;
+
+    actualizarFiltroAreas(vehiculos);
+
+    renderizarVehiculos(vehiculos);
+
+    return vehiculos;
+}
+
+
+function claseEstadoVehiculo(estado){
+
+    const e = normalizar(estado);
+
+    if(e === "DISPONIBLE" ||
+       e === "OPERATIVO"){
+
+        return "online";
+    }
+
+    if(e === "EN TALLER"){
+        return "warning";
+    }
+
+    return "danger";
+}
+
+
+function textoEstadoVehiculo(estado){
+
+    const e = normalizar(estado);
+
+    if(e === "DISPONIBLE"){
+        return "DISPONIBLE";
+    }
+
+    if(e === "EN TALLER"){
+        return "EN TALLER";
+    }
+
+    if(e === "OPERATIVO"){
+        return "OPERATIVO";
+    }
+
+    if(!e){
+        return "SIN ESTADO";
+    }
+
+    return e;
+}
+
+
+function renderizarVehiculos(vehiculos){
+
+    const tbody =
+        document.getElementById("tablaVehiculos");
+
+    if(!tbody){
+        return;
+    }
+
+    actualizarFiltroAreas(
+        estadoPanel.vehiculos || []
+    );
+
+    const contador =
+        document.getElementById("contadorVehiculos");
+
+    if(contador){
+        contador.textContent =
+            `${Array.isArray(vehiculos) ? vehiculos.length : 0} vehículos`;
+    }
+
+    if(!Array.isArray(vehiculos) || vehiculos.length === 0){
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    <div class="empty">
+                        Sin vehículos que coincidan con el filtro
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    tbody.innerHTML =
+        vehiculos.map(vehiculo => {
+
+            const estado =
+                textoEstadoVehiculo(
+                    vehiculo.ESTADO_OPERATIVO
+                );
+
+            const clase =
+                claseEstadoVehiculo(
+                    vehiculo.ESTADO_OPERATIVO
+                );
+
+            const gps =
+                vehiculo.GPS_ID
+                    ? "🛰 ACTIVO"
+                    : "—";
+
+            const marcaModelo =
+                [
+                    vehiculo.MARCA,
+                    vehiculo.MODELO
+                ]
+                .filter(Boolean)
+                .join(" ");
+
+            return `
+                <tr>
+
+                    <td>
+                        <strong>
+                            ${escaparHTML(
+                                vehiculo.DOMINIO || "-"
+                            )}
+                        </strong>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            vehiculo.INTERNO || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            marcaModelo || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            vehiculo.TIPO || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            vehiculo.AREA || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        <span class="table-status ${clase}">
+                            ${escaparHTML(estado)}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(gps)}
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+}
+
+
+
+
+
+/* =========================================================
+   EVENTOS / ACTIVIDAD RECIENTE
+   ========================================================= */
+
+async function cargarEventos(){
+
+    const resultado =
+        await leerBackend("eventos");
+
+    if(!resultado?.ok){
+        return [];
+    }
+
+    const eventos =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.eventos = eventos;
+
+    renderizarActividad(eventos);
+
+    return eventos;
+}
+
+
+function iconoEvento(tipo){
+
+    const e = normalizar(tipo);
+
+    if(e.includes("GPS")){
+        return "🛰";
+    }
+
+    if(e.includes("VIAJE")){
+        return "🚦";
+    }
+
+    if(e.includes("REPORTE")){
+        return "⚠";
+    }
+
+    if(e.includes("INSPECCION")){
+        return "✓";
+    }
+
+    if(e.includes("ASIGNACION")){
+        return "🔗";
+    }
+
+    if(e.includes("MANTENIMIENTO")){
+        return "🔧";
+    }
+
+    return "◷";
+}
+
+
+function claseEvento(tipo){
+
+    const e = normalizar(tipo);
+
+    if(e.includes("REPORTE") ||
+       e.includes("ALERTA") ||
+       e.includes("ERROR")){
+
+        return "red";
+    }
+
+    if(e.includes("GPS") ||
+       e.includes("VIAJE")){
+
+        return "cyan";
+    }
+
+    if(e.includes("ASIGNACION")){
+        return "blue";
+    }
+
+    if(e.includes("MANTENIMIENTO")){
+        return "yellow";
+    }
+
+    return "green";
+}
+
+
+function renderizarActividad(eventos){
+
+    const contenedor =
+        document.querySelector("#inicio .activity");
+
+    if(!contenedor){
+        return;
+    }
+
+    if(!Array.isArray(eventos) || eventos.length === 0){
+
+        contenedor.innerHTML = `
+            <div class="activity-item">
+                <div class="activity-icon green">✓</div>
+                <div>
+                    <div class="activity-text">
+                        Sistema conectado al Backend Maestro
+                    </div>
+                    <div class="activity-time">
+                        Sin eventos recientes
+                    </div>
+                </div>
+            </div>
+
+            <div class="activity-item">
+                <div class="activity-icon blue">🔗</div>
+                <div>
+                    <div class="activity-text">
+                        Arquitectura Panel 2.0 operativa
+                    </div>
+                    <div class="activity-time">
+                        Backend Maestro
+                    </div>
+                </div>
+            </div>
+
+            <div class="activity-item">
+                <div class="activity-icon cyan">🛰</div>
+                <div>
+                    <div class="activity-text">
+                        GPS reservado exclusivamente para Día Verde
+                    </div>
+                    <div class="activity-time">
+                        Política de arquitectura
+                    </div>
+                </div>
+            </div>
+        `;
+
+        return;
+    }
+
+    const ultimos =
+        [...eventos]
+            .sort((a,b) => {
+                const fa = new Date(a.FECHA_HORA || 0).getTime();
+                const fb = new Date(b.FECHA_HORA || 0).getTime();
+                return fb - fa;
+            })
+            .slice(0,5);
+
+    contenedor.innerHTML =
+        ultimos.map(evento => {
+
+            const tipo = evento.TIPO_EVENTO || "EVENTO";
+            const descripcion = evento.DESCRIPCION || tipo;
+            const clase = claseEvento(tipo);
+
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon ${clase}">
+                        ${iconoEvento(tipo)}
+                    </div>
+                    <div>
+                        <div class="activity-text">
+                            ${escaparHTML(descripcion)}
+                        </div>
+                        <div class="activity-time">
+                            ${escaparHTML(formatearFecha(evento.FECHA_HORA))}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+        }).join("");
+}
+
+
+/* =========================================================
+   MÓDULO VEHÍCULOS
+   ========================================================= */
+
+function abrirModalVehiculo(){
+
+    const modal =
+        document.getElementById("modalVehiculo");
+
+    if(!modal){
+        return;
+    }
+
+    const form =
+        document.getElementById("formVehiculo");
+
+    if(form){
+        form.reset();
+    }
+
+    const estado =
+        document.getElementById("vehEstado");
+
+    if(estado){
+        estado.value = "DISPONIBLE";
+    }
+
+    const mensaje =
+        document.getElementById("vehiculoMensaje");
+
+    if(mensaje){
+        mensaje.style.display = "none";
+        mensaje.textContent = "";
+    }
+
+    modal.classList.add("open");
+
+    setTimeout(() => {
+
+        const dominio =
+            document.getElementById("vehDominio");
+
+        if(dominio){
+            dominio.focus();
+        }
+
+    },50);
+}
+
+
+function cerrarModalVehiculo(event){
+
+    if(event && event.target &&
+       event.target.id !== "modalVehiculo"){
+
+        return;
+    }
+
+    const modal =
+        document.getElementById("modalVehiculo");
+
+    if(modal){
+        modal.classList.remove("open");
+    }
+}
+
+
+function mostrarMensajeVehiculo(texto,tipo="info"){
+
+    const mensaje =
+        document.getElementById("vehiculoMensaje");
+
+    if(!mensaje){
+        return;
+    }
+
+    mensaje.style.display = "block";
+    mensaje.textContent = texto;
+
+    if(tipo === "error"){
+        mensaje.style.color = "#f87171";
+    }else if(tipo === "ok"){
+        mensaje.style.color = "#6ee7a0";
+    }else{
+        mensaje.style.color = "#91a0b5";
+    }
+}
+
+
+async function guardarVehiculo(event){
+
+    event.preventDefault();
+
+    const boton =
+        document.getElementById("btnGuardarVehiculo");
+
+    const datos = {
+        dominio:
+            document.getElementById("vehDominio")?.value.trim(),
+
+        interno:
+            document.getElementById("vehInterno")?.value.trim(),
+
+        marca:
+            document.getElementById("vehMarca")?.value.trim(),
+
+        modelo:
+            document.getElementById("vehModelo")?.value.trim(),
+
+        tipo:
+            document.getElementById("vehTipo")?.value.trim(),
+
+        area:
+            document.getElementById("vehArea")?.value.trim(),
+
+        estadoOperativo:
+            document.getElementById("vehEstado")?.value,
+
+        gpsId:
+            document.getElementById("vehGps")?.value.trim(),
+
+        activo:"SI",
+
+        observaciones:
+            document.getElementById("vehObservaciones")?.value.trim()
+    };
+
+    if(!datos.dominio){
+
+        mostrarMensajeVehiculo(
+            "El dominio es obligatorio.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(boton){
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+    }
+
+    mostrarMensajeVehiculo(
+        "Registrando unidad en el Backend Maestro..."
+    );
+
+    try{
+
+        /*
+           POST sin header Content-Type.
+           Así evitamos un preflight CORS innecesario.
+           El Backend Maestro procesa el JSON del cuerpo.
+        */
+        const respuesta =
+            await fetch(
+                BACKEND_URL,
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                         accion:"crearVehiculo",
+                         ...datos
+                     })
+                }
+            );
+
+        if(!respuesta.ok){
+            throw new Error(
+                "HTTP " + respuesta.status
+            );
+        }
+
+        const resultado =
+            await respuesta.json();
+
+        if(!resultado?.ok){
+
+            throw new Error(
+                resultado?.error ||
+                "No se pudo crear el vehículo."
+            );
+        }
+
+        cerrarModalVehiculo();
+
+        Promise.allSettled([
+            cargarResumenPanel(),
+            cargarVehiculos()
+        ]).then(() => {
+            filtrarVehiculos();
+        });
+
+    }catch(error){
+
+        console.error(
+            "Error creando vehículo:",
+            error
+        );
+
+        mostrarMensajeVehiculo(
+            "No se pudo guardar: " +
+            error.message,
+            "error"
+        );
+
+    }finally{
+
+        if(boton){
+            boton.disabled = false;
+            boton.textContent = "Guardar vehículo";
+        }
+    }
+}
+
+
+function actualizarFiltroAreas(vehiculos){
+
+    const select =
+        document.getElementById("filtroArea");
+
+    if(!select){
+        return;
+    }
+
+    const actual =
+        select.value;
+
+    const areas =
+        [...new Set(
+            (vehiculos || [])
+                .map(v => String(v.AREA || "").trim())
+                .filter(Boolean)
+        )]
+        .sort((a,b) =>
+            a.localeCompare(b,"es")
+        );
+
+    select.innerHTML =
+        '<option value="">Todas las áreas</option>' +
+        areas.map(area =>
+            '<option value="' + escaparHTML(area) + '">' + escaparHTML(area) + '</option>'
+        ).join("");
+
+    if(areas.includes(actual)){
+        select.value = actual;
+    }
+}
+
+
+function filtrarVehiculos(){
+
+    const dominio =
+        normalizar(
+            document.getElementById("filtroDominio")?.value
+        );
+
+    const estado =
+        normalizar(
+            document.getElementById("filtroEstado")?.value
+        );
+
+    const area =
+        normalizar(
+            document.getElementById("filtroArea")?.value
+        );
+
+    const filtrados =
+        (estadoPanel.vehiculos || [])
+            .filter(v => {
+
+                const vDominio =
+                    normalizar(v.DOMINIO);
+
+                const vEstado =
+                    normalizar(v.ESTADO_OPERATIVO);
+
+                const vArea =
+                    normalizar(v.AREA);
+
+                return (
+                    (!dominio || vDominio.includes(dominio)) &&
+                    (!estado || vEstado === estado) &&
+                    (!area || vArea === area)
+                );
+            });
+
+    renderizarVehiculos(filtrados);
+}
+
+
+
+
+
+/* =========================================================
+   MÓDULO CHOFERES
+   ========================================================= */
+
+async function cargarChoferes(){
+
+    const resultado =
+        await leerBackend("choferes");
+
+    if(!resultado?.ok){
+        return [];
+    }
+
+    const choferes =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.choferes = choferes;
+
+    renderizarChoferes(choferes);
+
+    return choferes;
+}
+
+
+function claseEstadoChofer(estado){
+
+    return normalizar(estado) === "ACTIVO"
+        ? "status-active"
+        : "status-inactive";
+}
+
+
+function renderizarChoferes(choferes){
+
+    const tbody =
+        document.getElementById("tablaChoferes");
+
+    if(!tbody){
+        return;
+    }
+
+    const contador =
+        document.getElementById("contadorChoferes");
+
+    if(contador){
+
+        contador.textContent =
+            `${Array.isArray(choferes) ? choferes.length : 0} choferes`;
+    }
+
+    if(!Array.isArray(choferes) || choferes.length === 0){
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6">
+                    <div class="empty">
+                        Sin choferes registrados en el Backend Maestro
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    tbody.innerHTML =
+        choferes.map(chofer => {
+
+            const estado =
+                chofer.ESTADO || "SIN ESTADO";
+
+            const clase =
+                claseEstadoChofer(estado);
+
+            return `
+                <tr>
+
+                    <td>
+                        <strong>
+                            ${escaparHTML(
+                                chofer.NOMBRE || "-"
+                            )}
+                        </strong>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            chofer.DNI || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            chofer.TELEFONO || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            chofer.LEGAJO || "-"
+                        )}
+                    </td>
+
+                    <td>
+                        <span class="table-status ${clase}">
+                            ${escaparHTML(
+                                estado
+                            )}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${escaparHTML(
+                            chofer.OBSERVACIONES || "-"
+                        )}
+                    </td>
+
+                </tr>
+            `;
+
+        }).join("");
+}
+
+
+function filtrarChoferes(){
+
+    const texto =
+        normalizar(
+            document.getElementById("filtroChofer")?.value
+        );
+
+    const filtrados =
+        (estadoPanel.choferes || [])
+            .filter(chofer => {
+
+                const contenido = [
+                    chofer.NOMBRE,
+                    chofer.DNI,
+                    chofer.TELEFONO,
+                    chofer.LEGAJO,
+                    chofer.ESTADO
+                ]
+                .map(normalizar)
+                .join(" ");
+
+                return !texto ||
+                    contenido.includes(texto);
+            });
+
+    renderizarChoferes(filtrados);
+}
+
+
+function abrirModalChofer(){
+
+    const modal =
+        document.getElementById("modalChofer");
+
+    if(!modal){
+        return;
+    }
+
+    const form =
+        document.getElementById("formChofer");
+
+    if(form){
+        form.reset();
+    }
+
+    const estado =
+        document.getElementById("choferEstado");
+
+    if(estado){
+        estado.value = "ACTIVO";
+    }
+
+    const mensaje =
+        document.getElementById("choferMensaje");
+
+    if(mensaje){
+        mensaje.style.display = "none";
+        mensaje.textContent = "";
+    }
+
+    modal.classList.add("open");
+
+    setTimeout(() => {
+
+        const nombre =
+            document.getElementById("choferNombre");
+
+        if(nombre){
+            nombre.focus();
+        }
+
+    },50);
+}
+
+
+function cerrarModalChofer(event){
+
+    if(event &&
+       event.target &&
+       event.target.id !== "modalChofer"){
+
+        return;
+    }
+
+    const modal =
+        document.getElementById("modalChofer");
+
+    if(modal){
+        modal.classList.remove("open");
+    }
+}
+
+
+function mostrarMensajeChofer(texto,tipo="info"){
+
+    const mensaje =
+        document.getElementById("choferMensaje");
+
+    if(!mensaje){
+        return;
+    }
+
+    mensaje.style.display = "block";
+    mensaje.textContent = texto;
+
+    if(tipo === "error"){
+        mensaje.style.color = "#f87171";
+    }else if(tipo === "ok"){
+        mensaje.style.color = "#6ee7a0";
+    }else{
+        mensaje.style.color = "#91a0b5";
+    }
+}
+
+
+async function guardarChofer(event){
+
+    event.preventDefault();
+
+    const boton =
+        document.getElementById("btnGuardarChofer");
+
+    const datos = {
+
+        nombre:
+            document.getElementById("choferNombre")
+                ?.value.trim(),
+
+        dni:
+            document.getElementById("choferDni")
+                ?.value.trim(),
+
+        telefono:
+            document.getElementById("choferTelefono")
+                ?.value.trim(),
+
+        legajo:
+            document.getElementById("choferLegajo")
+                ?.value.trim(),
+
+        estado:
+            document.getElementById("choferEstado")
+                ?.value || "ACTIVO",
+
+        observaciones:
+            document.getElementById("choferObservaciones")
+                ?.value.trim()
+    };
+
+    if(!datos.nombre){
+
+        mostrarMensajeChofer(
+            "El nombre es obligatorio.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(!datos.dni){
+
+        mostrarMensajeChofer(
+            "El DNI es obligatorio.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(boton){
+
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+    }
+
+    mostrarMensajeChofer(
+        "Registrando chofer en el Backend Maestro..."
+    );
+
+    try{
+
+        /*
+           El Backend Maestro espera los campos directamente
+           junto a "accion".
+        */
+        const respuesta =
+            await fetch(
+                BACKEND_URL,
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+                        accion:"crearChofer",
+                        ...datos
+                    })
+                }
+            );
+
+        if(!respuesta.ok){
+
+            throw new Error(
+                "HTTP " + respuesta.status
+            );
+        }
+
+        const resultado =
+            await respuesta.json();
+
+        if(!resultado?.ok){
+
+            throw new Error(
+                resultado?.error ||
+                "No se pudo crear el chofer."
+            );
+        }
+
+        mostrarMensajeChofer(
+            "Chofer creado correctamente.",
+            "ok"
+        );
+
+        if(boton){
+
+            boton.disabled = false;
+            boton.textContent = "Guardar chofer";
+        }
+
+        cerrarModalChofer();
+
+        Promise.allSettled([
+            cargarResumenPanel(),
+            cargarChoferes()
+        ]).then(() => {
+
+            filtrarChoferes();
+
+        });
+
+    }catch(error){
+
+        console.error(
+            "Error creando chofer:",
+            error
+        );
+
+        mostrarMensajeChofer(
+            "No se pudo guardar: " +
+            error.message,
+            "error"
+        );
+
+    }finally{
+
+        if(boton){
+
+            boton.disabled = false;
+            boton.textContent = "Guardar chofer";
+        }
+    }
+}
+
+
 
 
 /* =========================================================
