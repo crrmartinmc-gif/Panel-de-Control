@@ -973,174 +973,15 @@ tr:hover td{
 }
 
 
-/* =========================================================
-   DATOS EN VIVO
-   ========================================================= */
-
-.data-loading{
-    opacity:.65;
-    transition:opacity .2s;
-}
-
-.table-status{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:5px 8px;
-    border-radius:20px;
-    font-size:9px;
-    font-weight:800;
-}
-
-.table-status.online{
-    color:#6ee7a0;
-    background:rgba(34,197,94,.12);
-}
-
-.table-status.warning{
-    color:#fbbf24;
-    background:rgba(245,158,11,.12);
-}
-
-.table-status.danger{
-    color:#f87171;
-    background:rgba(239,68,68,.12);
-}
-
-.refreshing{
-    pointer-events:none;
-    opacity:.75;
-}
-
-
-/* =========================================================
-   MODAL VEHÍCULOS
-   ========================================================= */
-
-.modal-overlay{
-    position:fixed;
-    inset:0;
-    background:rgba(2,8,18,.72);
-    backdrop-filter:blur(6px);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:200;
-    padding:20px;
-}
-
-.modal-overlay.open{
-    display:flex;
-}
-
-.modal{
-    width:min(680px,100%);
-    max-height:90vh;
-    overflow:auto;
-    background:#101d2e;
-    border:1px solid var(--border);
-    border-radius:18px;
-    box-shadow:0 25px 80px rgba(0,0,0,.5);
-}
-
-.modal-header{
-    padding:18px 20px;
-    border-bottom:1px solid var(--border);
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-
-.modal-title{
-    font-size:16px;
-    font-weight:800;
-}
-
-.modal-close{
-    width:34px;
-    height:34px;
-    border:1px solid var(--border);
-    background:#16253a;
-    color:white;
-    border-radius:9px;
-    cursor:pointer;
-    font-size:17px;
-}
-
-.modal-body{
-    padding:20px;
-}
-
-.form-grid{
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:13px;
-}
-
-.form-group{
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-}
-
-.form-group.full{
-    grid-column:1/-1;
-}
-
-.form-label{
-    font-size:10px;
-    color:#91a0b5;
-    font-weight:700;
-    text-transform:uppercase;
-    letter-spacing:.5px;
-}
-
-.form-control{
-    width:100%;
-    height:38px;
-    border:1px solid var(--border);
-    border-radius:8px;
-    background:#0c1727;
-    color:#e7edf5;
-    padding:0 11px;
-    outline:none;
-    font-family:inherit;
-    font-size:11px;
-}
-
-textarea.form-control{
-    height:80px;
-    padding:10px 11px;
-    resize:vertical;
-}
-
-.form-control:focus{
-    border-color:var(--green);
-    box-shadow:0 0 0 3px rgba(34,197,94,.08);
-}
-
-.modal-footer{
-    padding:15px 20px;
-    border-top:1px solid var(--border);
-    display:flex;
-    justify-content:flex-end;
-    gap:9px;
-}
-
-.vehicle-count{
-    color:var(--muted);
-    font-size:10px;
-}
-
-@media(max-width:600px){
-    .form-grid{
-        grid-template-columns:1fr;
-    }
-
-    .form-group.full{
-        grid-column:auto;
-    }
-}
+/* ===== VEHICULOS MODAL ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(2,8,18,.78);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{width:min(680px,100%);max-height:90vh;overflow:auto;background:#101d2e;border:1px solid var(--border);border-radius:18px;box-shadow:0 25px 80px rgba(0,0,0,.55)}
+.modal-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-size:16px;font-weight:800}.modal-close{width:34px;height:34px;border:1px solid var(--border);background:#16253a;color:white;border-radius:9px;cursor:pointer;font-size:18px}
+.modal-body{padding:20px}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}.form-group{display:flex;flex-direction:column;gap:6px}.form-group.full{grid-column:1/-1}.form-label{font-size:10px;color:#91a0b5;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.form-control{width:100%;height:38px;border:1px solid var(--border);border-radius:8px;background:#0c1727;color:#e7edf5;padding:0 11px;outline:none;font-family:inherit;font-size:11px}.form-control:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.08)}textarea.form-control{height:80px;padding:10px;resize:vertical}.modal-footer{padding:15px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:9px}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}.form-group.full{grid-column:auto}}
 
 </style>
 </head>
@@ -1881,7 +1722,9 @@ textarea.form-control{
 
                     </div>
 
-                    <span class="status-badge badge-yellow"><span id="serviciosProgramados">0</span></span>
+                    <span class="status-badge badge-yellow">
+                        0
+                    </span>
 
                 </div>
 
@@ -1900,7 +1743,9 @@ textarea.form-control{
 
                     </div>
 
-                    <span class="status-badge badge-blue"><span id="serviciosCurso">0</span></span>
+                    <span class="status-badge badge-blue">
+                        0
+                    </span>
 
                 </div>
 
@@ -1919,7 +1764,9 @@ textarea.form-control{
 
                     </div>
 
-                    <span class="status-badge badge-green"><span id="serviciosFinalizados">0</span></span>
+                    <span class="status-badge badge-green">
+                        0
+                    </span>
 
                 </div>
 
@@ -2016,7 +1863,7 @@ textarea.form-control{
 
         </div>
 
-        <button class="btn btn-primary" onclick="abrirModalVehiculo()">
+        <button class="btn btn-primary" type="button" onclick="abrirModalVehiculo()">
             + Nuevo vehículo
         </button>
 
@@ -2031,24 +1878,19 @@ textarea.form-control{
 
                 <input
                     class="filter"
-                    id="filtroDominio"
                     placeholder="Buscar dominio..."
-                    oninput="filtrarVehiculos()"
                 >
 
-                <select class="filter" id="filtroEstado" onchange="filtrarVehiculos()">
-                    <option value="">Todos los estados</option>
-                    <option value="DISPONIBLE">DISPONIBLE</option>
-                    <option value="EN TALLER">EN TALLER</option>
-                    <option value="FUERA DE SERVICIO">FUERA DE SERVICIO</option>
+                <select class="filter">
+                    <option>Todos los estados</option>
+                    <option>OPERATIVO</option>
+                    <option>EN TALLER</option>
+                    <option>FUERA DE SERVICIO</option>
                 </select>
 
-                <select class="filter" id="filtroArea" onchange="filtrarVehiculos()">
-                    <option value="">Todas las áreas</option>
+                <select class="filter">
+                    <option>Todas las áreas</option>
                 </select>
-                <span id="contadorVehiculos" class="vehicle-count">
-                    0 vehículos
-                </span>
 
             </div>
 
@@ -2362,584 +2204,6 @@ textarea.form-control{
 </div>
 
 
-
-
-
-            <div class="activity-item">
-                <div class="activity-icon blue">🔗</div>
-                <div>
-                    <div class="activity-text">
-                        Arquitectura Panel 2.0 operativa
-                    </div>
-                    <div class="activity-time">
-                        Backend Maestro
-                    </div>
-                </div>
-            </div>
-
-            <div class="activity-item">
-                <div class="activity-icon cyan">🛰</div>
-                <div>
-                    <div class="activity-text">
-                        GPS reservado exclusivamente para Día Verde
-                    </div>
-                    <div class="activity-time">
-                        Política de arquitectura
-                    </div>
-                </div>
-            </div>
-        `;
-
-        return;
-    }
-
-    const ultimos =
-        [...eventos]
-            .sort((a,b) => {
-
-                const fa =
-                    new Date(a.FECHA_HORA || 0).getTime();
-
-                const fb =
-                    new Date(b.FECHA_HORA || 0).getTime();
-
-                return fb - fa;
-            })
-            .slice(0,5);
-
-    contenedor.innerHTML =
-        ultimos.map(evento => {
-
-            const tipo =
-                evento.TIPO_EVENTO || "EVENTO";
-
-            const descripcion =
-                evento.DESCRIPCION ||
-                tipo;
-
-            const clase =
-                claseEvento(tipo);
-
-            return `
-                <div class="activity-item">
-
-                    <div class="activity-icon ${clase}">
-                        ${iconoEvento(tipo)}
-                    </div>
-
-                    <div>
-
-                        <div class="activity-text">
-                            ${escaparHTML(descripcion)}
-                        </div>
-
-                        <div class="activity-time">
-                            ${escaparHTML(
-                                formatearFecha(evento.FECHA_HORA)
-                            )}
-                        </div>
-
-                    </div>
-
-                </div>
-            `;
-
-        }).join("");
-}
-
-
-
-/* =========================================================
-   MÓDULO VEHÍCULOS
-   ========================================================= */
-
-function abrirModalVehiculo(){
-
-    const modal =
-        document.getElementById("modalVehiculo");
-
-    if(!modal){
-        return;
-    }
-
-    const form =
-        document.getElementById("formVehiculo");
-
-    if(form){
-        form.reset();
-    }
-
-    const estado =
-        document.getElementById("vehEstado");
-
-    if(estado){
-        estado.value = "DISPONIBLE";
-    }
-
-    const mensaje =
-        document.getElementById("vehiculoMensaje");
-
-    if(mensaje){
-        mensaje.style.display = "none";
-        mensaje.textContent = "";
-    }
-
-    modal.classList.add("open");
-
-    setTimeout(() => {
-
-        const dominio =
-            document.getElementById("vehDominio");
-
-        if(dominio){
-            dominio.focus();
-        }
-
-    },50);
-}
-
-
-function cerrarModalVehiculo(event){
-
-    if(event && event.target &&
-       event.target.id !== "modalVehiculo"){
-
-        return;
-    }
-
-    const modal =
-        document.getElementById("modalVehiculo");
-
-    if(modal){
-        modal.classList.remove("open");
-    }
-}
-
-
-function mostrarMensajeVehiculo(texto,tipo="info"){
-
-    const mensaje =
-        document.getElementById("vehiculoMensaje");
-
-    if(!mensaje){
-        return;
-    }
-
-    mensaje.style.display = "block";
-    mensaje.textContent = texto;
-
-    if(tipo === "error"){
-        mensaje.style.color = "#f87171";
-    }else if(tipo === "ok"){
-        mensaje.style.color = "#6ee7a0";
-    }else{
-        mensaje.style.color = "#91a0b5";
-    }
-}
-
-
-async function guardarVehiculo(event){
-
-    event.preventDefault();
-
-    const boton =
-        document.getElementById("btnGuardarVehiculo");
-
-    const datos = {
-        dominio:
-            document.getElementById("vehDominio")?.value.trim(),
-
-        interno:
-            document.getElementById("vehInterno")?.value.trim(),
-
-        marca:
-            document.getElementById("vehMarca")?.value.trim(),
-
-        modelo:
-            document.getElementById("vehModelo")?.value.trim(),
-
-        tipo:
-            document.getElementById("vehTipo")?.value.trim(),
-
-        area:
-            document.getElementById("vehArea")?.value.trim(),
-
-        estadoOperativo:
-            document.getElementById("vehEstado")?.value,
-
-        gpsId:
-            document.getElementById("vehGps")?.value.trim(),
-
-        activo:"SI",
-
-        observaciones:
-            document.getElementById("vehObservaciones")?.value.trim()
-    };
-
-    if(!datos.dominio){
-
-        mostrarMensajeVehiculo(
-            "El dominio es obligatorio.",
-            "error"
-        );
-
-        return;
-    }
-
-    if(boton){
-        boton.disabled = true;
-        boton.textContent = "Guardando...";
-    }
-
-    mostrarMensajeVehiculo(
-        "Registrando unidad en el Backend Maestro..."
-    );
-
-    try{
-
-        /*
-           POST sin header Content-Type.
-           Así evitamos un preflight CORS innecesario.
-           El Backend Maestro procesa el JSON del cuerpo.
-        */
-        const respuesta =
-            await fetch(
-                BACKEND_URL,
-                {
-                    method:"POST",
-                    body:JSON.stringify({
-                        accion:"crearVehiculo",
-                        datos:datos
-                    })
-                }
-            );
-
-        if(!respuesta.ok){
-            throw new Error(
-                "HTTP " + respuesta.status
-            );
-        }
-
-        const resultado =
-            await respuesta.json();
-
-        if(!resultado?.ok){
-
-            throw new Error(
-                resultado?.error ||
-                "No se pudo crear el vehículo."
-            );
-        }
-
-        mostrarMensajeVehiculo(
-            "Vehículo creado correctamente.",
-            "ok"
-        );
-
-        await cargarResumenPanel();
-        await cargarVehiculos();
-
-        setTimeout(
-            cerrarModalVehiculo,
-            700
-        );
-
-    }catch(error){
-
-        console.error(
-            "Error creando vehículo:",
-            error
-        );
-
-        mostrarMensajeVehiculo(
-            "No se pudo guardar: " +
-            error.message,
-            "error"
-        );
-
-    }finally{
-
-        if(boton){
-            boton.disabled = false;
-            boton.textContent = "Guardar vehículo";
-        }
-    }
-}
-
-
-function actualizarFiltroAreas(vehiculos){
-
-    const select =
-        document.getElementById("filtroArea");
-
-    if(!select){
-        return;
-    }
-
-    const actual =
-        select.value;
-
-    const areas =
-        [...new Set(
-            (vehiculos || [])
-                .map(v => String(v.AREA || "").trim())
-                .filter(Boolean)
-        )]
-        .sort((a,b) =>
-            a.localeCompare(b,"es")
-        );
-
-    select.innerHTML =
-        '<option value="">Todas las áreas</option>' +
-        areas.map(area =>
-            `<option value="${escaparHTML(area)}">${escaparHTML(area)}</option>`
-        ).join("");
-
-    if(areas.includes(actual)){
-        select.value = actual;
-    }
-}
-
-
-function filtrarVehiculos(){
-
-    const dominio =
-        normalizar(
-            document.getElementById("filtroDominio")?.value
-        );
-
-    const estado =
-        normalizar(
-            document.getElementById("filtroEstado")?.value
-        );
-
-    const area =
-        normalizar(
-            document.getElementById("filtroArea")?.value
-        );
-
-    const filtrados =
-        (estadoPanel.vehiculos || [])
-            .filter(v => {
-
-                const vDominio =
-                    normalizar(v.DOMINIO);
-
-                const vEstado =
-                    normalizar(v.ESTADO_OPERATIVO);
-
-                const vArea =
-                    normalizar(v.AREA);
-
-                return (
-                    (!dominio || vDominio.includes(dominio)) &&
-                    (!estado || vEstado === estado) &&
-                    (!area || vArea === area)
-                );
-            });
-
-    renderizarVehiculos(filtrados);
-}
-
-
-
-/* =========================================================
-   ACTUALIZAR TODO
-   ========================================================= */
-
-async function actualizarDatos(){
-
-    const botonActualizar =
-        document.querySelector(
-            'button[onclick="actualizarDatos()"]'
-        );
-
-    if(botonActualizar){
-        botonActualizar.classList.add("refreshing");
-    }
-
-    try{
-
-        const conectado =
-            await probarConexion();
-
-        if(!conectado){
-
-            console.warn(
-                "El Backend Maestro no está disponible."
-            );
-
-            return;
-        }
-
-        /*
-           Cargamos en paralelo las lecturas principales.
-        */
-        await Promise.all([
-            cargarResumenPanel(),
-            cargarVehiculos(),
-            cargarServicios(),
-            cargarEventos()
-        ]);
-
-        estadoPanel.ultimaActualizacion =
-            new Date();
-
-        console.log(
-            "Panel 2.0 actualizado:",
-            estadoPanel.ultimaActualizacion
-        );
-
-    }finally{
-
-        if(botonActualizar){
-            botonActualizar.classList.remove("refreshing");
-        }
-    }
-}
-
-
-/* =========================================================
-   INICIO
-   ========================================================= */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    async () => {
-
-        actualizarTitulo("inicio");
-
-        /*
-           Primera carga real contra el Backend Maestro.
-        */
-        await actualizarDatos();
-
-    }
-);
-
-
-</script>
-
-
-
-<!-- ======================================================
-     MODAL NUEVO VEHÍCULO
-     ====================================================== -->
-
-<div id="modalVehiculo" class="modal-overlay" onclick="cerrarModalVehiculo(event)">
-
-    <div class="modal" onclick="event.stopPropagation()">
-
-        <div class="modal-header">
-
-            <div>
-                <div class="modal-title">Nuevo vehículo</div>
-                <div class="panel-subtitle">
-                    Alta de unidad en el Backend Maestro
-                </div>
-            </div>
-
-            <button class="modal-close" onclick="cerrarModalVehiculo()">
-                ×
-            </button>
-
-        </div>
-
-        <form id="formVehiculo" onsubmit="guardarVehiculo(event)">
-
-            <div class="modal-body">
-
-                <div class="form-grid">
-
-                    <div class="form-group">
-                        <label class="form-label">Dominio *</label>
-                        <input id="vehDominio" class="form-control"
-                               required maxlength="12"
-                               placeholder="AB123CD">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Interno</label>
-                        <input id="vehInterno" class="form-control"
-                               placeholder="Interno municipal">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Marca</label>
-                        <input id="vehMarca" class="form-control"
-                               placeholder="Marca">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Modelo</label>
-                        <input id="vehModelo" class="form-control"
-                               placeholder="Modelo">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Tipo</label>
-                        <input id="vehTipo" class="form-control"
-                               placeholder="Camioneta, camión, auto...">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Área</label>
-                        <input id="vehArea" class="form-control"
-                               placeholder="Área asignada">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Estado operativo</label>
-                        <select id="vehEstado" class="form-control">
-                            <option value="DISPONIBLE">DISPONIBLE</option>
-                            <option value="EN TALLER">EN TALLER</option>
-                            <option value="FUERA DE SERVICIO">FUERA DE SERVICIO</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">GPS ID</label>
-                        <input id="vehGps" class="form-control"
-                               placeholder="Opcional">
-                    </div>
-
-                    <div class="form-group full">
-                        <label class="form-label">Observaciones</label>
-                        <textarea id="vehObservaciones"
-                                  class="form-control"
-                                  placeholder="Observaciones de la unidad"></textarea>
-                    </div>
-
-                </div>
-
-                <div id="vehiculoMensaje"
-                     style="display:none;margin-top:15px;font-size:11px;line-height:1.5">
-                </div>
-
-            </div>
-
-            <div class="modal-footer">
-
-                <button type="button"
-                        class="btn btn-secondary"
-                        onclick="cerrarModalVehiculo()">
-                    Cancelar
-                </button>
-
-                <button id="btnGuardarVehiculo"
-                        type="submit"
-                        class="btn btn-primary">
-                    Guardar vehículo
-                </button>
-
-            </div>
-
-        </form>
-
-    </div>
-
-</div>
-
 </section>
 
 </main>
@@ -2952,6 +2216,18 @@ document.addEventListener(
 /* =========================================================
    CONFIGURACIÓN
    ========================================================= */
+
+/*
+   IMPORTANTE:
+
+   NO colocar todavía la URL del backend viejo.
+
+   Cuando terminemos la API del Backend Maestro,
+   colocaremos aquí la nueva URL.
+*/
+
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwyYCijQU4B2Ih8HrMgNbg_Zk3KvCirdDZHVtH_uWS4L3o7_pKql_4SrIothZvJA-TD/exec";
+
 
 /* =========================================================
    NAVEGACIÓN
@@ -3090,747 +2366,126 @@ function actualizarTitulo(id){
 }
 
 
+
 /* =========================================================
    BACKEND MAESTRO
    ========================================================= */
 
-/*
-   El Panel de Control consume el Backend Maestro.
-   IMPORTANTE:
-   - Las lecturas usan GET para evitar preflight CORS innecesario.
-   - El backend recibe el parámetro "accion" (no "action").
-   - Las respuestas vienen dentro de resultado.datos.
-   - El GPS se consume únicamente desde los datos generados por Día Verde.
-*/
-
-const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwyYCijQU4B2Ih8HrMgNbg_Zk3KvCirdDZHVtH_uWS4L3o7_pKql_4SrIothZvJA-TD/exec";
-
-let estadoPanel = {
-    conectado:false,
-    resumen:null,
-    vehiculos:[],
-    servicios:[],
-    eventos:[],
-    ultimaActualizacion:null
-};
-
-
-/* =========================================================
-   LECTURAS DEL BACKEND
-   ========================================================= */
-
-async function leerBackend(accion, parametros={}){
-
-    if(!BACKEND_URL){
-        return null;
-    }
-
-    try{
-
-        const query = new URLSearchParams();
-
-        query.set("accion",accion);
-
-        Object.entries(parametros || {}).forEach(([clave,valor]) => {
-
-            if(valor !== undefined && valor !== null && valor !== ""){
-                query.set(clave,String(valor));
-            }
-
-        });
-
-        const respuesta = await fetch(
-            BACKEND_URL + "?" + query.toString(),
-            {
-                method:"GET",
-                cache:"no-store"
-            }
-        );
-
-        if(!respuesta.ok){
-            throw new Error("HTTP " + respuesta.status);
-        }
-
-        const resultado = await respuesta.json();
-
-        if(!resultado?.ok){
-            throw new Error(
-                resultado?.error ||
-                "El Backend Maestro respondió con error."
-            );
-        }
-
-        return resultado;
-
-    }catch(error){
-
-        console.error(
-            "Error leyendo Backend Maestro:",
-            accion,
-            error
-        );
-
-        return null;
-    }
-}
-
-
-/*
-   Se conserva para futuras operaciones administrativas.
-   Las lecturas del Panel usan leerBackend().
-*/
 async function llamarBackend(accion,datos={}){
-
-    if(!BACKEND_URL){
-        return null;
-    }
-
+    if(!BACKEND_URL) return null;
     try{
-
-        const respuesta = await fetch(
-            BACKEND_URL,
-            {
-                method:"POST",
-                headers:{
-                    "Content-Type":"application/json"
-                },
-                body:JSON.stringify({
-                    accion:accion,
-                    datos:datos
-                })
-            }
-        );
-
+        const respuesta=await fetch(BACKEND_URL,{method:"POST",body:JSON.stringify({accion,datos})});
         return await respuesta.json();
-
-    }catch(error){
-
-        console.error(
-            "Error backend:",
-            error
-        );
-
-        return null;
-    }
+    }catch(error){console.error("Error backend:",error);return null;}
 }
 
-
-/* =========================================================
-   ESTADO DE CONEXIÓN
-   ========================================================= */
+async function leerBackend(accion){
+    try{
+        const respuesta=await fetch(BACKEND_URL+"?accion="+encodeURIComponent(accion),{method:"GET",cache:"no-store"});
+        if(!respuesta.ok) throw new Error("HTTP "+respuesta.status);
+        return await respuesta.json();
+    }catch(error){console.error("Error GET backend:",accion,error);return null;}
+}
 
 async function probarConexion(){
-
-    const dot =
-        document.getElementById("connectionDot");
-
-    const texto =
-        document.getElementById("connectionText");
-
-    if(!BACKEND_URL){
-
-        estadoPanel.conectado = false;
-
-        if(dot){
-            dot.classList.remove("online");
-        }
-
-        if(texto){
-            texto.textContent = "Backend pendiente";
-        }
-
-        return false;
-    }
-
+    const dot=document.getElementById("connectionDot");
+    const texto=document.getElementById("connectionText");
     try{
-
-        /*
-           El Backend Maestro usa "accion".
-           "estado" es una lectura real de conexión.
-        */
-        const resultado =
-            await leerBackend("estado");
-
-        if(resultado?.ok){
-
-            estadoPanel.conectado = true;
-
-            if(dot){
-                dot.classList.add("online");
-            }
-
-            if(texto){
-                texto.textContent = "Backend conectado";
-            }
-
-            return true;
-        }
-
-        throw new Error("Respuesta inválida del Backend Maestro.");
-
-    }catch(error){
-
-        estadoPanel.conectado = false;
-
-        if(dot){
-            dot.classList.remove("online");
-        }
-
-        if(texto){
-            texto.textContent = "Sin conexión";
-        }
-
-        console.error(
-            "Error conectando Backend Maestro:",
-            error
-        );
-
-        return false;
-    }
+        const r=await leerBackend("estado");
+        if(r&&r.ok){dot?.classList.add("online");if(texto)texto.textContent="Backend conectado";return true;}
+    }catch(e){console.error(e);}
+    dot?.classList.remove("online");if(texto)texto.textContent="Sin conexión";return false;
 }
-
-
-/* =========================================================
-   RESUMEN DEL PANEL
-   ========================================================= */
 
 async function cargarResumenPanel(){
-
-    const resultado =
-        await leerBackend("resumenPanel");
-
-    if(!resultado?.ok){
-        return null;
-    }
-
-    const datos = resultado.datos || {};
-
-    estadoPanel.resumen = datos;
-
-    actualizarKPIs(datos);
-
-    return datos;
+    const r=await leerBackend("resumenPanel");
+    if(!r?.ok)return null;
+    const d=r.datos||{};
+    document.getElementById("kpiVehiculos").textContent=d.vehiculos?.disponibles??0;
+    document.getElementById("kpiServicios").textContent=d.servicios?.total??0;
+    document.getElementById("kpiViajes").textContent=d.viajes?.activos??0;
+    document.getElementById("kpiAlertas").textContent=d.reportes?.pendientes??0;
+    return d;
 }
-
-
-function actualizarKPIs(datos){
-
-    const vehiculos = datos.vehiculos || {};
-    const servicios = datos.servicios || {};
-    const viajes = datos.viajes || {};
-    const reportes = datos.reportes || {};
-
-    /*
-       VEHÍCULOS OPERATIVOS = DISPONIBLES.
-       Es el estado operativo real de la flota.
-    */
-    const kpiVehiculos =
-        document.getElementById("kpiVehiculos");
-
-    if(kpiVehiculos){
-        kpiVehiculos.textContent =
-            Number(vehiculos.disponibles || 0);
-    }
-
-    const kpiServicios =
-        document.getElementById("kpiServicios");
-
-    if(kpiServicios){
-        kpiServicios.textContent =
-            Number(servicios.total || 0);
-    }
-
-    const kpiViajes =
-        document.getElementById("kpiViajes");
-
-    if(kpiViajes){
-        kpiViajes.textContent =
-            Number(viajes.activos || 0);
-    }
-
-    const kpiAlertas =
-        document.getElementById("kpiAlertas");
-
-    if(kpiAlertas){
-        kpiAlertas.textContent =
-            Number(reportes.pendientes || 0);
-    }
-
-    /*
-       Estado de flota.
-    */
-    const estadoOperativos =
-        document.getElementById("estadoOperativos");
-
-    if(estadoOperativos){
-        estadoOperativos.textContent =
-            Number(vehiculos.disponibles || 0);
-    }
-
-    const estadoTaller =
-        document.getElementById("estadoTaller");
-
-    if(estadoTaller){
-        estadoTaller.textContent =
-            Number(vehiculos.taller || 0);
-    }
-
-    const fueraServicio =
-        Math.max(
-            0,
-            Number(vehiculos.total || 0) -
-            Number(vehiculos.disponibles || 0) -
-            Number(vehiculos.taller || 0)
-        );
-
-    const estadoFueraServicio =
-        document.getElementById("estadoFueraServicio");
-
-    if(estadoFueraServicio){
-        estadoFueraServicio.textContent =
-            fueraServicio;
-    }
-
-    /*
-       Resumen general de servicios.
-       El backend devuelve total / pendientes / curso / finalizados.
-       Luego cargarServicios() calcula específicamente la jornada actual.
-    */
-    const serviciosProgramados =
-        document.getElementById("serviciosProgramados");
-
-    if(serviciosProgramados){
-        serviciosProgramados.textContent =
-            Number(servicios.pendientes || 0);
-    }
-
-    const serviciosCurso =
-        document.getElementById("serviciosCurso");
-
-    if(serviciosCurso){
-        serviciosCurso.textContent =
-            Number(servicios.curso || 0);
-    }
-
-    const serviciosFinalizados =
-        document.getElementById("serviciosFinalizados");
-
-    if(serviciosFinalizados){
-        serviciosFinalizados.textContent =
-            Number(servicios.finalizados || 0);
-    }
-}
-
-
-/* =========================================================
-   SERVICIOS DEL DÍA
-   ========================================================= */
-
-async function cargarServicios(){
-
-    const resultado =
-        await leerBackend("servicios");
-
-    if(!resultado?.ok){
-        return [];
-    }
-
-    const servicios =
-        Array.isArray(resultado.datos)
-            ? resultado.datos
-            : [];
-
-    estadoPanel.servicios = servicios;
-
-    actualizarServiciosDelDia(servicios);
-
-    return servicios;
-}
-
-
-function actualizarServiciosDelDia(servicios){
-
-    const hoy = fechaLocalISO();
-
-    const delDia = servicios.filter(servicio => {
-
-        const fecha =
-            String(servicio.FECHA || "")
-                .trim()
-                .substring(0,10);
-
-        return fecha === hoy;
-    });
-
-    /*
-       Si el backend tiene fechas que el navegador no puede
-       interpretar, no rompemos el panel: usamos el resumen general.
-    */
-    if(delDia.length === 0){
-
-        return;
-    }
-
-    const programados =
-        delDia.filter(s => {
-
-            const estado = normalizar(s.ESTADO);
-
-            return (
-                estado === "PENDIENTE" ||
-                estado === "PROGRAMADO" ||
-                estado === "ASIGNADO"
-            );
-        }).length;
-
-    const curso =
-        delDia.filter(s => {
-
-            const estado = normalizar(s.ESTADO);
-
-            return (
-                estado === "EN CURSO" ||
-                estado === "EN_CURSO" ||
-                estado === "INICIADO"
-            );
-        }).length;
-
-    const finalizados =
-        delDia.filter(s => {
-
-            const estado = normalizar(s.ESTADO);
-
-            return estado === "FINALIZADO" ||
-                   estado === "FINALIZADOS";
-        }).length;
-
-    const serviciosProgramados =
-        document.getElementById("serviciosProgramados");
-
-    const serviciosCurso =
-        document.getElementById("serviciosCurso");
-
-    const serviciosFinalizados =
-        document.getElementById("serviciosFinalizados");
-
-    if(serviciosProgramados){
-        serviciosProgramados.textContent = programados;
-    }
-
-    if(serviciosCurso){
-        serviciosCurso.textContent = curso;
-    }
-
-    if(serviciosFinalizados){
-        serviciosFinalizados.textContent = finalizados;
-    }
-
-    const kpiServicios =
-        document.getElementById("kpiServicios");
-
-    if(kpiServicios){
-        kpiServicios.textContent = delDia.length;
-    }
-}
-
-
-/* =========================================================
-   VEHÍCULOS
-   ========================================================= */
 
 async function cargarVehiculos(){
-
-    const resultado =
-        await leerBackend("vehiculos");
-
-    if(!resultado?.ok){
-        return [];
-    }
-
-    const vehiculos =
-        Array.isArray(resultado.datos)
-            ? resultado.datos
-            : [];
-
-    estadoPanel.vehiculos = vehiculos;
-
-    actualizarFiltroAreas(vehiculos);
-
-    renderizarVehiculos(vehiculos);
-
-    return vehiculos;
+    const r=await leerBackend("vehiculos");
+    if(!r?.ok)return [];
+    const lista=Array.isArray(r.datos)?r.datos:[];
+    window.vehiculosPanel=lista;
+    renderizarVehiculos(lista);
+    return lista;
 }
 
-
-function claseEstadoVehiculo(estado){
-
-    const e = normalizar(estado);
-
-    if(e === "DISPONIBLE" ||
-       e === "OPERATIVO"){
-
-        return "online";
-    }
-
-    if(e === "EN TALLER"){
-        return "warning";
-    }
-
-    return "danger";
+function esc(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");}
+function estadoVehiculo(e){const x=String(e??"").trim().toUpperCase();return x||"SIN ESTADO";}
+function claseVehiculo(e){const x=estadoVehiculo(e);if(x==="DISPONIBLE"||x==="OPERATIVO")return"online";if(x==="EN TALLER")return"warning";return"danger";}
+function renderizarVehiculos(lista){
+    const tbody=document.getElementById("tablaVehiculos");if(!tbody)return;
+    if(!lista.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty">Sin vehículos cargados en el Backend Maestro</div></td></tr>';return;}
+    tbody.innerHTML=lista.map(v=>`<tr><td><strong>${esc(v.DOMINIO||"-")}</strong></td><td>${esc(v.INTERNO||"-")}</td><td>${esc([v.MARCA,v.MODELO].filter(Boolean).join(" ")||"-")}</td><td>${esc(v.TIPO||"-")}</td><td>${esc(v.AREA||"-")}</td><td><span class="table-status ${claseVehiculo(v.ESTADO_OPERATIVO)}">${esc(estadoVehiculo(v.ESTADO_OPERATIVO))}</span></td><td>${v.GPS_ID?"🛰 ACTIVO":"—"}</td></tr>`).join("");
 }
 
+function abrirModalVehiculo(){
+    const modal=document.getElementById("modalVehiculo");if(!modal)return;
+    document.getElementById("formVehiculo")?.reset();
+    document.getElementById("vehEstado").value="DISPONIBLE";
+    const msg=document.getElementById("vehiculoMensaje");if(msg){msg.style.display="none";msg.textContent="";}
+    modal.classList.add("open");setTimeout(()=>document.getElementById("vehDominio")?.focus(),50);
+}
+function cerrarModalVehiculo(event){if(event&&event.target?.id!=="modalVehiculo")return;document.getElementById("modalVehiculo")?.classList.remove("open");}
+function mensajeVehiculo(t,ok=false){const m=document.getElementById("vehiculoMensaje");if(!m)return;m.style.display="block";m.textContent=t;m.style.color=ok?"#6ee7a0":"#f87171";}
 
-function textoEstadoVehiculo(estado){
-
-    const e = normalizar(estado);
-
-    if(e === "DISPONIBLE"){
-        return "DISPONIBLE";
-    }
-
-    if(e === "EN TALLER"){
-        return "EN TALLER";
-    }
-
-    if(e === "OPERATIVO"){
-        return "OPERATIVO";
-    }
-
-    if(!e){
-        return "SIN ESTADO";
-    }
-
-    return e;
+async function guardarVehiculo(event){
+    event.preventDefault();
+    const b=document.getElementById("btnGuardarVehiculo");
+    const datos={dominio:document.getElementById("vehDominio").value.trim(),interno:document.getElementById("vehInterno").value.trim(),marca:document.getElementById("vehMarca").value.trim(),modelo:document.getElementById("vehModelo").value.trim(),tipo:document.getElementById("vehTipo").value.trim(),area:document.getElementById("vehArea").value.trim(),estadoOperativo:document.getElementById("vehEstado").value,gpsId:document.getElementById("vehGps").value.trim(),activo:"SI",observaciones:document.getElementById("vehObservaciones").value.trim()};
+    if(!datos.dominio){mensajeVehiculo("El dominio es obligatorio.");return;}
+    b.disabled=true;b.textContent="Guardando...";mensajeVehiculo("Registrando unidad...");
+    try{
+        const r=await llamarBackend("crearVehiculo",datos);
+        if(!r?.ok)throw new Error(r?.error||"No se pudo crear el vehículo.");
+        mensajeVehiculo("Vehículo creado correctamente.",true);
+        await cargarResumenPanel();await cargarVehiculos();
+        setTimeout(()=>cerrarModalVehiculo(),600);
+    }catch(e){console.error(e);mensajeVehiculo("No se pudo guardar: "+e.message);}finally{b.disabled=false;b.textContent="Guardar vehículo";}
 }
 
-
-function renderizarVehiculos(vehiculos){
-
-    const tbody =
-        document.getElementById("tablaVehiculos");
-
-    if(!tbody){
-        return;
-    }
-
-    actualizarFiltroAreas(
-        estadoPanel.vehiculos || []
-    );
-
-    const contador =
-        document.getElementById("contadorVehiculos");
-
-    if(contador){
-        contador.textContent =
-            `${Array.isArray(vehiculos) ? vehiculos.length : 0} vehículos`;
-    }
-
-    if(!Array.isArray(vehiculos) || vehiculos.length === 0){
-
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7">
-                    <div class="empty">
-                        Sin vehículos que coincidan con el filtro
-                    </div>
-                </td>
-            </tr>
-        `;
-
-        return;
-    }
-
-    tbody.innerHTML =
-        vehiculos.map(vehiculo => {
-
-            const estado =
-                textoEstadoVehiculo(
-                    vehiculo.ESTADO_OPERATIVO
-                );
-
-            const clase =
-                claseEstadoVehiculo(
-                    vehiculo.ESTADO_OPERATIVO
-                );
-
-            const gps =
-                vehiculo.GPS_ID
-                    ? "🛰 ACTIVO"
-                    : "—";
-
-            const marcaModelo =
-                [
-                    vehiculo.MARCA,
-                    vehiculo.MODELO
-                ]
-                .filter(Boolean)
-                .join(" ");
-
-            return `
-                <tr>
-
-                    <td>
-                        <strong>
-                            ${escaparHTML(
-                                vehiculo.DOMINIO || "-"
-                            )}
-                        </strong>
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            vehiculo.INTERNO || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            marcaModelo || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            vehiculo.TIPO || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            vehiculo.AREA || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        <span class="table-status ${clase}">
-                            ${escaparHTML(estado)}
-                        </span>
-                    </td>
-
-                    <td>
-                        ${escaparHTML(gps)}
-                    </td>
-
-                </tr>
-            `;
-
-        }).join("");
+async function actualizarDatos(){
+    const ok=await probarConexion();if(!ok)return;
+    await Promise.all([cargarResumenPanel(),cargarVehiculos()]);
 }
 
+document.addEventListener("DOMContentLoaded",()=>{actualizarTitulo("inicio");actualizarDatos();});
+</script>
 
 
-
-
-/* =========================================================
-   EVENTOS / ACTIVIDAD RECIENTE
-   ========================================================= */
-
-async function cargarEventos(){
-
-    const resultado =
-        await leerBackend("eventos");
-
-    if(!resultado?.ok){
-        return [];
-    }
-
-    const eventos =
-        Array.isArray(resultado.datos)
-            ? resultado.datos
-            : [];
-
-    estadoPanel.eventos = eventos;
-
-    renderizarActividad(eventos);
-
-    return eventos;
-}
-
-
-function iconoEvento(tipo){
-
-    const e = normalizar(tipo);
-
-    if(e.includes("GPS")){
-        return "🛰";
-    }
-
-    if(e.includes("VIAJE")){
-        return "🚦";
-    }
-
-    if(e.includes("REPORTE")){
-        return "⚠";
-    }
-
-    if(e.includes("INSPECCION")){
-        return "✓";
-    }
-
-    if(e.includes("ASIGNACION")){
-        return "🔗";
-    }
-
-    if(e.includes("MANTENIMIENTO")){
-        return "🔧";
-    }
-
-    return "◷";
-}
-
-
-function claseEvento(tipo){
-
-    const e = normalizar(tipo);
-
-    if(e.includes("REPORTE") ||
-       e.includes("ALERTA") ||
-       e.includes("ERROR")){
-
-        return "red";
-    }
-
-    if(e.includes("GPS") ||
-       e.includes("VIAJE")){
-
-        return "cyan";
-    }
-
-    if(e.includes("ASIGNACION")){
-        return "blue";
-    }
-
-    if(e.includes("MANTENIMIENTO")){
-        return "yellow";
-    }
-
-    return "green";
-}
-
-
-function renderizarActividad(eventos){
-
-    const contenedor =
-        document.querySelector("#inicio .activity");
-
-    if(!contenedor){
-        return;
-    }
-
-    if(!Array.isArray(eventos) || eventos.length === 0){
-
-        contenedor.innerHTML = `
-            <div class="activity-item">
-                <div class="activity-icon green">✓</div>
-                <div>
-                    <div class="activity-text">
-                        Sistema conectado al Backend Maestro
-                    </div>
-                    <div class="activity-time">
-                        Sin eventos recientes
-                    </div>
-                </div>
-            </div>
+<!-- MODAL NUEVO VEHICULO -->
+<div id="modalVehiculo" class="modal-overlay" onclick="cerrarModalVehiculo(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div><div class="modal-title">Nuevo vehículo</div><div class="panel-subtitle">Alta de unidad en el Backend Maestro</div></div>
+      <button type="button" class="modal-close" onclick="cerrarModalVehiculo()">×</button>
+    </div>
+    <form id="formVehiculo" onsubmit="guardarVehiculo(event)">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Dominio *</label><input id="vehDominio" class="form-control" required maxlength="12" placeholder="AB123CD"></div>
+          <div class="form-group"><label class="form-label">Interno</label><input id="vehInterno" class="form-control" placeholder="Interno municipal"></div>
+          <div class="form-group"><label class="form-label">Marca</label><input id="vehMarca" class="form-control" placeholder="Marca"></div>
+          <div class="form-group"><label class="form-label">Modelo</label><input id="vehModelo" class="form-control" placeholder="Modelo"></div>
+          <div class="form-group"><label class="form-label">Tipo</label><input id="vehTipo" class="form-control" placeholder="Camioneta, camión, auto..."></div>
+          <div class="form-group"><label class="form-label">Área</label><input id="vehArea" class="form-control" placeholder="Área asignada"></div>
+          <div class="form-group"><label class="form-label">Estado operativo</label><select id="vehEstado" class="form-control"><option value="DISPONIBLE">DISPONIBLE</option><option value="EN TALLER">EN TALLER</option><option value="FUERA DE SERVICIO">FUERA DE SERVICIO</option></select></div>
+          <div class="form-group"><label class="form-label">GPS ID</label><input id="vehGps" class="form-control" placeholder="Opcional"></div>
+          <div class="form-group full"><label class="form-label">Observaciones</label><textarea id="vehObservaciones" class="form-control" placeholder="Observaciones de la unidad"></textarea></div>
+        </div>
+        <div id="vehiculoMensaje" style="display:none;margin-top:15px;font-size:11px;line-height:1.5"></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="cerrarModalVehiculo()">Cancelar</button><button id="btnGuardarVehiculo" type="submit" class="btn btn-primary">Guardar vehículo</button></div>
+    </form>
+  </div>
+</div>
 
 </body>
 </html>
