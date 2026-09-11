@@ -3625,7 +3625,7 @@ async function guardarVehiculo(event){
                     method:"POST",
                     body:JSON.stringify({
                         accion:"crearVehiculo",
-                        datos:datos
+                        ...datos
                     })
                 }
             );
