@@ -3409,22 +3409,72 @@ textarea.form-control{
 
 
 <div id="mantenimiento" class="page">
+
     <div class="section-head">
         <div>
             <h2>Mantenimiento</h2>
-            <p>Control de taller y reparaciones</p>
+            <p>Control de taller, reparaciones y estado de unidades</p>
         </div>
-        <button class="btn btn-primary">+ Nuevo mantenimiento</button>
+
+        <div style="display:flex;gap:8px;align-items:center">
+            <input id="filtroMantenimiento" class="filter"
+                   placeholder="Buscar vehículo, tipo, responsable..."
+                   oninput="filtrarMantenimiento()">
+
+            <button class="btn btn-secondary" type="button"
+                    onclick="cargarMantenimiento()">↻ Actualizar</button>
+
+            <button class="btn btn-primary" type="button"
+                    onclick="abrirModalMantenimiento()">+ Nuevo mantenimiento</button>
+        </div>
+    </div>
+
+    <div class="inspeccion-kpis">
+        <div class="mini-card">
+            <div class="mini-label">Total</div>
+            <div id="kpiMantenimientoTotal" class="mini-value">0</div>
+        </div>
+        <div class="mini-card">
+            <div class="mini-label">Pendientes</div>
+            <div id="kpiMantenimientoPendientes" class="mini-value">0</div>
+        </div>
+        <div class="mini-card">
+            <div class="mini-label">En taller</div>
+            <div id="kpiMantenimientoTaller" class="mini-value">0</div>
+        </div>
+        <div class="mini-card">
+            <div class="mini-label">Finalizados</div>
+            <div id="kpiMantenimientoFinalizados" class="mini-value">0</div>
+        </div>
     </div>
 
     <div class="panel">
-        <div class="module-placeholder">
-            <div class="placeholder-icon">🔧</div>
-            <div class="placeholder-title">Mantenimiento</div>
-            <div class="placeholder-text">
-                Gestión de MANTENIMIENTO vinculada a vehículos
-                y reportes.
+        <div class="panel-head">
+            <div>
+                <div class="panel-title">Mantenimientos registrados</div>
+                <div class="panel-subtitle">Intervenciones vinculadas a vehículos y reportes</div>
             </div>
+            <span id="contadorMantenimiento" class="inspeccion-count">0 mantenimientos</span>
+        </div>
+
+        <div class="inspeccion-table-wrap">
+            <table class="inspeccion-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Vehículo</th>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Prioridad</th>
+                        <th>Estado</th>
+                        <th>Ingreso</th>
+                        <th>Costo</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaMantenimiento">
+                    <tr><td colspan="8"><div class="empty">Cargando mantenimientos...</div></td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -3724,6 +3774,10 @@ function mostrarPagina(id, boton){
     if(id === "reportes"){
         cargarReportes();
     }
+
+    if(id === "mantenimiento"){
+        cargarMantenimiento();
+    }
 }
 
 
@@ -3862,6 +3916,7 @@ let estadoPanel = {
     eventos:[],
     choferes:[],
     reportes:[],
+    mantenimiento:[],
     asignaciones:[],
     ultimaActualizacion:null
 };
@@ -7519,6 +7574,300 @@ async function guardarInspeccion(event){
 
 
 /* =========================================================
+   MANTENIMIENTO
+   ========================================================= */
+
+async function cargarMantenimiento(){
+
+    const resultado = await leerBackend("mantenimiento");
+    const tbody = document.getElementById("tablaMantenimiento");
+
+    if(!resultado?.ok){
+        if(tbody){
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8">
+                        <div class="empty">No se pudieron cargar los mantenimientos.</div>
+                    </td>
+                </tr>`;
+        }
+        return [];
+    }
+
+    const mantenimientos = Array.isArray(resultado.datos)
+        ? resultado.datos
+        : [];
+
+    estadoPanel.mantenimiento = mantenimientos;
+    actualizarKPIsMantenimiento(mantenimientos);
+    renderizarMantenimiento(mantenimientos);
+
+    return mantenimientos;
+}
+
+function clasePrioridadMantenimiento(valor){
+    const p = normalizar(valor);
+    if(p === "CRITICA" || p === "CRÍTICA") return "inspeccion-rechazada";
+    if(p === "ALTA") return "inspeccion-observada";
+    if(p === "MEDIA") return "viaje-neutral";
+    return "inspeccion-aprobada";
+}
+
+function claseEstadoMantenimiento(valor){
+    const e = normalizar(valor);
+    if(e === "FINALIZADO" || e === "CERRADO" || e === "RESUELTO") return "inspeccion-aprobada";
+    if(e === "EN TALLER" || e === "EN REPARACION" || e === "AUTORIZADO" || e === "PENDIENTE") return "inspeccion-observada";
+    if(e === "CANCELADO") return "inspeccion-rechazada";
+    return "viaje-neutral";
+}
+
+function actualizarKPIsMantenimiento(mantenimientos){
+
+    const total = mantenimientos.length;
+    const pendientes = mantenimientos.filter(m => {
+        const e = normalizar(m.ESTADO);
+        return ["PENDIENTE","AUTORIZADO"].includes(e);
+    }).length;
+    const taller = mantenimientos.filter(m => {
+        const e = normalizar(m.ESTADO);
+        return ["EN TALLER","EN REPARACION"].includes(e);
+    }).length;
+    const finalizados = mantenimientos.filter(m => {
+        const e = normalizar(m.ESTADO);
+        return ["FINALIZADO","CERRADO","RESUELTO"].includes(e);
+    }).length;
+
+    const set = (id,valor) => {
+        const el = document.getElementById(id);
+        if(el) el.textContent = valor;
+    };
+
+    set("kpiMantenimientoTotal",total);
+    set("kpiMantenimientoPendientes",pendientes);
+    set("kpiMantenimientoTaller",taller);
+    set("kpiMantenimientoFinalizados",finalizados);
+}
+
+function renderizarMantenimiento(mantenimientos){
+
+    const tbody = document.getElementById("tablaMantenimiento");
+    if(!tbody) return;
+
+    const contador = document.getElementById("contadorMantenimiento");
+    if(contador) contador.textContent = `${mantenimientos.length} mantenimientos`;
+
+    if(!mantenimientos.length){
+        tbody.innerHTML = `
+            <tr><td colspan="8"><div class="empty">Sin mantenimientos registrados</div></td></tr>`;
+        return;
+    }
+
+    const ordenados = [...mantenimientos].sort((a,b) => {
+        const fa = new Date(a.FECHA_ALTA || 0).getTime() || 0;
+        const fb = new Date(b.FECHA_ALTA || 0).getTime() || 0;
+        return fb-fa;
+    });
+
+    tbody.innerHTML = ordenados.map(m => `
+        <tr>
+            <td>${escaparHTML(formatearFecha(m.FECHA_ALTA))}</td>
+            <td>
+                <span class="inspeccion-main">${escaparHTML(m.ID_VEHICULO || "-")}</span>
+                <span class="inspeccion-sub">${escaparHTML(m.ID_MANTENIMIENTO || "")}</span>
+            </td>
+            <td>${escaparHTML(m.TIPO || "-")}</td>
+            <td style="white-space:normal;min-width:220px">${escaparHTML(m.DESCRIPCION || "-")}</td>
+            <td><span class="table-status ${clasePrioridadMantenimiento(m.PRIORIDAD)}">${escaparHTML(m.PRIORIDAD || "MEDIA")}</span></td>
+            <td><span class="table-status ${claseEstadoMantenimiento(m.ESTADO)}">${escaparHTML(m.ESTADO || "PENDIENTE")}</span></td>
+            <td>${escaparHTML(formatearFecha(m.FECHA_INGRESO_TALLER))}</td>
+            <td>${m.COSTO !== undefined && m.COSTO !== "" ? escaparHTML(m.COSTO) : "-"}</td>
+        </tr>
+    `).join("");
+}
+
+function filtrarMantenimiento(){
+
+    const filtro = normalizar(document.getElementById("filtroMantenimiento")?.value || "");
+
+    if(!filtro){
+        renderizarMantenimiento(estadoPanel.mantenimiento || []);
+        return;
+    }
+
+    const filtrados = (estadoPanel.mantenimiento || []).filter(m => {
+        const texto = [
+            m.ID_MANTENIMIENTO,
+            m.ID_VEHICULO,
+            m.ID_REPORTE,
+            m.TIPO,
+            m.DESCRIPCION,
+            m.PRIORIDAD,
+            m.ESTADO,
+            m.RESPONSABLE,
+            m.OBSERVACIONES
+        ].map(normalizar).join(" ");
+
+        return texto.includes(filtro);
+    });
+
+    renderizarMantenimiento(filtrados);
+}
+
+function prepararFormularioMantenimiento(){
+
+    const vehiculos = Array.isArray(estadoPanel.vehiculos)
+        ? estadoPanel.vehiculos
+        : [];
+
+    const selectVehiculo = document.getElementById("mantenimientoVehiculo");
+
+    if(selectVehiculo){
+        selectVehiculo.innerHTML =
+            '<option value="">Seleccionar vehículo...</option>' +
+            vehiculos.map(v => {
+                const id = v.ID_VEHICULO || "";
+                const dominio = v.DOMINIO || id;
+                const interno = v.INTERNO ? ` · Int. ${v.INTERNO}` : "";
+                return `<option value="${escaparHTML(id)}">${escaparHTML(`${dominio}${interno} · ${id}`)}</option>`;
+            }).join("");
+    }
+
+    const reportes = Array.isArray(estadoPanel.reportes)
+        ? estadoPanel.reportes
+        : [];
+
+    const selectReporte = document.getElementById("mantenimientoReporte");
+
+    if(selectReporte){
+        selectReporte.innerHTML =
+            '<option value="">Sin reporte asociado</option>' +
+            reportes.map(r => {
+                const id = r.ID_REPORTE || "";
+                const tipo = r.TIPO_REPORTE || "REPORTE";
+                const vehiculo = r.ID_VEHICULO || "Sin vehículo";
+                return `<option value="${escaparHTML(id)}">${escaparHTML(`${id} · ${tipo} · ${vehiculo}`)}</option>`;
+            }).join("");
+    }
+}
+
+function abrirModalMantenimiento(){
+
+    const modal = document.getElementById("modalMantenimiento");
+    if(!modal) return;
+
+    const form = document.getElementById("formMantenimiento");
+    if(form) form.reset();
+
+    const fecha = document.getElementById("mantenimientoFechaAlta");
+    if(fecha){
+        const ahora = new Date();
+        const offset = ahora.getTimezoneOffset();
+        const local = new Date(ahora.getTime() - offset * 60000);
+        fecha.value = local.toISOString().slice(0,16);
+    }
+
+    const prioridad = document.getElementById("mantenimientoPrioridad");
+    if(prioridad) prioridad.value = "MEDIA";
+
+    const estado = document.getElementById("mantenimientoEstado");
+    if(estado) estado.value = "PENDIENTE";
+
+    const mensaje = document.getElementById("mantenimientoMensaje");
+    if(mensaje){
+        mensaje.style.display = "none";
+        mensaje.textContent = "";
+    }
+
+    prepararFormularioMantenimiento();
+    modal.classList.add("open");
+}
+
+function cerrarModalMantenimiento(event){
+    if(event && event.target && event.target.id !== "modalMantenimiento") return;
+    document.getElementById("modalMantenimiento")?.classList.remove("open");
+}
+
+function mostrarMensajeMantenimiento(texto,tipo="info"){
+    const mensaje = document.getElementById("mantenimientoMensaje");
+    if(!mensaje) return;
+    mensaje.style.display = "block";
+    mensaje.textContent = texto;
+    mensaje.style.color = tipo === "error"
+        ? "#f87171"
+        : tipo === "ok"
+            ? "#6ee7a0"
+            : "#91a0b5";
+}
+
+async function guardarMantenimiento(event){
+
+    event.preventDefault();
+
+    const boton = document.getElementById("btnGuardarMantenimiento");
+    if(boton){
+        boton.disabled = true;
+        boton.textContent = "Guardando...";
+    }
+
+    const datos = {
+        fechaAlta: document.getElementById("mantenimientoFechaAlta")?.value,
+        idVehiculo: document.getElementById("mantenimientoVehiculo")?.value,
+        idReporte: document.getElementById("mantenimientoReporte")?.value,
+        tipo: document.getElementById("mantenimientoTipo")?.value,
+        descripcion: document.getElementById("mantenimientoDescripcion")?.value.trim(),
+        prioridad: document.getElementById("mantenimientoPrioridad")?.value,
+        estado: document.getElementById("mantenimientoEstado")?.value,
+        fechaIngresoTaller: document.getElementById("mantenimientoIngreso")?.value,
+        fechaSalidaTaller: document.getElementById("mantenimientoSalida")?.value,
+        km: document.getElementById("mantenimientoKM")?.value,
+        responsable: document.getElementById("mantenimientoResponsable")?.value.trim(),
+        costo: document.getElementById("mantenimientoCosto")?.value,
+        observaciones: document.getElementById("mantenimientoObservaciones")?.value.trim()
+    };
+
+    if(!datos.idVehiculo){
+        mostrarMensajeMantenimiento("Seleccioná el vehículo.","error");
+        if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
+        return;
+    }
+
+    if(!datos.tipo){
+        mostrarMensajeMantenimiento("Seleccioná el tipo de mantenimiento.","error");
+        if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
+        return;
+    }
+
+    if(!datos.descripcion){
+        mostrarMensajeMantenimiento("La descripción es obligatoria.","error");
+        if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
+        return;
+    }
+
+    mostrarMensajeMantenimiento("Guardando mantenimiento...","info");
+
+    const resultado = await llamarBackend("crearMantenimiento",datos);
+
+    if(!resultado?.ok){
+        mostrarMensajeMantenimiento(
+            resultado?.error || "No se pudo guardar el mantenimiento.",
+            "error"
+        );
+        if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
+        return;
+    }
+
+    mostrarMensajeMantenimiento("Mantenimiento registrado correctamente.","ok");
+
+    await cargarMantenimiento();
+
+    setTimeout(() => {
+        cerrarModalMantenimiento();
+        if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
+    },700);
+}
+
+
+/* =========================================================
    REPORTES
    ========================================================= */
 
@@ -7838,6 +8187,7 @@ async function actualizarDatos(){
             cargarViajes(),
             cargarInspecciones(),
             cargarReportes(),
+            cargarMantenimiento(),
             cargarEventos()
         ]);
 
@@ -8876,6 +9226,127 @@ document.addEventListener(
 
 </div>
 
+
+
+<!-- ======================================================
+     MODAL NUEVO MANTENIMIENTO
+     ====================================================== -->
+<div id="modalMantenimiento" class="modal-overlay" onclick="cerrarModalMantenimiento(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title">Nuevo mantenimiento</div>
+                <div class="panel-subtitle">Registro de intervención de taller</div>
+            </div>
+            <button class="modal-close" type="button" onclick="cerrarModalMantenimiento()">×</button>
+        </div>
+
+        <form id="formMantenimiento" onsubmit="guardarMantenimiento(event)">
+            <div class="modal-body">
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label class="form-label">Fecha de alta</label>
+                        <input id="mantenimientoFechaAlta" class="form-control" type="datetime-local">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Vehículo *</label>
+                        <select id="mantenimientoVehiculo" class="form-control" required>
+                            <option value="">Cargando vehículos...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Reporte asociado</label>
+                        <select id="mantenimientoReporte" class="form-control">
+                            <option value="">Sin reporte asociado</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tipo *</label>
+                        <select id="mantenimientoTipo" class="form-control" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="MECANICA">MECÁNICA</option>
+                            <option value="ELECTRICA">ELÉCTRICA</option>
+                            <option value="NEUMATICOS">NEUMÁTICOS</option>
+                            <option value="CARROCERIA">CARROCERÍA</option>
+                            <option value="SERVICIO">SERVICIO</option>
+                            <option value="PREVENTIVO">PREVENTIVO</option>
+                            <option value="CORRECTIVO">CORRECTIVO</option>
+                            <option value="OTRO">OTRO</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Prioridad</label>
+                        <select id="mantenimientoPrioridad" class="form-control">
+                            <option value="BAJA">BAJA</option>
+                            <option value="MEDIA" selected>MEDIA</option>
+                            <option value="ALTA">ALTA</option>
+                            <option value="CRITICA">CRÍTICA</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Estado</label>
+                        <select id="mantenimientoEstado" class="form-control">
+                            <option value="PENDIENTE" selected>PENDIENTE</option>
+                            <option value="AUTORIZADO">AUTORIZADO</option>
+                            <option value="EN TALLER">EN TALLER</option>
+                            <option value="EN REPARACION">EN REPARACIÓN</option>
+                            <option value="FINALIZADO">FINALIZADO</option>
+                            <option value="CANCELADO">CANCELADO</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Ingreso a taller</label>
+                        <input id="mantenimientoIngreso" class="form-control" type="datetime-local">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Salida de taller</label>
+                        <input id="mantenimientoSalida" class="form-control" type="datetime-local">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">KM</label>
+                        <input id="mantenimientoKM" class="form-control" type="number" min="0" step="1" placeholder="Kilometraje">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Responsable</label>
+                        <input id="mantenimientoResponsable" class="form-control" placeholder="Responsable del trabajo">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Costo</label>
+                        <input id="mantenimientoCosto" class="form-control" type="number" min="0" step="0.01" placeholder="0.00">
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">Descripción *</label>
+                        <textarea id="mantenimientoDescripcion" class="form-control" required placeholder="Describí la reparación, trabajo o intervención..."></textarea>
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">Observaciones</label>
+                        <textarea id="mantenimientoObservaciones" class="form-control" placeholder="Repuestos, diagnóstico, referencias, etc."></textarea>
+                    </div>
+                </div>
+
+                <div id="mantenimientoMensaje" style="display:none;margin-top:15px;font-size:11px;line-height:1.5"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModalMantenimiento()">Cancelar</button>
+                <button id="btnGuardarMantenimiento" type="submit" class="btn btn-primary">Guardar mantenimiento</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 
 <!-- ======================================================
