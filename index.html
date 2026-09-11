@@ -1208,6 +1208,26 @@ textarea.form-control{
     width:min(620px,100%);
 }
 
+
+/* =========================================================
+   MÓDULO SERVICIOS
+   ========================================================= */
+.servicio-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.servicio-search{width:250px}
+.servicio-count{font-size:10px;color:var(--muted)}
+.servicio-table-wrap{overflow-x:auto}
+.servicio-table{width:100%;border-collapse:collapse}
+.servicio-table th{text-align:left;padding:11px 10px;font-size:9px;color:#718198;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
+.servicio-table td{padding:11px 10px;font-size:10px;border-bottom:1px solid rgba(255,255,255,.045);color:#dce5ef}
+.servicio-table tr:hover td{background:rgba(255,255,255,.018)}
+.servicio-date{white-space:nowrap}
+.status-programado{color:#fbbf24;background:rgba(245,158,11,.12)}
+.status-curso{color:#60a5fa;background:rgba(59,130,246,.12)}
+.status-finalizado{color:#6ee7a0;background:rgba(34,197,94,.12)}
+.status-cancelado{color:#f87171;background:rgba(239,68,68,.12)}
+.status-neutral{color:#a8b3c2;background:rgba(148,163,184,.12)}
+#modalServicio .modal{width:min(720px,100%)}
+
 </style>
 </head>
 
@@ -2258,17 +2278,45 @@ textarea.form-control{
             <h2>Servicios</h2>
             <p>Programación y control de servicios</p>
         </div>
-        <button class="btn btn-primary">+ Nuevo servicio</button>
+        <div class="servicio-toolbar">
+            <input id="filtroServicio" class="filter servicio-search"
+                   placeholder="Buscar servicio, tipo o ruta..."
+                   oninput="filtrarServicios()">
+            <button class="btn btn-primary"
+                    onclick="abrirModalServicio()">
+                + Nuevo servicio
+            </button>
+        </div>
     </div>
 
     <div class="panel">
-        <div class="module-placeholder">
-            <div class="placeholder-icon">📋</div>
-            <div class="placeholder-title">Módulo de Servicios</div>
-            <div class="placeholder-text">
-                Se conectará a SERVICIOS y permitirá administrar
-                la operación diaria.
+        <div class="panel-head">
+            <div>
+                <div class="panel-title">Servicios registrados</div>
+                <div class="panel-subtitle">Datos de la tabla SERVICIOS</div>
             </div>
+            <span id="contadorServicios" class="servicio-count">0 servicios</span>
+        </div>
+
+        <div class="servicio-table-wrap">
+            <table class="servicio-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Horario</th>
+                        <th>Tipo</th>
+                        <th>Servicio</th>
+                        <th>Ruta</th>
+                        <th>Asignación</th>
+                        <th>Estado</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaServicios">
+                    <tr><td colspan="9"><div class="empty">Cargando servicios...</div></td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -3136,212 +3184,75 @@ function actualizarKPIs(datos){
    SERVICIOS DEL DÍA
    ========================================================= */
 
+/* =========================================================
+   MÓDULO SERVICIOS
+   ========================================================= */
+
 async function cargarServicios(){
 
-    const resultado =
-        await leerBackend("servicios");
+    const resultado = await leerBackend("servicios");
 
     if(!resultado?.ok){
         return [];
     }
 
-    const servicios =
-        Array.isArray(resultado.datos)
-            ? resultado.datos
-            : [];
+    const servicios = Array.isArray(resultado.datos)
+        ? resultado.datos
+        : [];
 
     estadoPanel.servicios = servicios;
-
-    actualizarServiciosDelDia(servicios);
+    renderizarServicios(servicios);
 
     return servicios;
 }
 
 
-function actualizarServiciosDelDia(servicios){
-
-    const hoy = fechaLocalISO();
-
-    const delDia = servicios.filter(servicio => {
-
-        const fecha =
-            String(servicio.FECHA || "")
-                .trim()
-                .substring(0,10);
-
-        return fecha === hoy;
-    });
-
-    /*
-       Si el backend tiene fechas que el navegador no puede
-       interpretar, no rompemos el panel: usamos el resumen general.
-    */
-    if(delDia.length === 0){
-
-        return;
-    }
-
-    const programados =
-        delDia.filter(s => {
-
-            const estado = normalizar(s.ESTADO);
-
-            return (
-                estado === "PENDIENTE" ||
-                estado === "PROGRAMADO" ||
-                estado === "ASIGNADO"
-            );
-        }).length;
-
-    const curso =
-        delDia.filter(s => {
-
-            const estado = normalizar(s.ESTADO);
-
-            return (
-                estado === "EN CURSO" ||
-                estado === "EN_CURSO" ||
-                estado === "INICIADO"
-            );
-        }).length;
-
-    const finalizados =
-        delDia.filter(s => {
-
-            const estado = normalizar(s.ESTADO);
-
-            return estado === "FINALIZADO" ||
-                   estado === "FINALIZADOS";
-        }).length;
-
-    const serviciosProgramados =
-        document.getElementById("serviciosProgramados");
-
-    const serviciosCurso =
-        document.getElementById("serviciosCurso");
-
-    const serviciosFinalizados =
-        document.getElementById("serviciosFinalizados");
-
-    if(serviciosProgramados){
-        serviciosProgramados.textContent = programados;
-    }
-
-    if(serviciosCurso){
-        serviciosCurso.textContent = curso;
-    }
-
-    if(serviciosFinalizados){
-        serviciosFinalizados.textContent = finalizados;
-    }
-
-    const kpiServicios =
-        document.getElementById("kpiServicios");
-
-    if(kpiServicios){
-        kpiServicios.textContent = delDia.length;
-    }
-}
-
-
-/* =========================================================
-   VEHÍCULOS
-   ========================================================= */
-
-async function cargarVehiculos(){
-
-    const resultado =
-        await leerBackend("vehiculos");
-
-    if(!resultado?.ok){
-        return [];
-    }
-
-    const vehiculos =
-        Array.isArray(resultado.datos)
-            ? resultado.datos
-            : [];
-
-    estadoPanel.vehiculos = vehiculos;
-
-    actualizarFiltroAreas(vehiculos);
-
-    renderizarVehiculos(vehiculos);
-
-    return vehiculos;
-}
-
-
-function claseEstadoVehiculo(estado){
+function claseEstadoServicio(estado){
 
     const e = normalizar(estado);
 
-    if(e === "DISPONIBLE" ||
-       e === "OPERATIVO"){
-
-        return "online";
+    if(e === "PENDIENTE" || e === "PROGRAMADO" || e === "ASIGNADO"){
+        return "status-programado";
     }
 
-    if(e === "EN TALLER"){
-        return "warning";
+    if(e === "EN CURSO" || e === "EN_CURSO" || e === "INICIADO"){
+        return "status-curso";
     }
 
-    return "danger";
+    if(e === "FINALIZADO" || e === "FINALIZADOS"){
+        return "status-finalizado";
+    }
+
+    if(e === "CANCELADO"){
+        return "status-cancelado";
+    }
+
+    return "status-neutral";
 }
 
 
-function textoEstadoVehiculo(estado){
+function renderizarServicios(servicios){
 
-    const e = normalizar(estado);
-
-    if(e === "DISPONIBLE"){
-        return "DISPONIBLE";
-    }
-
-    if(e === "EN TALLER"){
-        return "EN TALLER";
-    }
-
-    if(e === "OPERATIVO"){
-        return "OPERATIVO";
-    }
-
-    if(!e){
-        return "SIN ESTADO";
-    }
-
-    return e;
-}
-
-
-function renderizarVehiculos(vehiculos){
-
-    const tbody =
-        document.getElementById("tablaVehiculos");
+    const tbody = document.getElementById("tablaServicios");
 
     if(!tbody){
         return;
     }
 
-    actualizarFiltroAreas(
-        estadoPanel.vehiculos || []
-    );
-
-    const contador =
-        document.getElementById("contadorVehiculos");
+    const contador = document.getElementById("contadorServicios");
 
     if(contador){
         contador.textContent =
-            `${Array.isArray(vehiculos) ? vehiculos.length : 0} vehículos`;
+            `${Array.isArray(servicios) ? servicios.length : 0} servicios`;
     }
 
-    if(!Array.isArray(vehiculos) || vehiculos.length === 0){
+    if(!Array.isArray(servicios) || servicios.length === 0){
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="7">
+                <td colspan="9">
                     <div class="empty">
-                        Sin vehículos que coincidan con el filtro
+                        Sin servicios registrados en el Backend Maestro
                     </div>
                 </td>
             </tr>
@@ -3350,732 +3261,156 @@ function renderizarVehiculos(vehiculos){
         return;
     }
 
-    tbody.innerHTML =
-        vehiculos.map(vehiculo => {
+    tbody.innerHTML = servicios.map(servicio => {
 
-            const estado =
-                textoEstadoVehiculo(
-                    vehiculo.ESTADO_OPERATIVO
-                );
+        const estado = normalizar(servicio.ESTADO) || "SIN ESTADO";
 
-            const clase =
-                claseEstadoVehiculo(
-                    vehiculo.ESTADO_OPERATIVO
-                );
-
-            const gps =
-                vehiculo.GPS_ID
-                    ? "🛰 ACTIVO"
-                    : "—";
-
-            const marcaModelo =
-                [
-                    vehiculo.MARCA,
-                    vehiculo.MODELO
-                ]
-                .filter(Boolean)
-                .join(" ");
-
-            return `
-                <tr>
-
-                    <td>
-                        <strong>
-                            ${escaparHTML(
-                                vehiculo.DOMINIO || "-"
-                            )}
-                        </strong>
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            vehiculo.INTERNO || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            marcaModelo || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            vehiculo.TIPO || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            vehiculo.AREA || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        <span class="table-status ${clase}">
-                            ${escaparHTML(estado)}
-                        </span>
-                    </td>
-
-                    <td>
-                        ${escaparHTML(gps)}
-                    </td>
-
-                </tr>
-            `;
-
-        }).join("");
-}
-
-
-
-
-
-/* =========================================================
-   EVENTOS / ACTIVIDAD RECIENTE
-   ========================================================= */
-
-async function cargarEventos(){
-
-    const resultado =
-        await leerBackend("eventos");
-
-    if(!resultado?.ok){
-        return [];
-    }
-
-    const eventos =
-        Array.isArray(resultado.datos)
-            ? resultado.datos
-            : [];
-
-    estadoPanel.eventos = eventos;
-
-    renderizarActividad(eventos);
-
-    return eventos;
-}
-
-
-function iconoEvento(tipo){
-
-    const e = normalizar(tipo);
-
-    if(e.includes("GPS")){
-        return "🛰";
-    }
-
-    if(e.includes("VIAJE")){
-        return "🚦";
-    }
-
-    if(e.includes("REPORTE")){
-        return "⚠";
-    }
-
-    if(e.includes("INSPECCION")){
-        return "✓";
-    }
-
-    if(e.includes("ASIGNACION")){
-        return "🔗";
-    }
-
-    if(e.includes("MANTENIMIENTO")){
-        return "🔧";
-    }
-
-    return "◷";
-}
-
-
-function claseEvento(tipo){
-
-    const e = normalizar(tipo);
-
-    if(e.includes("REPORTE") ||
-       e.includes("ALERTA") ||
-       e.includes("ERROR")){
-
-        return "red";
-    }
-
-    if(e.includes("GPS") ||
-       e.includes("VIAJE")){
-
-        return "cyan";
-    }
-
-    if(e.includes("ASIGNACION")){
-        return "blue";
-    }
-
-    if(e.includes("MANTENIMIENTO")){
-        return "yellow";
-    }
-
-    return "green";
-}
-
-
-function renderizarActividad(eventos){
-
-    const contenedor =
-        document.querySelector("#inicio .activity");
-
-    if(!contenedor){
-        return;
-    }
-
-    if(!Array.isArray(eventos) || eventos.length === 0){
-
-        contenedor.innerHTML = `
-            <div class="activity-item">
-                <div class="activity-icon green">✓</div>
-                <div>
-                    <div class="activity-text">
-                        Sistema conectado al Backend Maestro
-                    </div>
-                    <div class="activity-time">
-                        Sin eventos recientes
-                    </div>
-                </div>
-            </div>
-
-            <div class="activity-item">
-                <div class="activity-icon blue">🔗</div>
-                <div>
-                    <div class="activity-text">
-                        Arquitectura Panel 2.0 operativa
-                    </div>
-                    <div class="activity-time">
-                        Backend Maestro
-                    </div>
-                </div>
-            </div>
-
-            <div class="activity-item">
-                <div class="activity-icon cyan">🛰</div>
-                <div>
-                    <div class="activity-text">
-                        GPS reservado exclusivamente para Día Verde
-                    </div>
-                    <div class="activity-time">
-                        Política de arquitectura
-                    </div>
-                </div>
-            </div>
+        return `
+            <tr>
+                <td class="servicio-date">${escaparHTML(servicio.FECHA || "-")}</td>
+                <td>${escaparHTML(servicio.HORA_PROGRAMADA || "-")}</td>
+                <td>${escaparHTML(servicio.TIPO_SERVICIO || "-")}</td>
+                <td><strong>${escaparHTML(servicio.NOMBRE_SERVICIO || "-")}</strong></td>
+                <td>${escaparHTML(servicio.ID_RUTA || "-")}</td>
+                <td>${escaparHTML(servicio.ID_ASIGNACION || "-")}</td>
+                <td>
+                    <span class="table-status ${claseEstadoServicio(estado)}">
+                        ${escaparHTML(estado)}
+                    </span>
+                </td>
+                <td>${escaparHTML(servicio.HORA_INICIO || "-")}</td>
+                <td>${escaparHTML(servicio.HORA_FIN || "-")}</td>
+            </tr>
         `;
 
-        return;
-    }
-
-    const ultimos =
-        [...eventos]
-            .sort((a,b) => {
-                const fa = new Date(a.FECHA_HORA || 0).getTime();
-                const fb = new Date(b.FECHA_HORA || 0).getTime();
-                return fb - fa;
-            })
-            .slice(0,5);
-
-    contenedor.innerHTML =
-        ultimos.map(evento => {
-
-            const tipo = evento.TIPO_EVENTO || "EVENTO";
-            const descripcion = evento.DESCRIPCION || tipo;
-            const clase = claseEvento(tipo);
-
-            return `
-                <div class="activity-item">
-                    <div class="activity-icon ${clase}">
-                        ${iconoEvento(tipo)}
-                    </div>
-                    <div>
-                        <div class="activity-text">
-                            ${escaparHTML(descripcion)}
-                        </div>
-                        <div class="activity-time">
-                            ${escaparHTML(formatearFecha(evento.FECHA_HORA))}
-                        </div>
-                    </div>
-                </div>
-            `;
-
-        }).join("");
+    }).join("");
 }
 
 
-/* =========================================================
-   MÓDULO VEHÍCULOS
-   ========================================================= */
+function filtrarServicios(){
 
-function abrirModalVehiculo(){
-
-    const modal =
-        document.getElementById("modalVehiculo");
-
-    if(!modal){
-        return;
-    }
-
-    const form =
-        document.getElementById("formVehiculo");
-
-    if(form){
-        form.reset();
-    }
-
-    const estado =
-        document.getElementById("vehEstado");
-
-    if(estado){
-        estado.value = "DISPONIBLE";
-    }
-
-    const mensaje =
-        document.getElementById("vehiculoMensaje");
-
-    if(mensaje){
-        mensaje.style.display = "none";
-        mensaje.textContent = "";
-    }
-
-    modal.classList.add("open");
-
-    setTimeout(() => {
-
-        const dominio =
-            document.getElementById("vehDominio");
-
-        if(dominio){
-            dominio.focus();
-        }
-
-    },50);
-}
-
-
-function cerrarModalVehiculo(event){
-
-    if(event && event.target &&
-       event.target.id !== "modalVehiculo"){
-
-        return;
-    }
-
-    const modal =
-        document.getElementById("modalVehiculo");
-
-    if(modal){
-        modal.classList.remove("open");
-    }
-}
-
-
-function mostrarMensajeVehiculo(texto,tipo="info"){
-
-    const mensaje =
-        document.getElementById("vehiculoMensaje");
-
-    if(!mensaje){
-        return;
-    }
-
-    mensaje.style.display = "block";
-    mensaje.textContent = texto;
-
-    if(tipo === "error"){
-        mensaje.style.color = "#f87171";
-    }else if(tipo === "ok"){
-        mensaje.style.color = "#6ee7a0";
-    }else{
-        mensaje.style.color = "#91a0b5";
-    }
-}
-
-
-async function guardarVehiculo(event){
-
-    event.preventDefault();
-
-    const boton =
-        document.getElementById("btnGuardarVehiculo");
-
-    const datos = {
-        dominio:
-            document.getElementById("vehDominio")?.value.trim(),
-
-        interno:
-            document.getElementById("vehInterno")?.value.trim(),
-
-        marca:
-            document.getElementById("vehMarca")?.value.trim(),
-
-        modelo:
-            document.getElementById("vehModelo")?.value.trim(),
-
-        tipo:
-            document.getElementById("vehTipo")?.value.trim(),
-
-        area:
-            document.getElementById("vehArea")?.value.trim(),
-
-        estadoOperativo:
-            document.getElementById("vehEstado")?.value,
-
-        gpsId:
-            document.getElementById("vehGps")?.value.trim(),
-
-        activo:"SI",
-
-        observaciones:
-            document.getElementById("vehObservaciones")?.value.trim()
-    };
-
-    if(!datos.dominio){
-
-        mostrarMensajeVehiculo(
-            "El dominio es obligatorio.",
-            "error"
-        );
-
-        return;
-    }
-
-    if(boton){
-        boton.disabled = true;
-        boton.textContent = "Guardando...";
-    }
-
-    mostrarMensajeVehiculo(
-        "Registrando unidad en el Backend Maestro..."
+    const texto = normalizar(
+        document.getElementById("filtroServicio")?.value
     );
 
-    try{
+    const filtrados = (estadoPanel.servicios || []).filter(servicio => {
 
-        /*
-           POST sin header Content-Type.
-           Así evitamos un preflight CORS innecesario.
-           El Backend Maestro procesa el JSON del cuerpo.
-        */
-        const respuesta =
-            await fetch(
-                BACKEND_URL,
-                {
-                    method:"POST",
-                    body:JSON.stringify({
-                         accion:"crearVehiculo",
-                         ...datos
-                     })
-                }
-            );
+        const contenido = [
+            servicio.FECHA,
+            servicio.HORA_PROGRAMADA,
+            servicio.TIPO_SERVICIO,
+            servicio.NOMBRE_SERVICIO,
+            servicio.ID_RUTA,
+            servicio.ID_ASIGNACION,
+            servicio.ESTADO
+        ].map(normalizar).join(" ");
 
-        if(!respuesta.ok){
-            throw new Error(
-                "HTTP " + respuesta.status
-            );
-        }
+        return !texto || contenido.includes(texto);
+    });
 
-        const resultado =
-            await respuesta.json();
-
-        if(!resultado?.ok){
-
-            throw new Error(
-                resultado?.error ||
-                "No se pudo crear el vehículo."
-            );
-        }
-
-        cerrarModalVehiculo();
-
-        Promise.allSettled([
-            cargarResumenPanel(),
-            cargarVehiculos()
-        ]).then(() => {
-            filtrarVehiculos();
-        });
-
-    }catch(error){
-
-        console.error(
-            "Error creando vehículo:",
-            error
-        );
-
-        mostrarMensajeVehiculo(
-            "No se pudo guardar: " +
-            error.message,
-            "error"
-        );
-
-    }finally{
-
-        if(boton){
-            boton.disabled = false;
-            boton.textContent = "Guardar vehículo";
-        }
-    }
+    renderizarServicios(filtrados);
 }
 
 
-function actualizarFiltroAreas(vehiculos){
+async function cargarRutasParaServicio(){
 
-    const select =
-        document.getElementById("filtroArea");
+    const resultado = await leerBackend("rutas");
+
+    if(!resultado?.ok){
+        return;
+    }
+
+    const rutas = Array.isArray(resultado.datos)
+        ? resultado.datos
+        : [];
+
+    const select = document.getElementById("servicioRuta");
 
     if(!select){
         return;
     }
 
-    const actual =
-        select.value;
-
-    const areas =
-        [...new Set(
-            (vehiculos || [])
-                .map(v => String(v.AREA || "").trim())
-                .filter(Boolean)
-        )]
-        .sort((a,b) =>
-            a.localeCompare(b,"es")
-        );
-
     select.innerHTML =
-        '<option value="">Todas las áreas</option>' +
-        areas.map(area =>
-            '<option value="' + escaparHTML(area) + '">' + escaparHTML(area) + '</option>'
-        ).join("");
+        '<option value="">Sin ruta asignada</option>' +
+        rutas.map(ruta => {
 
-    if(areas.includes(actual)){
-        select.value = actual;
-    }
-}
-
-
-function filtrarVehiculos(){
-
-    const dominio =
-        normalizar(
-            document.getElementById("filtroDominio")?.value
-        );
-
-    const estado =
-        normalizar(
-            document.getElementById("filtroEstado")?.value
-        );
-
-    const area =
-        normalizar(
-            document.getElementById("filtroArea")?.value
-        );
-
-    const filtrados =
-        (estadoPanel.vehiculos || [])
-            .filter(v => {
-
-                const vDominio =
-                    normalizar(v.DOMINIO);
-
-                const vEstado =
-                    normalizar(v.ESTADO_OPERATIVO);
-
-                const vArea =
-                    normalizar(v.AREA);
-
-                return (
-                    (!dominio || vDominio.includes(dominio)) &&
-                    (!estado || vEstado === estado) &&
-                    (!area || vArea === area)
-                );
-            });
-
-    renderizarVehiculos(filtrados);
-}
-
-
-
-/* =========================================================
-   MÓDULO CHOFERES
-   ========================================================= */
-
-async function cargarChoferes(){
-
-    const resultado =
-        await leerBackend("choferes");
-
-    if(!resultado?.ok){
-        return [];
-    }
-
-    const choferes =
-        Array.isArray(resultado.datos)
-            ? resultado.datos
-            : [];
-
-    estadoPanel.choferes = choferes;
-
-    renderizarChoferes(choferes);
-
-    return choferes;
-}
-
-
-function claseEstadoChofer(estado){
-
-    return normalizar(estado) === "ACTIVO"
-        ? "status-active"
-        : "status-inactive";
-}
-
-
-function renderizarChoferes(choferes){
-
-    const tbody =
-        document.getElementById("tablaChoferes");
-
-    if(!tbody){
-        return;
-    }
-
-    const contador =
-        document.getElementById("contadorChoferes");
-
-    if(contador){
-
-        contador.textContent =
-            `${Array.isArray(choferes) ? choferes.length : 0} choferes`;
-    }
-
-    if(!Array.isArray(choferes) || choferes.length === 0){
-
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6">
-                    <div class="empty">
-                        Sin choferes registrados en el Backend Maestro
-                    </div>
-                </td>
-            </tr>
-        `;
-
-        return;
-    }
-
-    tbody.innerHTML =
-        choferes.map(chofer => {
-
-            const estado =
-                chofer.ESTADO || "SIN ESTADO";
-
-            const clase =
-                claseEstadoChofer(estado);
+            const id = ruta.ID_RUTA || "";
+            const nombre = ruta.NOMBRE_RUTA || id;
 
             return `
-                <tr>
-
-                    <td>
-                        <strong>
-                            ${escaparHTML(
-                                chofer.NOMBRE || "-"
-                            )}
-                        </strong>
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            chofer.DNI || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            chofer.TELEFONO || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            chofer.LEGAJO || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        <span class="table-status ${clase}">
-                            ${escaparHTML(
-                                estado
-                            )}
-                        </span>
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            chofer.OBSERVACIONES || "-"
-                        )}
-                    </td>
-
-                </tr>
+                <option value="${escaparHTML(id)}">
+                    ${escaparHTML(nombre)}
+                </option>
             `;
 
         }).join("");
 }
 
 
-function filtrarChoferes(){
+async function cargarAsignacionesParaServicio(){
 
-    const texto =
-        normalizar(
-            document.getElementById("filtroChofer")?.value
-        );
+    const resultado = await leerBackend("asignaciones");
 
-    const filtrados =
-        (estadoPanel.choferes || [])
-            .filter(chofer => {
+    if(!resultado?.ok){
+        return;
+    }
 
-                const contenido = [
-                    chofer.NOMBRE,
-                    chofer.DNI,
-                    chofer.TELEFONO,
-                    chofer.LEGAJO,
-                    chofer.ESTADO
-                ]
-                .map(normalizar)
-                .join(" ");
+    const asignaciones = Array.isArray(resultado.datos)
+        ? resultado.datos
+        : [];
 
-                return !texto ||
-                    contenido.includes(texto);
-            });
+    const select =
+        document.getElementById("servicioAsignacion");
 
-    renderizarChoferes(filtrados);
+    if(!select){
+        return;
+    }
+
+    select.innerHTML =
+        '<option value="">Sin asignación</option>' +
+        asignaciones.map(asignacion => {
+
+            const id = asignacion.ID_ASIGNACION || "";
+            const chofer = asignacion.ID_CHOFER || "Sin chofer";
+            const vehiculo = asignacion.ID_VEHICULO || "Sin vehículo";
+
+            return `
+                <option value="${escaparHTML(id)}">
+                    ${escaparHTML(`${id} · ${chofer} · ${vehiculo}`)}
+                </option>
+            `;
+
+        }).join("");
 }
 
 
-function abrirModalChofer(){
+function abrirModalServicio(){
 
-    const modal =
-        document.getElementById("modalChofer");
+    const modal = document.getElementById("modalServicio");
 
     if(!modal){
         return;
     }
 
-    const form =
-        document.getElementById("formChofer");
+    const form = document.getElementById("formServicio");
 
     if(form){
         form.reset();
     }
 
-    const estado =
-        document.getElementById("choferEstado");
+    const fecha = document.getElementById("servicioFecha");
 
-    if(estado){
-        estado.value = "ACTIVO";
+    if(fecha){
+        fecha.value = fechaLocalISO();
     }
 
-    const mensaje =
-        document.getElementById("choferMensaje");
+    const estado = document.getElementById("servicioEstado");
+
+    if(estado){
+        estado.value = "PENDIENTE";
+    }
+
+    const mensaje = document.getElementById("servicioMensaje");
 
     if(mensaje){
         mensaje.style.display = "none";
@@ -4084,10 +3419,12 @@ function abrirModalChofer(){
 
     modal.classList.add("open");
 
+    cargarRutasParaServicio();
+    cargarAsignacionesParaServicio();
+
     setTimeout(() => {
 
-        const nombre =
-            document.getElementById("choferNombre");
+        const nombre = document.getElementById("servicioNombre");
 
         if(nombre){
             nombre.focus();
@@ -4097,17 +3434,13 @@ function abrirModalChofer(){
 }
 
 
-function cerrarModalChofer(event){
+function cerrarModalServicio(event){
 
-    if(event &&
-       event.target &&
-       event.target.id !== "modalChofer"){
-
+    if(event && event.target && event.target.id !== "modalServicio"){
         return;
     }
 
-    const modal =
-        document.getElementById("modalChofer");
+    const modal = document.getElementById("modalServicio");
 
     if(modal){
         modal.classList.remove("open");
@@ -4115,10 +3448,9 @@ function cerrarModalChofer(event){
 }
 
 
-function mostrarMensajeChofer(texto,tipo="info"){
+function mostrarMensajeServicio(texto,tipo="info"){
 
-    const mensaje =
-        document.getElementById("choferMensaje");
+    const mensaje = document.getElementById("servicioMensaje");
 
     if(!mensaje){
         return;
@@ -4127,157 +3459,136 @@ function mostrarMensajeChofer(texto,tipo="info"){
     mensaje.style.display = "block";
     mensaje.textContent = texto;
 
-    if(tipo === "error"){
-        mensaje.style.color = "#f87171";
-    }else if(tipo === "ok"){
-        mensaje.style.color = "#6ee7a0";
-    }else{
-        mensaje.style.color = "#91a0b5";
-    }
+    mensaje.style.color =
+        tipo === "error"
+            ? "#f87171"
+            : tipo === "ok"
+                ? "#6ee7a0"
+                : "#91a0b5";
 }
 
 
-async function guardarChofer(event){
+async function guardarServicio(event){
 
     event.preventDefault();
 
     const boton =
-        document.getElementById("btnGuardarChofer");
+        document.getElementById("btnGuardarServicio");
 
     const datos = {
 
-        nombre:
-            document.getElementById("choferNombre")
-                ?.value.trim(),
+        fecha: document.getElementById("servicioFecha")?.value,
 
-        dni:
-            document.getElementById("choferDni")
-                ?.value.trim(),
+        horaProgramada:
+            document.getElementById("servicioHora")?.value,
 
-        telefono:
-            document.getElementById("choferTelefono")
-                ?.value.trim(),
+        tipoServicio:
+            document.getElementById("servicioTipo")?.value.trim(),
 
-        legajo:
-            document.getElementById("choferLegajo")
-                ?.value.trim(),
+        nombreServicio:
+            document.getElementById("servicioNombre")?.value.trim(),
+
+        idRuta:
+            document.getElementById("servicioRuta")?.value,
+
+        idAsignacion:
+            document.getElementById("servicioAsignacion")?.value,
 
         estado:
-            document.getElementById("choferEstado")
-                ?.value || "ACTIVO",
+            document.getElementById("servicioEstado")?.value,
 
         observaciones:
-            document.getElementById("choferObservaciones")
-                ?.value.trim()
+            document.getElementById("servicioObservaciones")?.value.trim()
     };
 
-    if(!datos.nombre){
-
-        mostrarMensajeChofer(
-            "El nombre es obligatorio.",
-            "error"
-        );
-
+    if(!datos.fecha){
+        mostrarMensajeServicio("La fecha es obligatoria.","error");
         return;
     }
 
-    if(!datos.dni){
+    if(!datos.horaProgramada){
+        mostrarMensajeServicio("La hora programada es obligatoria.","error");
+        return;
+    }
 
-        mostrarMensajeChofer(
-            "El DNI es obligatorio.",
-            "error"
-        );
+    if(!datos.tipoServicio){
+        mostrarMensajeServicio("El tipo de servicio es obligatorio.","error");
+        return;
+    }
 
+    if(!datos.nombreServicio){
+        mostrarMensajeServicio("El nombre del servicio es obligatorio.","error");
         return;
     }
 
     if(boton){
-
         boton.disabled = true;
         boton.textContent = "Guardando...";
     }
 
-    mostrarMensajeChofer(
-        "Registrando chofer en el Backend Maestro..."
+    mostrarMensajeServicio(
+        "Registrando servicio en el Backend Maestro..."
     );
 
     try{
 
-        /*
-           El Backend Maestro espera los campos directamente
-           junto a "accion".
-        */
-        const respuesta =
-            await fetch(
-                BACKEND_URL,
-                {
-                    method:"POST",
-                    body:JSON.stringify({
-                        accion:"crearChofer",
-                        ...datos
-                    })
-                }
-            );
+        const respuesta = await fetch(
+            BACKEND_URL,
+            {
+                method:"POST",
+                body:JSON.stringify({
+                    accion:"crearServicio",
+                    ...datos
+                })
+            }
+        );
 
         if(!respuesta.ok){
-
-            throw new Error(
-                "HTTP " + respuesta.status
-            );
+            throw new Error("HTTP " + respuesta.status);
         }
 
-        const resultado =
-            await respuesta.json();
+        const resultado = await respuesta.json();
 
         if(!resultado?.ok){
-
             throw new Error(
                 resultado?.error ||
-                "No se pudo crear el chofer."
+                "No se pudo crear el servicio."
             );
         }
 
-        mostrarMensajeChofer(
-            "Chofer creado correctamente.",
+        mostrarMensajeServicio(
+            "Servicio creado correctamente.",
             "ok"
         );
 
         if(boton){
-
             boton.disabled = false;
-            boton.textContent = "Guardar chofer";
+            boton.textContent = "Guardar servicio";
         }
 
-        cerrarModalChofer();
+        cerrarModalServicio();
 
         Promise.allSettled([
             cargarResumenPanel(),
-            cargarChoferes()
+            cargarServicios()
         ]).then(() => {
-
-            filtrarChoferes();
-
+            filtrarServicios();
         });
 
     }catch(error){
 
-        console.error(
-            "Error creando chofer:",
-            error
-        );
+        console.error("Error creando servicio:",error);
 
-        mostrarMensajeChofer(
-            "No se pudo guardar: " +
-            error.message,
+        mostrarMensajeServicio(
+            "No se pudo guardar: " + error.message,
             "error"
         );
 
     }finally{
 
         if(boton){
-
             boton.disabled = false;
-            boton.textContent = "Guardar chofer";
+            boton.textContent = "Guardar servicio";
         }
     }
 }
@@ -4512,6 +3823,73 @@ document.addEventListener(
 
 </div>
 
+
+
+
+<!-- MODAL NUEVO SERVICIO -->
+<div id="modalServicio" class="modal-overlay" onclick="cerrarModalServicio(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title">Nuevo servicio</div>
+                <div class="panel-subtitle">Alta de servicio en el Backend Maestro</div>
+            </div>
+            <button class="modal-close" type="button" onclick="cerrarModalServicio()">×</button>
+        </div>
+        <form id="formServicio" onsubmit="guardarServicio(event)">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Fecha *</label>
+                        <input id="servicioFecha" class="form-control" type="date" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Hora programada *</label>
+                        <input id="servicioHora" class="form-control" type="time" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo de servicio *</label>
+                        <input id="servicioTipo" class="form-control" required placeholder="RECOLECCIÓN, PODA...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nombre del servicio *</label>
+                        <input id="servicioNombre" class="form-control" required placeholder="Nombre operativo">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ruta</label>
+                        <select id="servicioRuta" class="form-control">
+                            <option value="">Sin ruta asignada</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Asignación</label>
+                        <select id="servicioAsignacion" class="form-control">
+                            <option value="">Sin asignación</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estado</label>
+                        <select id="servicioEstado" class="form-control">
+                            <option value="PENDIENTE">PENDIENTE</option>
+                            <option value="PROGRAMADO">PROGRAMADO</option>
+                            <option value="CANCELADO">CANCELADO</option>
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label class="form-label">Observaciones</label>
+                        <textarea id="servicioObservaciones" class="form-control"
+                                  placeholder="Observaciones del servicio"></textarea>
+                    </div>
+                </div>
+                <div id="servicioMensaje" style="display:none;margin-top:15px;font-size:11px;line-height:1.5"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModalServicio()">Cancelar</button>
+                <button id="btnGuardarServicio" type="submit" class="btn btn-primary">Guardar servicio</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 </body>
 </html>
