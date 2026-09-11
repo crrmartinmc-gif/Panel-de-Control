@@ -1228,6 +1228,108 @@ textarea.form-control{
 .status-neutral{color:#a8b3c2;background:rgba(148,163,184,.12)}
 #modalServicio .modal{width:min(720px,100%)}
 
+
+/* =========================================================
+   MÓDULO ASIGNACIONES
+   ========================================================= */
+
+.asignacion-toolbar{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    flex-wrap:wrap;
+}
+
+.asignacion-search{
+    width:270px;
+}
+
+.asignacion-count{
+    font-size:10px;
+    color:var(--muted);
+}
+
+.asignacion-table-wrap{
+    overflow-x:auto;
+}
+
+.asignacion-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.asignacion-table th{
+    text-align:left;
+    padding:11px 10px;
+    font-size:9px;
+    color:#718198;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+}
+
+.asignacion-table td{
+    padding:11px 10px;
+    font-size:10px;
+    border-bottom:1px solid rgba(255,255,255,.045);
+    color:#dce5ef;
+}
+
+.asignacion-table tr:hover td{
+    background:rgba(255,255,255,.018);
+}
+
+.asignacion-date{
+    white-space:nowrap;
+}
+
+.asignacion-id{
+    font-size:9px;
+    color:#718198;
+}
+
+.asignacion-main{
+    font-weight:600;
+    color:#eef4fb;
+}
+
+.asignacion-sub{
+    display:block;
+    margin-top:3px;
+    font-size:9px;
+    color:#718198;
+}
+
+.assign-programado{
+    color:#fbbf24;
+    background:rgba(245,158,11,.12);
+}
+
+.assign-activo{
+    color:#6ee7a0;
+    background:rgba(34,197,94,.12);
+}
+
+.assign-finalizado{
+    color:#60a5fa;
+    background:rgba(59,130,246,.12);
+}
+
+.assign-cancelado{
+    color:#f87171;
+    background:rgba(239,68,68,.12);
+}
+
+.assign-neutral{
+    color:#a8b3c2;
+    background:rgba(148,163,184,.12);
+}
+
+#modalAsignacion .modal{
+    width:min(760px,100%);
+}
+
 </style>
 </head>
 
@@ -2323,23 +2425,86 @@ textarea.form-control{
 
 
 <div id="asignaciones" class="page">
+
     <div class="section-head">
+
         <div>
             <h2>Asignaciones</h2>
             <p>Chofer + vehículo + servicio</p>
         </div>
-        <button class="btn btn-primary">+ Nueva asignación</button>
+
+        <div class="asignacion-toolbar">
+
+            <input
+                id="filtroAsignacion"
+                class="filter asignacion-search"
+                placeholder="Buscar chofer, vehículo o servicio..."
+                oninput="filtrarAsignaciones()">
+
+            <button
+                class="btn btn-primary"
+                type="button"
+                onclick="abrirModalAsignacion()">
+                + Nueva asignación
+            </button>
+
+        </div>
+
     </div>
 
     <div class="panel">
-        <div class="module-placeholder">
-            <div class="placeholder-icon">🔗</div>
-            <div class="placeholder-title">Asignaciones</div>
-            <div class="placeholder-text">
-                Gestión de asignaciones mediante ASIGNACIONES.
+
+        <div class="panel-head">
+
+            <div>
+                <div class="panel-title">Asignaciones registradas</div>
+                <div class="panel-subtitle">
+                    Vínculos operativos entre servicios, choferes y vehículos
+                </div>
             </div>
+
+            <span
+                id="contadorAsignaciones"
+                class="asignacion-count">
+                0 asignaciones
+            </span>
+
         </div>
+
+        <div class="asignacion-table-wrap">
+
+            <table class="asignacion-table">
+
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Servicio</th>
+                        <th>Chofer</th>
+                        <th>Vehículo</th>
+                        <th>Turno</th>
+                        <th>Estado</th>
+                        <th>Hora asignación</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tablaAsignaciones">
+
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty">
+                                Cargando asignaciones...
+                            </div>
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
     </div>
+
 </div>
 
 
@@ -3594,6 +3759,767 @@ async function guardarServicio(event){
 }
 
 
+
+/* =========================================================
+   MÓDULO ASIGNACIONES
+   ========================================================= */
+
+async function cargarAsignaciones(){
+
+    const resultado =
+        await leerBackend("asignaciones");
+
+    if(!resultado?.ok){
+        return [];
+    }
+
+    const asignaciones =
+        Array.isArray(resultado.datos)
+            ? resultado.datos
+            : [];
+
+    estadoPanel.asignaciones =
+        asignaciones;
+
+    renderizarAsignaciones(
+        asignaciones
+    );
+
+    return asignaciones;
+}
+
+
+function claseEstadoAsignacion(estado){
+
+    const e =
+        normalizar(estado);
+
+    if(
+        e === "ACTIVA" ||
+        e === "ASIGNADA" ||
+        e === "EN CURSO"
+    ){
+        return "assign-activo";
+    }
+
+    if(
+        e === "PROGRAMADA" ||
+        e === "PENDIENTE"
+    ){
+        return "assign-programado";
+    }
+
+    if(e === "FINALIZADA"){
+        return "assign-finalizado";
+    }
+
+    if(
+        e === "CANCELADA" ||
+        e === "CANCELADO"
+    ){
+        return "assign-cancelado";
+    }
+
+    return "assign-neutral";
+}
+
+
+function renderizarAsignaciones(
+    asignaciones
+){
+
+    const tbody =
+        document.getElementById(
+            "tablaAsignaciones"
+        );
+
+    if(!tbody){
+        return;
+    }
+
+    const contador =
+        document.getElementById(
+            "contadorAsignaciones"
+        );
+
+    if(contador){
+
+        contador.textContent =
+            `${Array.isArray(asignaciones)
+                ? asignaciones.length
+                : 0} asignaciones`;
+    }
+
+    if(
+        !Array.isArray(asignaciones) ||
+        asignaciones.length === 0
+    ){
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7">
+                    <div class="empty">
+                        Sin asignaciones registradas
+                        en el Backend Maestro
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return;
+    }
+
+    tbody.innerHTML =
+        asignaciones.map(
+            asignacion => {
+
+                const estado =
+                    normalizar(
+                        asignacion.ESTADO
+                    ) || "SIN ESTADO";
+
+                const clase =
+                    claseEstadoAsignacion(
+                        estado
+                    );
+
+                const servicio =
+                    asignacion.ID_SERVICIO ||
+                    "-";
+
+                const chofer =
+                    asignacion.ID_CHOFER ||
+                    "-";
+
+                const vehiculo =
+                    asignacion.ID_VEHICULO ||
+                    "-";
+
+                return `
+                    <tr>
+
+                        <td class="asignacion-date">
+                            ${escaparHTML(
+                                asignacion.FECHA || "-"
+                            )}
+                        </td>
+
+                        <td>
+                            <span class="asignacion-main">
+                                ${escaparHTML(servicio)}
+                            </span>
+                            ${
+                                asignacion.OBSERVACIONES
+                                ? `
+                                    <span class="asignacion-sub">
+                                        ${escaparHTML(
+                                            asignacion.OBSERVACIONES
+                                        )}
+                                    </span>
+                                `
+                                : ""
+                            }
+                        </td>
+
+                        <td>
+                            ${escaparHTML(chofer)}
+                        </td>
+
+                        <td>
+                            ${escaparHTML(vehiculo)}
+                        </td>
+
+                        <td>
+                            ${escaparHTML(
+                                asignacion.TURNO || "-"
+                            )}
+                        </td>
+
+                        <td>
+                            <span class="table-status ${clase}">
+                                ${escaparHTML(estado)}
+                            </span>
+                        </td>
+
+                        <td>
+                            ${escaparHTML(
+                                asignacion.HORA_ASIGNACION || "-"
+                            )}
+                        </td>
+
+                    </tr>
+                `;
+            }
+        ).join("");
+}
+
+
+function filtrarAsignaciones(){
+
+    const texto =
+        normalizar(
+            document.getElementById(
+                "filtroAsignacion"
+            )?.value
+        );
+
+    const filtradas =
+        (
+            estadoPanel.asignaciones ||
+            []
+        ).filter(asignacion => {
+
+            const contenido = [
+
+                asignacion.FECHA,
+                asignacion.ID_SERVICIO,
+                asignacion.ID_CHOFER,
+                asignacion.ID_VEHICULO,
+                asignacion.TURNO,
+                asignacion.ESTADO,
+                asignacion.HORA_ASIGNACION,
+                asignacion.OBSERVACIONES
+
+            ]
+            .map(normalizar)
+            .join(" ");
+
+            return !texto ||
+                contenido.includes(texto);
+        });
+
+    renderizarAsignaciones(
+        filtradas
+    );
+}
+
+
+async function cargarOpcionesAsignacion(){
+
+    const [
+        servicios,
+        choferes,
+        vehiculos
+    ] = await Promise.all([
+
+        leerBackend("servicios"),
+        leerBackend("choferes"),
+        leerBackend("vehiculos")
+
+    ]);
+
+    const selectServicio =
+        document.getElementById(
+            "asignacionServicio"
+        );
+
+    const selectChofer =
+        document.getElementById(
+            "asignacionChofer"
+        );
+
+    const selectVehiculo =
+        document.getElementById(
+            "asignacionVehiculo"
+        );
+
+
+    if(selectServicio){
+
+        const lista =
+            servicios?.ok &&
+            Array.isArray(servicios.datos)
+                ? servicios.datos
+                : [];
+
+        selectServicio.innerHTML =
+            '<option value="">Seleccionar servicio</option>' +
+            lista.map(servicio => {
+
+                const id =
+                    servicio.ID_SERVICIO || "";
+
+                const nombre =
+                    servicio.NOMBRE_SERVICIO ||
+                    servicio.TIPO_SERVICIO ||
+                    id;
+
+                const fecha =
+                    servicio.FECHA
+                        ? ` · ${servicio.FECHA}`
+                        : "";
+
+                return `
+                    <option value="${escaparHTML(id)}">
+                        ${escaparHTML(
+                            nombre + fecha
+                        )}
+                    </option>
+                `;
+
+            }).join("");
+
+    }
+
+
+    if(selectChofer){
+
+        const lista =
+            choferes?.ok &&
+            Array.isArray(choferes.datos)
+                ? choferes.datos
+                : [];
+
+        selectChofer.innerHTML =
+            '<option value="">Seleccionar chofer</option>' +
+            lista
+                .filter(chofer =>
+                    normalizar(
+                        chofer.ESTADO
+                    ) !== "INACTIVO"
+                )
+                .map(chofer => {
+
+                    const id =
+                        chofer.ID_CHOFER || "";
+
+                    const nombre =
+                        chofer.NOMBRE || id;
+
+                    const legajo =
+                        chofer.LEGAJO
+                            ? ` · Legajo ${chofer.LEGAJO}`
+                            : "";
+
+                    return `
+                        <option value="${escaparHTML(id)}">
+                            ${escaparHTML(
+                                nombre + legajo
+                            )}
+                        </option>
+                    `;
+
+                }).join("");
+
+    }
+
+
+    if(selectVehiculo){
+
+        const lista =
+            vehiculos?.ok &&
+            Array.isArray(vehiculos.datos)
+                ? vehiculos.datos
+                : [];
+
+        selectVehiculo.innerHTML =
+            '<option value="">Seleccionar vehículo</option>' +
+            lista
+                .filter(vehiculo => {
+
+                    const activo =
+                        normalizar(
+                            vehiculo.ACTIVO
+                        );
+
+                    return (
+                        activo === "SI" ||
+                        activo === "SÍ" ||
+                        activo === ""
+                    );
+
+                })
+                .map(vehiculo => {
+
+                    const id =
+                        vehiculo.ID_VEHICULO ||
+                        "";
+
+                    const dominio =
+                        vehiculo.DOMINIO ||
+                        id;
+
+                    const interno =
+                        vehiculo.INTERNO
+                            ? ` · Interno ${vehiculo.INTERNO}`
+                            : "";
+
+                    const modelo =
+                        vehiculo.MODELO
+                            ? ` · ${vehiculo.MODELO}`
+                            : "";
+
+                    return `
+                        <option value="${escaparHTML(id)}">
+                            ${escaparHTML(
+                                dominio +
+                                interno +
+                                modelo
+                            )}
+                        </option>
+                    `;
+
+                }).join("");
+
+    }
+}
+
+
+function abrirModalAsignacion(){
+
+    const modal =
+        document.getElementById(
+            "modalAsignacion"
+        );
+
+    if(!modal){
+        return;
+    }
+
+    const form =
+        document.getElementById(
+            "formAsignacion"
+        );
+
+    if(form){
+        form.reset();
+    }
+
+    const fecha =
+        document.getElementById(
+            "asignacionFecha"
+        );
+
+    if(fecha){
+        fecha.value =
+            fechaLocalISO();
+    }
+
+    const estado =
+        document.getElementById(
+            "asignacionEstado"
+        );
+
+    if(estado){
+        estado.value =
+            "ACTIVA";
+    }
+
+    const hora =
+        document.getElementById(
+            "asignacionHora"
+        );
+
+    if(hora){
+
+        const ahora =
+            new Date();
+
+        hora.value =
+            String(
+                ahora.getHours()
+            ).padStart(2,"0") +
+            ":" +
+            String(
+                ahora.getMinutes()
+            ).padStart(2,"0");
+    }
+
+    const mensaje =
+        document.getElementById(
+            "asignacionMensaje"
+        );
+
+    if(mensaje){
+
+        mensaje.style.display =
+            "none";
+
+        mensaje.textContent =
+            "";
+    }
+
+    modal.classList.add("open");
+
+    cargarOpcionesAsignacion();
+
+    setTimeout(() => {
+
+        const select =
+            document.getElementById(
+                "asignacionServicio"
+            );
+
+        if(select){
+            select.focus();
+        }
+
+    },50);
+}
+
+
+function cerrarModalAsignacion(
+    event
+){
+
+    if(
+        event &&
+        event.target &&
+        event.target.id !==
+            "modalAsignacion"
+    ){
+        return;
+    }
+
+    const modal =
+        document.getElementById(
+            "modalAsignacion"
+        );
+
+    if(modal){
+        modal.classList.remove(
+            "open"
+        );
+    }
+}
+
+
+function mostrarMensajeAsignacion(
+    texto,
+    tipo="info"
+){
+
+    const mensaje =
+        document.getElementById(
+            "asignacionMensaje"
+        );
+
+    if(!mensaje){
+        return;
+    }
+
+    mensaje.style.display =
+        "block";
+
+    mensaje.textContent =
+        texto;
+
+    mensaje.style.color =
+        tipo === "error"
+            ? "#f87171"
+            : tipo === "ok"
+                ? "#6ee7a0"
+                : "#91a0b5";
+}
+
+
+async function guardarAsignacion(
+    event
+){
+
+    event.preventDefault();
+
+    const boton =
+        document.getElementById(
+            "btnGuardarAsignacion"
+        );
+
+    const datos = {
+
+        fecha:
+            document.getElementById(
+                "asignacionFecha"
+            )?.value,
+
+        idServicio:
+            document.getElementById(
+                "asignacionServicio"
+            )?.value,
+
+        idChofer:
+            document.getElementById(
+                "asignacionChofer"
+            )?.value,
+
+        idVehiculo:
+            document.getElementById(
+                "asignacionVehiculo"
+            )?.value,
+
+        turno:
+            document.getElementById(
+                "asignacionTurno"
+            )?.value.trim(),
+
+        estado:
+            document.getElementById(
+                "asignacionEstado"
+            )?.value,
+
+        horaAsignacion:
+            document.getElementById(
+                "asignacionHora"
+            )?.value,
+
+        observaciones:
+            document.getElementById(
+                "asignacionObservaciones"
+            )?.value.trim()
+    };
+
+
+    if(!datos.fecha){
+
+        mostrarMensajeAsignacion(
+            "La fecha es obligatoria.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(!datos.idServicio){
+
+        mostrarMensajeAsignacion(
+            "Seleccioná un servicio.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(!datos.idChofer){
+
+        mostrarMensajeAsignacion(
+            "Seleccioná un chofer.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(!datos.idVehiculo){
+
+        mostrarMensajeAsignacion(
+            "Seleccioná un vehículo.",
+            "error"
+        );
+
+        return;
+    }
+
+    if(!datos.turno){
+
+        mostrarMensajeAsignacion(
+            "El turno es obligatorio.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    if(boton){
+
+        boton.disabled = true;
+        boton.textContent =
+            "Guardando...";
+    }
+
+    mostrarMensajeAsignacion(
+        "Registrando asignación en el Backend Maestro..."
+    );
+
+
+    try{
+
+        const respuesta =
+            await fetch(
+                BACKEND_URL,
+                {
+                    method:"POST",
+                    body:JSON.stringify({
+
+                        accion:
+                            "crearAsignacion",
+
+                        ...datos
+
+                    })
+                }
+            );
+
+
+        if(!respuesta.ok){
+
+            throw new Error(
+                "HTTP " +
+                respuesta.status
+            );
+        }
+
+
+        const resultado =
+            await respuesta.json();
+
+
+        if(!resultado?.ok){
+
+            throw new Error(
+                resultado?.error ||
+                "No se pudo crear la asignación."
+            );
+        }
+
+
+        mostrarMensajeAsignacion(
+            "Asignación creada correctamente.",
+            "ok"
+        );
+
+
+        cerrarModalAsignacion();
+
+
+        await Promise.allSettled([
+
+            cargarResumenPanel(),
+
+            cargarAsignaciones(),
+
+            cargarServicios()
+
+        ]);
+
+
+        filtrarAsignaciones();
+
+
+    }catch(error){
+
+        console.error(
+            "Error creando asignación:",
+            error
+        );
+
+        mostrarMensajeAsignacion(
+            "No se pudo guardar: " +
+            error.message,
+            "error"
+        );
+
+    }finally{
+
+        if(boton){
+
+            boton.disabled = false;
+            boton.textContent =
+                "Guardar asignación";
+        }
+    }
+}
+
+
 /* =========================================================
    ACTUALIZAR TODO
    ========================================================= */
@@ -3631,6 +4557,7 @@ async function actualizarDatos(){
             cargarVehiculos(),
             cargarChoferes(),
             cargarServicios(),
+            cargarAsignaciones(),
             cargarEventos()
         ]);
 
@@ -3890,6 +4817,207 @@ document.addEventListener(
         </form>
     </div>
 </div>
+
+
+
+
+<!-- ======================================================
+     MODAL NUEVA ASIGNACIÓN
+     ====================================================== -->
+
+<div
+    id="modalAsignacion"
+    class="modal-overlay"
+    onclick="cerrarModalAsignacion(event)">
+
+    <div
+        class="modal"
+        onclick="event.stopPropagation()">
+
+        <div class="modal-header">
+
+            <div>
+                <div class="modal-title">Nueva asignación</div>
+                <div class="panel-subtitle">
+                    Vinculación de servicio, chofer y vehículo
+                </div>
+            </div>
+
+            <button
+                class="modal-close"
+                type="button"
+                onclick="cerrarModalAsignacion()">
+                ×
+            </button>
+
+        </div>
+
+        <form
+            id="formAsignacion"
+            onsubmit="guardarAsignacion(event)">
+
+            <div class="modal-body">
+
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Fecha *
+                        </label>
+
+                        <input
+                            id="asignacionFecha"
+                            class="form-control"
+                            type="date"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Turno *
+                        </label>
+
+                        <input
+                            id="asignacionTurno"
+                            class="form-control"
+                            required
+                            placeholder="MAÑANA, TARDE, NOCHE...">
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">
+                            Servicio *
+                        </label>
+
+                        <select
+                            id="asignacionServicio"
+                            class="form-control"
+                            required>
+
+                            <option value="">
+                                Cargando servicios...
+                            </option>
+
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Chofer *
+                        </label>
+
+                        <select
+                            id="asignacionChofer"
+                            class="form-control"
+                            required>
+
+                            <option value="">
+                                Cargando choferes...
+                            </option>
+
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Vehículo *
+                        </label>
+
+                        <select
+                            id="asignacionVehiculo"
+                            class="form-control"
+                            required>
+
+                            <option value="">
+                                Cargando vehículos...
+                            </option>
+
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Estado
+                        </label>
+
+                        <select
+                            id="asignacionEstado"
+                            class="form-control">
+
+                            <option value="ACTIVA">
+                                ACTIVA
+                            </option>
+
+                            <option value="PROGRAMADA">
+                                PROGRAMADA
+                            </option>
+
+                            <option value="FINALIZADA">
+                                FINALIZADA
+                            </option>
+
+                            <option value="CANCELADA">
+                                CANCELADA
+                            </option>
+
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            Hora de asignación
+                        </label>
+
+                        <input
+                            id="asignacionHora"
+                            class="form-control"
+                            type="time">
+                    </div>
+
+                    <div class="form-group full">
+                        <label class="form-label">
+                            Observaciones
+                        </label>
+
+                        <textarea
+                            id="asignacionObservaciones"
+                            class="form-control"
+                            placeholder="Observaciones de la asignación"></textarea>
+                    </div>
+
+                </div>
+
+                <div
+                    id="asignacionMensaje"
+                    style="display:none;margin-top:15px;font-size:11px;line-height:1.5">
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    onclick="cerrarModalAsignacion()">
+                    Cancelar
+                </button>
+
+                <button
+                    id="btnGuardarAsignacion"
+                    type="submit"
+                    class="btn btn-primary">
+                    Guardar asignación
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
 
 </body>
 </html>
