@@ -1970,19 +1970,209 @@ textarea.form-control{
 .usuario-status-inactivo{color:#f87171;background:rgba(239,68,68,.12)}
 
 /* =========================================================
-   MAPA OPERATIVO — DÍA VERDE / GOOGLE SHEETS
+   MAPA OPERATIVO — DÍA VERDE
+   SOLO LECTURA: no modifica el Backend Maestro ni las demás
+   funciones del Panel.
+   IMPORTANTE: la identificación del recorrido se hace por
+   la columna C (Nombre), no por la columna B (Usuario).
+   En el histórico puede haber un único usuario técnico,
+   por ejemplo "Peque", con varios nombres reales.
    ========================================================= */
-#mapaOperativoReal{width:100%;height:650px;border-radius:12px;overflow:hidden;background:#0c1727}
-.mapa-operativo-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.mapa-operativo-info{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:10px;margin-bottom:12px}
-.mapa-operativo-card{background:#0c1727;border:1px solid var(--border);border-radius:10px;padding:10px 12px}
-.mapa-operativo-card-label{color:#718198;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
-.mapa-operativo-card-value{margin-top:4px;color:#eef4fb;font-size:14px;font-weight:800}
-.mapa-operativo-estado{font-size:10px;color:#6ee7a0}
-@media(max-width:900px){.mapa-operativo-info{grid-template-columns:repeat(2,minmax(120px,1fr))}}
-</style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+const DIA_VERDE_SHEET_ID = "1yt7JqSWUjybFodTFUr94-788RvvlxIsHeI-j0U7B0L0";
+const DIA_VERDE_HISTORICO_GID = "2024260409";
+const DIA_VERDE_GPS_GID = "1066800944";
+let mapaDiaVerde = null;
+let mapaDiaVerdeLineas = [];
+let mapaDiaVerdeMarcadores = [];
+let mapaDiaVerdeCargando = false;
+
+const COLORES_REC_DIA_VERDE = [
+    "#2f80ed","#27ae60","#f2994a","#9b51e0","#eb5757",
+    "#00b8d9","#f2c94c","#56ccf2","#bb6bd9","#219653"
+];
+
+function parseCSVMapaDiaVerde(text){
+    const rows=[]; let row=[], field="", quoted=false;
+    for(let i=0;i<text.length;i++){
+        const ch=text[i];
+        if(quoted){
+            if(ch==='"' && text[i+1]==='"'){field+='"';i++;}
+            else if(ch==='"'){quoted=false;}
+            else field+=ch;
+        }else{
+            if(ch==='"') quoted=true;
+            else if(ch===','){row.push(field);field="";}
+            else if(ch==='\n'){row.push(field);rows.push(row);row=[];field="";}
+            else if(ch!=='\r') field+=ch;
+        }
+    }
+    if(field!=="" || row.length){row.push(field);rows.push(row);}
+    return rows;
+}
+
+async function leerHojaDiaVerde(gid){
+    const url=`https://docs.google.com/spreadsheets/d/${DIA_VERDE_SHEET_ID}/gviz/tq?gid=${gid}&tqx=out:csv&t=${Date.now()}`;
+    const r=await fetch(url,{cache:"no-store"});
+    if(!r.ok) throw new Error("Google Sheets HTTP "+r.status);
+    const rows=parseCSVMapaDiaVerde(await r.text());
+    if(!rows.length) return [];
+    const headers=rows[0].map(v=>String(v||"").trim());
+    return rows.slice(1).map(row=>{
+        const o={}; headers.forEach((h,i)=>o[h]=row[i]??""); return o;
+    });
+}
+
+function numeroMapa(v){
+    const n=Number(String(v??"").trim().replace(",","."));
+    return Number.isFinite(n)?n:null;
+}
+
+function iniciarMapaDiaVerde(){
+    const el=document.getElementById("mapaOperativoReal");
+    if(!el || typeof L==="undefined") return false;
+    if(mapaDiaVerde) return true;
+    mapaDiaVerde=L.map(el,{zoomControl:true}).setView([-34.761,-58.402],12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+        maxZoom:19, attribution:'&copy; OpenStreetMap contributors'
+    }).addTo(mapaDiaVerde);
+    return true;
+}
+
+function estadoMapaDiaVerde(texto,clase){
+    const el=document.getElementById("mapaGPSEstado");
+    if(el){el.textContent=texto;el.className="status-badge "+(clase||"badge-green");}
+}
+
+function nombreGPSDiaVerde(r){
+    // COLUMNA C = Nombre. Es la identidad que separa los recorridos.
+    const nombre=String(r.Nombre??r.NOMBRE??"").trim();
+    if(nombre) return nombre;
+    // Compatibilidad con filas antiguas que no tengan Nombre.
+    return String(r.Usuario??r.USUARIO??"SIN NOMBRE").trim() || "SIN NOMBRE";
+}
+
+function gpsDiaVerdeOrdenado(rows){
+    return (Array.isArray(rows)?rows:[]).map(r=>{
+        const lat=numeroMapa(r.Latitud??r.LATITUD);
+        const lng=numeroMapa(r.Longitud??r.LONGITUD);
+        const fecha=new Date(r.Timestamp??r.TIMESTAMP??"");
+        return {...r,__lat:lat,__lng:lng,__fecha:fecha,__nombre:nombreGPSDiaVerde(r)};
+    }).filter(r=>r.__lat!==null && r.__lng!==null)
+      .sort((a,b)=>a.__fecha.getTime()-b.__fecha.getTime());
+}
+
+function esHoyDiaVerde(v){
+    const d=new Date(v);
+    if(Number.isNaN(d.getTime())) return false;
+    const h=new Date();
+    return d.getFullYear()===h.getFullYear() && d.getMonth()===h.getMonth() && d.getDate()===h.getDate();
+}
+
+function limpiarCapasMapaDiaVerde(){
+    mapaDiaVerdeLineas.forEach(layer=>mapaDiaVerde?.removeLayer(layer));
+    mapaDiaVerdeMarcadores.forEach(layer=>mapaDiaVerde?.removeLayer(layer));
+    mapaDiaVerdeLineas=[];
+    mapaDiaVerdeMarcadores=[];
+}
+
+function renderizarLeyendaDiaVerde(grupos){
+    const el=document.getElementById("mapaDiaVerdeLeyenda");
+    if(!el) return;
+    const nombres=[...grupos.keys()];
+    if(!nombres.length){el.innerHTML="";return;}
+    el.innerHTML=`<div class="mapa-dia-verde-leyenda-title">Recorridos por nombre</div>`+
+        nombres.map((nombre,i)=>{
+            const color=COLORES_REC_DIA_VERDE[i%COLORES_REC_DIA_VERDE.length];
+            return `<div class="mapa-dia-verde-leyenda-item"><span class="mapa-dia-verde-leyenda-dot" style="background:${color}"></span><span>${escaparHTML(nombre)}</span></div>`;
+        }).join("");
+}
+
+async function actualizarMapaDiaVerde(){
+    if(mapaDiaVerdeCargando) return;
+    mapaDiaVerdeCargando=true;
+    const info=document.getElementById("mapaGPSActualizacion");
+    if(info) info.textContent="Leyendo Google Sheets...";
+    estadoMapaDiaVerde("CARGANDO GPS","badge-yellow");
+    try{
+        iniciarMapaDiaVerde();
+        if(!mapaDiaVerde) throw new Error("Leaflet no disponible");
+        const [gpsRows,historicoRows]=await Promise.all([
+            leerHojaDiaVerde(DIA_VERDE_GPS_GID),
+            leerHojaDiaVerde(DIA_VERDE_HISTORICO_GID)
+        ]);
+        const gps=gpsDiaVerdeOrdenado(gpsRows);
+        const realizadas=hitoricoRowsSafe(historicoRows).filter(r=>esHoyDiaVerde(r.Fecha??r.FECHA)).length;
+        const realizadasEl=document.getElementById("mapaRealizadasHoy");
+        if(realizadasEl) realizadasEl.textContent=realizadas;
+        limpiarCapasMapaDiaVerde();
+        const puntosEl=document.getElementById("mapaGPSPuntos");
+        if(puntosEl) puntosEl.textContent=gps.length;
+        if(!gps.length){
+            renderizarLeyendaDiaVerde(new Map());
+            estadoMapaDiaVerde("SIN DATOS","badge-yellow");
+            if(info) info.textContent="La hoja GPS Día Verde no tiene coordenadas válidas.";
+            return;
+        }
+
+        // SEPARACIÓN CLAVE: cada Nombre (columna C) genera su propio recorrido.
+        const grupos=new Map();
+        gps.forEach(p=>{
+            if(!grupos.has(p.__nombre)) grupos.set(p.__nombre,[]);
+            grupos.get(p.__nombre).push(p);
+        });
+
+        const todosLatLng=[];
+        [...grupos.entries()].forEach(([nombre,puntos],i)=>{
+            const color=COLORES_REC_DIA_VERDE[i%COLORES_REC_DIA_VERDE.length];
+            const latlngs=puntos.map(p=>[p.__lat,p.__lng]);
+            todosLatLng.push(...latlngs);
+
+            const linea=L.polyline(latlngs,{color,weight:5,opacity:.88}).addTo(mapaDiaVerde);
+            mapaDiaVerdeLineas.push(linea);
+
+            const ultimo=puntos[puntos.length-1];
+            const marcador=L.circleMarker([ultimo.__lat,ultimo.__lng],{radius:7,color,fillColor:color,fillOpacity:.95,weight:2}).addTo(mapaDiaVerde);
+            marcador.bindPopup(`<strong>Día Verde</strong><br><b>Nombre:</b> ${escaparHTML(nombre)}<br><b>Usuario:</b> ${escaparHTML(ultimo.Usuario||ultimo.USUARIO||"-")}<br><b>Zona:</b> ${escaparHTML(ultimo.Zona||ultimo.ZONA||"-")}<br><b>Hora:</b> ${escaparHTML(formatearFecha(ultimo.Timestamp||ultimo.TIMESTAMP||""))}<br><b>Lat:</b> ${ultimo.__lat.toFixed(6)}<br><b>Lng:</b> ${ultimo.__lng.toFixed(6)}`);
+            mapaDiaVerdeMarcadores.push(marcador);
+        });
+
+        renderizarLeyendaDiaVerde(grupos);
+        mapaDiaVerde.fitBounds(L.latLngBounds(todosLatLng),{padding:[25,25]});
+
+        const ultimo=gps[gps.length-1];
+        const usuarioEl=document.getElementById("mapaGPSUsuario"); if(usuarioEl) usuarioEl.textContent=ultimo.Usuario||ultimo.USUARIO||"—";
+        const zonaEl=document.getElementById("mapaGPSZona"); if(zonaEl) zonaEl.textContent=ultimo.Zona||ultimo.ZONA||"—";
+        const horaEl=document.getElementById("mapaGPSHora"); if(horaEl) horaEl.textContent=formatearFecha(ultimo.Timestamp||ultimo.TIMESTAMP||"");
+        estadoMapaDiaVerde(`GPS ONLINE · ${grupos.size} NOMBRES`,"badge-green");
+        if(info) info.textContent=`Actualizado ${new Date().toLocaleTimeString("es-AR")} · ${grupos.size} recorridos diferenciados por Nombre`;
+        setTimeout(()=>mapaDiaVerde?.invalidateSize(),150);
+    }catch(error){
+        console.error("Mapa Día Verde:",error);
+        estadoMapaDiaVerde("ERROR","badge-red");
+        if(info) info.textContent="No se pudo leer el Sheet de Día Verde.";
+    }finally{ mapaDiaVerdeCargando=false; }
+}
+
+function hitoricoRowsSafe(rows){return Array.isArray(rows)?rows:[];}
+
+const mostrarPaginaPanelOriginal = mostrarPagina;
+mostrarPagina = function(id,boton){
+    mostrarPaginaPanelOriginal(id,boton);
+    if(id==="mapa"){
+        setTimeout(()=>{
+            iniciarMapaDiaVerde();
+            actualizarMapaDiaVerde();
+            setTimeout(()=>mapaDiaVerde?.invalidateSize(),250);
+        },50);
+    }
+};
+
+setInterval(()=>{
+    const pagina=document.getElementById("mapa");
+    if(pagina?.classList.contains("active")) actualizarMapaDiaVerde();
+},15000);
+
+</script>
 </head>
 
 <body>
@@ -2807,7 +2997,7 @@ textarea.form-control{
             </div>
             <span id="mapaGPSActualizacion" class="mapa-operativo-estado">Esperando datos...</span>
         </div>
-        <div class="panel-body" style="padding:0"><div id="mapaOperativoReal"></div></div>
+        <div class="panel-body" style="padding:0"><div class="mapa-real-wrap"><div id="mapaOperativoReal"></div><div id="mapaDiaVerdeLeyenda" class="mapa-dia-verde-leyenda"></div></div></div>
     </div>
 </div>
 
