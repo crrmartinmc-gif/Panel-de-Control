@@ -10158,15 +10158,43 @@ function parseCSVMapaDiaVerde(text){
     return rows;
 }
 
-async function leerHojaDiaVerde(gid){
-    const url=`https://docs.google.com/spreadsheets/d/${DIA_VERDE_SHEET_ID}/gviz/tq?gid=${gid}&tqx=out:csv&t=${Date.now()}`;
-    const r=await fetch(url,{cache:"no-store"});
-    if(!r.ok) throw new Error("Google Sheets HTTP "+r.status);
-    const rows=parseCSVMapaDiaVerde(await r.text());
-    if(!rows.length) return [];
-    const headers=rows[0].map(v=>String(v||"").trim());
-    return rows.slice(1).map(row=>{
-        const o={}; headers.forEach((h,i)=>o[h]=row[i]??""); return o;
+function leerHojaDiaVerde(gid){
+    return new Promise((resolve,reject)=>{
+        const callbackName="dvSheetCb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+        const script=document.createElement("script");
+        const timeout=setTimeout(()=>{
+            cleanup();
+            reject(new Error("Tiempo agotado leyendo Google Sheets"));
+        },15000);
+        function cleanup(){
+            clearTimeout(timeout);
+            try{delete window[callbackName];}catch(e){window[callbackName]=undefined;}
+            if(script.parentNode)script.parentNode.removeChild(script);
+        }
+        window[callbackName]=function(resp){
+            try{
+                if(!resp || !resp.table) throw new Error("Google Sheets devolvió una respuesta inválida");
+                const cols=Array.isArray(resp.table.cols)?resp.table.cols:[];
+                const headers=cols.map(c=>String((c&&c.label)||"").trim());
+                const rows=Array.isArray(resp.table.rows)?resp.table.rows:[];
+                const data=rows.map(r=>{
+                    const o={};
+                    headers.forEach((h,i)=>{
+                        const cell=r && r.c ? r.c[i] : null;
+                        let v=cell ? cell.v : "";
+                        if(cell && cell.f!=null && cell.f!=="") v=cell.f;
+                        o[h]=v==null?"":String(v);
+                    });
+                    return o;
+                });
+                cleanup();
+                resolve(data);
+            }catch(err){cleanup();reject(err);}
+        };
+        script.onerror=function(){cleanup();reject(new Error("No se pudo acceder al Sheet de Día Verde"));};
+        const tqx="responseHandler:"+callbackName+";out:json";
+        script.src="https://docs.google.com/spreadsheets/d/"+DIA_VERDE_SHEET_ID+"/gviz/tq?gid="+encodeURIComponent(gid)+"&tqx="+encodeURIComponent(tqx)+"&t="+Date.now();
+        document.head.appendChild(script);
     });
 }
 
