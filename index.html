@@ -1986,6 +1986,12 @@ textarea.form-control{
 #mapa .dv-legend-item{display:flex;align-items:center;gap:7px;font-size:10px;color:#d7dfeb;margin:5px 0;}
 #mapa .dv-legend-line{width:24px;height:4px;border-radius:5px;flex:none;}
 #mapa .dv-map-empty{padding:16px;color:var(--muted);font-size:12px;}
+#mapa .maplibregl-map{font-family:Inter,Arial,sans-serif;}
+#mapa .maplibregl-ctrl-top-left{margin-top:8px;margin-left:8px;}
+#mapa .maplibregl-popup-content{font-family:Inter,Arial,sans-serif;border-radius:10px;box-shadow:0 8px 25px rgba(0,0,0,.28);}
+#mapa .dv-map-marker{width:20px;height:20px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:pointer;}
+#mapa .dv-map-marker-wrap{display:flex;align-items:center;justify-content:center;width:24px;height:24px;}
+#mapa .dv-map-marker-dot{width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);}
 #mapa .dv-history{margin-top:12px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
 #mapa .dv-history-card{background:#0f1b2d;border:1px solid var(--border);border-radius:10px;padding:11px;}
 #mapa .dv-history-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
@@ -1995,8 +2001,8 @@ textarea.form-control{
 
 </style>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 </head>
 
 <body>
@@ -10054,17 +10060,35 @@ function dvEsHoy(valor){
 
 function dvCrearMapa(){
     const el=document.getElementById("dvMap");
-    if(!el || typeof L === "undefined") return false;
+    if(!el || typeof maplibregl === "undefined") return false;
     if(dvMapInitialized && dvMap) return true;
 
-    dvMap=L.map(el,{zoomControl:true,preferCanvas:true}).setView([-34.761,-58.400],13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-        maxZoom:19,
-        attribution:"&copy; OpenStreetMap contributors"
-    }).addTo(dvMap);
+    dvMap=new maplibregl.Map({
+        container:el,
+        style:"https://tiles.openfreemap.org/styles/liberty",
+        center:[-58.3809,-34.7777],
+        zoom:13,
+        pitch:0,
+        bearing:0,
+        antialias:true,
+        dragRotate:true,
+        touchZoomRotate:true,
+        touchPitch:true,
+        pitchWithRotate:true,
+        attributionControl:true
+    });
+
+    dvMap.addControl(
+        new maplibregl.NavigationControl({visualizePitch:true}),
+        "top-left"
+    );
+
+    dvMap.on("load",()=>{
+        setTimeout(()=>dvMap.resize(),100);
+    });
 
     dvMapInitialized=true;
-    setTimeout(()=>dvMap.invalidateSize(),150);
+    setTimeout(()=>dvMap.resize(),150);
     return true;
 }
 
@@ -10081,9 +10105,21 @@ async function leerHojaDiaVerde(gid){
 }
 
 function dvLimpiarCapas(){
-    dvMapLayers.forEach(layer=>{try{layer.remove();}catch(e){}});
-    dvMapMarkers.forEach(layer=>{try{layer.remove();}catch(e){}});
+    if(!dvMap) return;
+
+    dvMapLayers.forEach(layerId=>{
+        try{
+            if(dvMap.getLayer(layerId)) dvMap.removeLayer(layerId);
+        }catch(e){}
+        try{
+            if(dvMap.getSource(layerId)) dvMap.removeSource(layerId);
+        }catch(e){}
+    });
     dvMapLayers=[];
+
+    dvMapMarkers.forEach(marker=>{
+        try{marker.remove();}catch(e){}
+    });
     dvMapMarkers=[];
 }
 
@@ -10097,84 +10133,124 @@ function dvColorPorNombre(nombre,mapa){
 
 function dvRenderMapa(gps,historico){
     if(!dvCrearMapa()) return;
-    dvLimpiarCapas();
 
-    const puntos=gps.map((p,i)=>({
-        ...p,
-        lat:dvLatPunto(p),
-        lng:dvLngPunto(p),
-        nombre:dvNombrePunto(p),
-        usuario:dvUsuarioPunto(p),
-        zona:dvZonaPunto(p),
-        fecha:dvFechaPunto(p),
-        orden:i
-    })).filter(p=>p.lat!==null && p.lng!==null);
+    const renderizar=()=>{
+        dvLimpiarCapas();
 
-    const porNombre={};
-    puntos.forEach(p=>{
-        if(!porNombre[p.nombre]) porNombre[p.nombre]=[];
-        porNombre[p.nombre].push(p);
-    });
+        const puntos=gps.map((p,i)=>({
+            ...p,
+            lat:dvLatPunto(p),
+            lng:dvLngPunto(p),
+            nombre:dvNombrePunto(p),
+            usuario:dvUsuarioPunto(p),
+            zona:dvZonaPunto(p),
+            fecha:dvFechaPunto(p),
+            orden:i
+        })).filter(p=>p.lat!==null && p.lng!==null);
 
-    const colores={};
-    const bounds=[];
+        const porNombre={};
+        puntos.forEach(p=>{
+            if(!porNombre[p.nombre]) porNombre[p.nombre]=[];
+            porNombre[p.nombre].push(p);
+        });
 
-    Object.entries(porNombre).forEach(([nombre,lista])=>{
-        lista.sort((a,b)=>new Date(a.fecha||0)-new Date(b.fecha||0));
-        const color=dvColorPorNombre(nombre,colores);
-        const latlngs=lista.map(p=>[p.lat,p.lng]);
-        latlngs.forEach(x=>bounds.push(x));
+        const colores={};
+        const bounds=new maplibregl.LngLatBounds();
+        let tieneBounds=false;
 
-        if(latlngs.length>=2){
-            const linea=L.polyline(latlngs,{color,weight:5,opacity:.88,lineJoin:"round"}).addTo(dvMap);
-            dvMapLayers.push(linea);
+        Object.entries(porNombre).forEach(([nombre,lista])=>{
+            lista.sort((a,b)=>new Date(a.fecha||0)-new Date(b.fecha||0));
+            const color=dvColorPorNombre(nombre,colores);
+            const coordinates=lista.map(p=>[p.lng,p.lat]);
+            coordinates.forEach(c=>{bounds.extend(c);tieneBounds=true;});
+
+            if(coordinates.length>=2){
+                const sourceId="dv-route-"+Object.keys(porNombre).indexOf(nombre);
+                const layerId=sourceId+"-line";
+                dvMap.addSource(sourceId,{
+                    type:"geojson",
+                    data:{
+                        type:"Feature",
+                        geometry:{type:"LineString",coordinates:coordinates}
+                    }
+                });
+                dvMap.addLayer({
+                    id:layerId,
+                    type:"line",
+                    source:sourceId,
+                    layout:{"line-cap":"round","line-join":"round"},
+                    paint:{
+                        "line-color":color,
+                        "line-width":5,
+                        "line-opacity":0.88
+                    }
+                });
+                dvMapLayers.push(layerId,sourceId);
+            }
+
+            const ultimo=lista[lista.length-1];
+            const markerEl=document.createElement("div");
+            markerEl.className="dv-map-marker-dot";
+            markerEl.style.background=color;
+
+            const popup=new maplibregl.Popup({
+                offset:16,
+                maxWidth:"280px"
+            }).setHTML(`
+                <div style="min-width:210px">
+                    <strong style="font-size:14px">${escaparHTML(nombre)}</strong><br>
+                    <span>Usuario: ${escaparHTML(ultimo.usuario)}</span><br>
+                    <span>Zona: ${escaparHTML(ultimo.zona)}</span><br>
+                    <span>Hora: ${escaparHTML(dvHoraTexto(ultimo.fecha))}</span><br>
+                    <span>Lat: ${ultimo.lat.toFixed(6)}</span><br>
+                    <span>Lng: ${ultimo.lng.toFixed(6)}</span>
+                </div>`);
+
+            const marker=new maplibregl.Marker({
+                element:markerEl,
+                anchor:"center"
+            })
+            .setLngLat([ultimo.lng,ultimo.lat])
+            .setPopup(popup)
+            .addTo(dvMap);
+
+            dvMapMarkers.push(marker);
+        });
+
+        const legend=document.getElementById("dvMapLegendItems");
+        if(legend){
+            const nombres=Object.keys(porNombre);
+            legend.innerHTML=nombres.length
+                ? nombres.map(nombre=>`<div class="dv-legend-item"><span class="dv-legend-line" style="background:${colores[nombre]}"></span><span>${escaparHTML(nombre)}</span></div>`).join("")
+                : '<div class="dv-map-empty">Sin posiciones GPS válidas.</div>';
         }
 
-        const ultimo=lista[lista.length-1];
-        const marker=L.circleMarker([ultimo.lat,ultimo.lng],{
-            radius:9, color:"#ffffff", weight:2, fillColor:color, fillOpacity:1
-        }).addTo(dvMap);
+        if(tieneBounds && dvMapFirstFit){
+            dvMap.fitBounds(bounds,{padding:{top:45,bottom:45,left:45,right:45},maxZoom:16,duration:500});
+            dvMapFirstFit=false;
+        }
 
-        marker.bindPopup(`
-            <div style="min-width:210px">
-                <strong style="font-size:14px">${escaparHTML(nombre)}</strong><br>
-                <span>Usuario: ${escaparHTML(ultimo.usuario)}</span><br>
-                <span>Zona: ${escaparHTML(ultimo.zona)}</span><br>
-                <span>Hora: ${escaparHTML(dvHoraTexto(ultimo.fecha))}</span><br>
-                <span>Lat: ${ultimo.lat.toFixed(6)}</span><br>
-                <span>Lng: ${ultimo.lng.toFixed(6)}</span>
-            </div>`);
-        dvMapMarkers.push(marker);
-    });
+        const hoyRealizados=historico.filter(h=>{
+            const estado=normalizar(h?.estado ?? h?.ESTADO ?? "");
+            const fecha=h?.fecha ?? h?.FECHA ?? null;
+            return estado.includes("REALIZADO") && dvEsHoy(fecha);
+        }).length;
 
-    const legend=document.getElementById("dvMapLegendItems");
-    if(legend){
-        const nombres=Object.keys(porNombre);
-        legend.innerHTML=nombres.length ? nombres.map(nombre=>`<div class="dv-legend-item"><span class="dv-legend-line" style="background:${colores[nombre]}"></span><span>${escaparHTML(nombre)}</span></div>`).join("") : '<div class="dv-map-empty">Sin posiciones GPS válidas.</div>';
-    }
+        const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=String(val);};
+        set("dvMapRecorridos",Object.keys(porNombre).length);
+        set("dvMapPuntos",puntos.length);
+        set("dvKpiGps",puntos.length);
+        set("dvKpiNombres",Object.keys(porNombre).length);
+        set("dvKpiRealizados",hoyRealizados);
+        set("dvKpiHistorico",historico.length);
+        set("dvMapActualizacion",new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
 
-    if(bounds.length && dvMapFirstFit){
-        dvMap.fitBounds(bounds,{padding:[35,35],maxZoom:16});
-        dvMapFirstFit=false;
-    }
+        const status=document.getElementById("dvMapStatusText");
+        if(status) status.textContent=puntos.length ? "Día Verde conectado · GPS en vivo" : "Día Verde conectado · sin posiciones GPS";
+    };
 
-    const hoyRealizados=historico.filter(h=>{
-        const estado=normalizar(h?.estado ?? h?.ESTADO ?? "");
-        const fecha=h?.fecha ?? h?.FECHA ?? null;
-        return estado.includes("REALIZADO") && dvEsHoy(fecha);
-    }).length;
-
-    const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=String(val);};
-    set("dvMapRecorridos",Object.keys(porNombre).length);
-    set("dvMapPuntos",puntos.length);
-    set("dvKpiGps",puntos.length);
-    set("dvKpiNombres",Object.keys(porNombre).length);
-    set("dvKpiRealizados",hoyRealizados);
-    set("dvKpiHistorico",historico.length);
-    set("dvMapActualizacion",new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
-
-    const status=document.getElementById("dvMapStatusText");
-    if(status) status.textContent=puntos.length ? "Día Verde conectado · GPS en vivo" : "Día Verde conectado · sin posiciones GPS";
+    if(dvMap.isStyleLoaded()) renderizar();
+    else dvMap.once("load",renderizar);
 }
 
 async function cargarMapaDiaVerde(){
@@ -10185,6 +10261,10 @@ async function cargarMapaDiaVerde(){
             if(status) status.textContent="Esperando componente de mapa...";
             return;
         }
+        if(dvMap && !dvMap.isStyleLoaded()){
+            await new Promise(resolve=>dvMap.once("load",resolve));
+        }
+        try{dvMap.resize();}catch(e){}
         const [gps,historico]=await Promise.all([
             leerHojaDiaVerde(DIA_VERDE_GPS_GID),
             leerHojaDiaVerde(DIA_VERDE_HISTORICO_GID)
