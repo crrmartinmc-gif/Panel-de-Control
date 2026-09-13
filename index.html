@@ -10167,12 +10167,14 @@ let dvMapMarkers = [];
 let dvMapFirstFit = true;
 let dvMapStaticLoaded = false;
 let dvMapCargaEnCurso = false;
+let dvGpsCargaEnCurso = false;
 let dvMapUltimaFirma = "";
 let dvMapGeocodingProgramado = false;
 let dvMapGpsHandlersBound = false;
 let dvMapStaticLoading = false;
 let dvMapStartupIniciado = false;
 let dvMapLastVisibleAt = 0;
+let dvMapReady = false;
 let dvUltimaFirmaVerdadMapa = "";
 let dvMapReclamos = [];
 let dvMapReclamoMarkers = [];
@@ -10264,6 +10266,7 @@ function dvCrearMapa(){
     );
 
     dvMap.on("load",()=>{
+        dvMapReady=true;
         setTimeout(()=>dvMap.resize(),100);
         // El mapa se inicializa UNA sola vez. Si ya hay datos cargados,
         // solamente se reaplican las capas/filtros; no se reinicia la carga.
@@ -10485,35 +10488,102 @@ function dvDireccionReclamo(d){
     return `${d.calle || d.direccion || d.Direccion || d.domicilio || d.Domicilio || ""} ${d.numero || ""}`.trim();
 }
 
+// TURBO 29: estado de reclamo robusto.
+// La evidencia puede venir con nombres de campos diferentes según el endpoint.
+// Priorizamos una clave/ID compartida y, si no existe, usamos calle+número
+// normalizados. La zona solo refuerza la coincidencia cuando ambos registros
+// la informan; no bloquea una evidencia válida si el endpoint no trae zona.
+function dvTextoEvidencia(e){
+    return String(
+        e?.clave ?? e?.CLAVE ?? e?.claveReclamo ?? e?.CLAVE_RECLAMO ??
+        e?.idReclamo ?? e?.ID_RECLAMO ?? e?.reclamoId ?? e?.RECLAMO_ID ??
+        e?.codigoReclamo ?? e?.CODIGO_RECLAMO ?? e?.id ?? e?.ID ?? ''
+    ).trim();
+}
+
+function dvDireccionNormalizadaRobusta(v){
+    return dvNormalizar(v)
+        .replace(/[º°]/g,'')
+        .replace(/\bnumero\b/g,' ')
+        .replace(/\bnro\.?\b/g,' ')
+        .replace(/\bnum\.?\b/g,' ')
+        .replace(/\bavenida\b/g,'av ')
+        .replace(/\bav\.?\b/g,'av ')
+        .replace(/[.,;:#\-_/]+/g,' ')
+        .replace(/\s+/g,' ')
+        .trim();
+}
+
+function dvCalleNumeroPartes(v){
+    const texto=dvDireccionNormalizadaRobusta(v);
+    if(!texto)return {texto:'',calle:'',numero:''};
+    const m=texto.match(/^(.*?)(?:\s|^)(\d+[a-z]?)$/i);
+    if(m){
+        return {texto,calle:m[1].trim(),numero:m[2].trim()};
+    }
+    return {texto,calle:texto,numero:''};
+}
+
 function dvEvidenciaCoincide(d,e){
-    const zonaA=dvNormalizar(d.zona);
-    const dirA=dvNormalizar(dvDireccionReclamo(d));
-    const zonaB=dvNormalizar(e.zona ?? e.Zona);
-    const dirB=dvNormalizar(e.direccion ?? e.Direccion);
-    const zonaCoincide=!zonaA || !zonaB || zonaA===zonaB || zonaA.includes(zonaB) || zonaB.includes(zonaA);
-    return zonaCoincide && dirA===dirB;
+    if(!d || !e)return false;
+
+    // 1) Si ambos traen una clave/ID de reclamo, esa es la coincidencia fuerte.
+    const claveD=dvClaveReclamo(d);
+    const claveE=dvTextoEvidencia(e);
+    if(claveE){
+        const normalE=dvNormalizar(claveE);
+        if(normalE===dvNormalizar(claveD) || normalE===dvNormalizar(String(claveD).replace(/^id\|/i,''))) return true;
+        const idsD=[d.id,d.ID,d.idReclamo,d.ID_RECLAMO,d.codigo,d.Codigo,d.nro,d.Nro].map(v=>dvNormalizar(v)).filter(Boolean);
+        if(idsD.includes(normalE))return true;
+    }
+
+    // 2) Fallback robusto: calle + número.
+    const dirD=dvCalleNumeroPartes(dvDireccionReclamo(d));
+    const dirE=dvCalleNumeroPartes(
+        e.direccion ?? e.Direccion ?? e.domicilio ?? e.Domicilio ??
+        e.calle ?? e.Calle ?? e.nombreCalle ?? e.NOMBRE_CALLE ?? ''
+    );
+    if(!dirD.texto || !dirE.texto)return false;
+
+    const mismaDireccion = dirD.texto===dirE.texto ||
+        (dirD.calle===dirE.calle && !!dirD.numero && !!dirE.numero && dirD.numero===dirE.numero);
+    if(!mismaDireccion)return false;
+
+    // 3) La zona solo confirma si ambos lados la tienen.
+    const zonaD=dvNormalizar(d.zona ?? d.Zona);
+    const zonaE=dvNormalizar(e.zona ?? e.Zona);
+    if(zonaD && zonaE){
+        return zonaD===zonaE || zonaD.includes(zonaE) || zonaE.includes(zonaD);
+    }
+    return true;
 }
 
 function dvReclamoRealizado(d){
-    const ev=d.__evidencias || dvMapEvidencias || [];
+    const ev=Array.isArray(d?.__evidencias) && d.__evidencias.length ? d.__evidencias : (dvMapEvidencias||[]);
     return ev.some(e=>dvEvidenciaCoincide(d,e));
 }
 
 let dvMapEvidencias=[];
 
-const DV_RECLAMOS_SOURCE_ID="dv-reclamos-pins-v26";
-const DV_RECLAMOS_CIRCLE_ID="dv-reclamos-pin-circle-v26";
-const DV_RECLAMOS_ICON_ID="dv-reclamos-pin-icon-v26";
+const DV_RECLAMOS_SOURCE_ID="dv-reclamos-pins-v29";
+const DV_RECLAMOS_CIRCLE_ID="dv-reclamos-pin-circle-v29";
+const DV_RECLAMOS_ICON_ID="dv-reclamos-pin-icon-v29";
 
 function dvPurgarFuentesReclamosAntiguas(){
-    if(!dvMap||!dvMap.isStyleLoaded()) return;
-    const style=dvMap.getStyle();
-    (style?.layers||[]).map(l=>String(l.id||""))
-        .filter(id=>id.indexOf("dv-reclamos-pin-")===0)
-        .forEach(id=>{try{if(dvMap.getLayer(id))dvMap.removeLayer(id);}catch(e){}});
-    Object.keys(style?.sources||{})
-        .filter(id=>id.indexOf("dv-reclamos-pins")===0)
-        .forEach(id=>{try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}});
+    if(!dvMap||!dvMapReady) return;
+    const style=dvMap.getStyle()||{};
+    // Eliminamos cualquier capa histórica relacionada con reclamos, no solo
+    // las que tengan el prefijo "dv-reclamos-pin-". Esto evita que una capa
+    // vieja de TURBO 1-25 siga dibujando los 233 pines por debajo de la capa V27.
+    const capas=(style.layers||[]).map(l=>({id:String(l.id||""),source:String(l.source||"")}))
+        .filter(x=>/reclamo/i.test(x.id)||/reclamo/i.test(x.source));
+    capas.forEach(x=>{
+        if(x.id===DV_RECLAMOS_CIRCLE_ID||x.id===DV_RECLAMOS_ICON_ID) return;
+        try{if(dvMap.getLayer(x.id))dvMap.removeLayer(x.id);}catch(e){}
+    });
+    const fuentes=Object.keys(style.sources||{})
+        .filter(id=>/reclamo/i.test(String(id)) && id!==DV_RECLAMOS_SOURCE_ID);
+    fuentes.forEach(id=>{try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}});
 }
 
 function dvAsegurarCapasReclamos(){
@@ -10874,7 +10944,7 @@ function dvRenderMarcadoresReclamos(){
     });
     const src=dvMap.getSource(DV_RECLAMOS_SOURCE_ID);
     if(src)src.setData({type:"FeatureCollection",features});
-    console.info("DV CAPA RECLAMOS V26:", {
+    console.info("DV CAPA RECLAMOS V29:", {
         filtro: {...dvMapFiltros},
         visibles: reclamosVisibles.length,
         features: features.length,
@@ -10888,12 +10958,8 @@ function dvRenderMarcadoresReclamos(){
             pinesDibujados:features.length
         });
     }
-    // Purga de cualquier fuente/capa de reclamos de una versión anterior.
-    const style=dvMap.getStyle();
-    (style?.layers||[]).filter(l=>String(l.id||"").indexOf("dv-reclamos-pin-")===0 && l.id!==DV_RECLAMOS_CIRCLE_ID && l.id!==DV_RECLAMOS_ICON_ID)
-        .forEach(l=>{try{if(dvMap.getLayer(l.id))dvMap.removeLayer(l.id);}catch(e){}});
-    Object.keys(style?.sources||{}).filter(id=>id.indexOf("dv-reclamos-pins")===0 && id!==DV_RECLAMOS_SOURCE_ID)
-        .forEach(id=>{try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}});
+    // Purga de cualquier fuente/capa histórica de reclamos.
+    dvPurgarFuentesReclamosAntiguas();
     dvOrdenarCapasMapa();
 }
 
@@ -11094,6 +11160,14 @@ async function cargarCapasEstaticasDiaVerde(){
             dvMapReclamos=Array.isArray(datos.reclamos)?datos.reclamos:[];
             dvMapEvidencias=Array.isArray(datos.evidencias)?datos.evidencias:[];
 
+            const realizadosDiagnostico=dvMapReclamos.filter(d=>dvReclamoRealizado(d)).length;
+            console.info("DV ESTADOS RECLAMOS:",{
+                total:dvMapReclamos.length,
+                evidenciasRecibidas:dvMapEvidencias.length,
+                realizados:realizadosDiagnostico,
+                pendientes:Math.max(0,dvMapReclamos.length-realizadosDiagnostico)
+            });
+
             dvGuardarCache("reclamos",dvMapReclamos);
             dvGuardarCache("evidencias",dvMapEvidencias);
 
@@ -11171,13 +11245,8 @@ async function cargarCapasEstaticasDiaVerde(){
             status.textContent="⚠ Día Verde conectado · error cargando capas";
         }
     }finally{
+        // TURBO 29: no repetir renderizados al terminar.
         dvMapStaticLoading=false;
-        if(dvMap && dvMap.isStyleLoaded() && dvMapStaticLoaded){
-            try{dvAplicarCapasEstaticas();}catch(e){}
-            try{dvRenderMarcadoresReclamos();}catch(e){}
-            try{dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());}catch(e){}
-            requestAnimationFrame(()=>{try{dvCentrarReclamosFiltrados();}catch(e){}});
-        }
         dvActualizarEstadoFiltroMapa();
     }
 }
@@ -11518,8 +11587,11 @@ function dvCentrarReclamosFiltrados(){
 function dvActualizarEstadoFiltroMapa(){
     const status=document.getElementById("dvMapStatusText");
     if(!status) return;
-    if(!dvMap||!dvMap.isStyleLoaded()){
-        status.textContent="⏳ Cargando mapa...";
+    // IMPORTANTE: isStyleLoaded() puede volver temporalmente a false por
+    // recursos secundarios (glyphs/tile) aunque el mapa ya esté renderizado.
+    // No debemos interpretar eso como "mapa cargando" ni dejar el estado clavado.
+    if(!dvMap || !dvMapReady){
+        status.textContent="⏳ Cargando mapa base...";
         return;
     }
     if(!dvMapStaticLoaded){
@@ -11709,7 +11781,7 @@ function dvLimpiarFiltrosMapa(){
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV26";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV27";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
@@ -11723,6 +11795,7 @@ function dvCargarCacheInicial(){
 }
 
 async function cargarMapaDiaVerde(){
+    // TURBO 29: ARRANQUE ÚNICO. Las actualizaciones posteriores son solo GPS.
     if(dvMapCargaEnCurso) return;
     dvMapCargaEnCurso=true;
 
@@ -11735,27 +11808,33 @@ async function cargarMapaDiaVerde(){
             return;
         }
 
-        if(dvMap && !dvMap.isStyleLoaded()){
-            if(status) status.textContent="⏳ Cargando mapa...";
-            await new Promise(resolve=>dvMap.once("load",resolve));
+        if(!dvMapReady){
+            if(status) status.textContent="⏳ Cargando mapa base...";
+            await new Promise(resolve=>{
+                if(dvMapReady){resolve();return;}
+                const listo=()=>{
+                    dvMapReady=true;
+                    resolve();
+                };
+                dvMap.once("load",listo);
+            });
         }
 
         try{dvMap.resize();}catch(e){}
 
-        // Cache solo una vez al inicio.
         if(!dvMapGpsData.length && !dvMapHistoricoData.length){
             dvCargarCacheInicial();
         }
 
-        // Iniciar capas estáticas solo una vez. NO esperamos aquí: la función
-        // carga zonas y reclamos progresivamente.
+        // ZONAS + RECLAMOS se cargan una sola vez.
         if(!dvMapStaticLoaded && !dvMapStaticLoading){
             cargarCapasEstaticasDiaVerde();
         }
 
-        // GPS + histórico se actualizan independientemente de los reclamos.
+        // Primera lectura de GPS.
         const datos=await leerMapaDiaVerdeCompleto();
-        const gps=datos.gps,historico=datos.historico;
+        const gps=Array.isArray(datos.gps)?datos.gps:[];
+        const historico=Array.isArray(datos.historico)?datos.historico:[];
 
         const firma=JSON.stringify(
             gps.map(p=>[
@@ -11765,7 +11844,6 @@ async function cargarMapaDiaVerde(){
                 dvFechaPunto(p)
             ])
         );
-        const cambio=firma!==dvMapUltimaFirma;
 
         dvMapGpsData=gps;
         dvMapHistoricoData=historico;
@@ -11773,42 +11851,17 @@ async function cargarMapaDiaVerde(){
         dvGuardarCache("historico",dvMapHistoricoData);
         dvPoblarFiltrosMapa();
 
-        if(cambio){
+        if(firma!==dvMapUltimaFirma){
             dvMapUltimaFirma=firma;
-
-            // Si las capas estáticas ya existen, actualizamos solamente GPS.
-            // En el primer render se pueden crear las capas GPS sin tocar
-            // zonas/reclamos.
-            // TURBO 21: NUNCA reconstruimos el mapa durante el arranque.
-            // dvRenderMapa() llama a dvLimpiarCapas() y puede competir con la
-            // carga progresiva de zonas/reclamos. El GPS se crea/actualiza de
-            // forma aislada y luego reafirmamos las capas estáticas.
-            try{
-                dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
-            }catch(e){
-                console.warn("GPS inicial Día Verde",e);
-            }
-            if(dvMapStaticLoaded){
-                try{dvAplicarCapasEstaticas();}catch(e){
-                    console.warn("Reaplicación capas estáticas Día Verde",e);
-                }
-            }
-        }else if(dvMapStaticLoaded){
-            dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
-        }
-
-        // TURBO 21: el GPS no puede dejar ocultas las zonas.
-        if(dvMap && dvMap.isStyleLoaded() && dvMapZonas.length){
-            try{dvAplicarCapasEstaticas();}catch(e){
-                console.warn("Reaplicación final zonas Día Verde",e);
-            }
+            try{dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());}
+            catch(e){console.warn("GPS inicial Día Verde",e);}
         }
 
         if(dot) dot.classList.remove("off");
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
-            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 26";
+            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 29";
             badge.classList.remove("badge-red");
             badge.classList.add("badge-green");
         }
@@ -11818,11 +11871,7 @@ async function cargarMapaDiaVerde(){
     }catch(error){
         console.error("Mapa Día Verde:",error);
         if(dot) dot.classList.add("off");
-
-        if(status){
-            status.textContent=
-                "⚠ GPS de Día Verde conectado · esperando actualización";
-        }
+        if(status) status.textContent="⚠ GPS de Día Verde conectado · esperando actualización";
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
@@ -11836,22 +11885,63 @@ async function cargarMapaDiaVerde(){
     }
 }
 
+async function actualizarGpsDiaVerde(){
+    // TURBO 29: cada 15 s solo refresca GPS. NO toca zonas ni reclamos.
+    if(dvGpsCargaEnCurso || !dvMap || !dvMapReady) return;
+    dvGpsCargaEnCurso=true;
+
+    try{
+        const datos=await leerMapaDiaVerdeCompleto();
+        const gps=Array.isArray(datos.gps)?datos.gps:[];
+        const historico=Array.isArray(datos.historico)?datos.historico:[];
+
+        const firma=JSON.stringify(
+            gps.map(p=>[
+                dvNombrePunto(p),
+                dvLatPunto(p),
+                dvLngPunto(p),
+                dvFechaPunto(p)
+            ])
+        );
+
+        dvMapGpsData=gps;
+        dvMapHistoricoData=historico;
+        dvGuardarCache("gps",dvMapGpsData);
+        dvGuardarCache("historico",dvMapHistoricoData);
+        dvPoblarFiltrosMapa();
+
+        if(firma!==dvMapUltimaFirma){
+            dvMapUltimaFirma=firma;
+            if(dvMap.isStyleLoaded()){
+                dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
+                dvActualizarEstadoFiltroMapa();
+            }
+        }
+    }catch(e){
+        console.warn("Actualización GPS Día Verde:",e);
+    }finally{
+        dvGpsCargaEnCurso=false;
+    }
+}
+
 function iniciarMapaDiaVerde(){
     dvCargarCorreccionesRemotas();
 
     if(!dvCrearMapa()) return;
 
-    // Entrar al menú Mapa Operativo no debe crear otro ciclo de carga.
-    // Solo hacemos resize y reaplicamos el estado actual.
     if(dvMapStartupIniciado){
         dvMapLastVisibleAt=Date.now();
         setTimeout(()=>{
             try{
                 dvMap.resize();
-                if(dvMap.isStyleLoaded()){
-                    if(dvMapStaticLoaded) dvAplicarCapasEstaticas();
-                    if(dvMapStaticLoaded) dvRenderMarcadoresReclamos();
-                    if(dvMapGpsData.length) dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
+                if(dvMapReady){
+                    if(dvMapStaticLoaded){
+                        dvAplicarCapasEstaticas();
+                        dvRenderMarcadoresReclamos();
+                    }
+                    if(dvMapGpsData.length){
+                        dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
+                    }
                     dvActualizarEstadoFiltroMapa();
                 }
             }catch(e){console.warn("Reentrada Mapa Operativo",e);}
@@ -11861,12 +11951,14 @@ function iniciarMapaDiaVerde(){
 
     dvMapStartupIniciado=true;
     dvMapLastVisibleAt=Date.now();
-
     dvCargarCacheInicial();
+
+    // ÚNICO ciclo de arranque.
     cargarMapaDiaVerde();
 
+    // Luego solo GPS.
     if(!dvMapTimer){
-        dvMapTimer=setInterval(cargarMapaDiaVerde,15000);
+        dvMapTimer=setInterval(actualizarGpsDiaVerde,15000);
     }
 }
 
