@@ -2966,13 +2966,13 @@ textarea.form-control{
                 <select id="dvFiltroCgmMapa" class="dv-map-filter" title="Filtrar por CGM" onchange="dvCambioCgmMapa()">
                     <option value="">Todos los CGM</option>
                 </select>
-                <select id="dvFiltroZonaMapa" class="dv-map-filter" title="Filtrar por zona" onchange="dvAplicarFiltrosMapa()">
+                <select id="dvFiltroZonaMapa" class="dv-map-filter" title="Filtrar por zona" onchange="dvCambioZonaMapa()">
                     <option value="">Todas las zonas</option>
                 </select>
-                <select id="dvFiltroChoferMapa" class="dv-map-filter" title="Filtrar por chofer" onchange="dvAplicarFiltrosMapa()">
+                <select id="dvFiltroChoferMapa" class="dv-map-filter" title="Filtrar por chofer" onchange="dvCambioChoferMapa()">
                     <option value="">Todos los choferes</option>
                 </select>
-                <select id="dvFiltroReclamoMapa" class="dv-map-filter" title="Filtrar reclamos" onchange="dvAplicarFiltrosMapa()">
+                <select id="dvFiltroReclamoMapa" class="dv-map-filter" title="Filtrar reclamos" onchange="dvCambioReclamoMapa()">
                     <option value="">Todos los reclamos</option>
                     <option value="pendiente">Solo pendientes</option>
                     <option value="realizado">Solo realizados hoy</option>
@@ -10501,9 +10501,9 @@ function dvReclamoRealizado(d){
 
 let dvMapEvidencias=[];
 
-const DV_RECLAMOS_SOURCE_ID="dv-reclamos-pins-v20";
-const DV_RECLAMOS_CIRCLE_ID="dv-reclamos-pin-circle-v20";
-const DV_RECLAMOS_ICON_ID="dv-reclamos-pin-icon-v20";
+const DV_RECLAMOS_SOURCE_ID="dv-reclamos-pins-v26";
+const DV_RECLAMOS_CIRCLE_ID="dv-reclamos-pin-circle-v26";
+const DV_RECLAMOS_ICON_ID="dv-reclamos-pin-icon-v26";
 
 function dvPurgarFuentesReclamosAntiguas(){
     if(!dvMap||!dvMap.isStyleLoaded()) return;
@@ -10733,37 +10733,45 @@ function dvCgmObjeto(o){
 function dvPuntoDentroPoligono(lng,lat,geometry){
     if(!geometry||!Number.isFinite(Number(lng))||!Number.isFinite(Number(lat)))return false;
     const x=Number(lng),y=Number(lat);
+    const EPS=1e-10;
+
+    const puntoEnSegmento=(px,py,x1,y1,x2,y2)=>{
+        const cross=(py-y1)*(x2-x1)-(px-x1)*(y2-y1);
+        if(Math.abs(cross)>EPS)return false;
+        return px>=Math.min(x1,x2)-EPS&&px<=Math.max(x1,x2)+EPS&&
+               py>=Math.min(y1,y2)-EPS&&py<=Math.max(y1,y2)+EPS;
+    };
 
     const dentroAnillo=(ring)=>{
-        let inside=false;
         if(!Array.isArray(ring)||ring.length<3)return false;
+        let inside=false;
         for(let i=0,j=ring.length-1;i<ring.length;j=i++){
-            const xi=Number(ring[i]?.[0]), yi=Number(ring[i]?.[1]);
-            const xj=Number(ring[j]?.[0]), yj=Number(ring[j]?.[1]);
+            const xi=Number(ring[i]?.[0]),yi=Number(ring[i]?.[1]);
+            const xj=Number(ring[j]?.[0]),yj=Number(ring[j]?.[1]);
             if(!Number.isFinite(xi)||!Number.isFinite(yi)||!Number.isFinite(xj)||!Number.isFinite(yj))continue;
-            const intersect=((yi>y)!==(yj>y)) &&
-                (x < (xj-xi)*(y-yi)/((yj-yi)||1e-12)+xi);
-            if(intersect)inside=!inside;
+            if(puntoEnSegmento(x,y,xi,yi,xj,yj))return true;
+            const cruza=((yi>y)!==(yj>y));
+            if(cruza){
+                const interX=(xj-xi)*(y-yi)/((yj-yi)||1e-12)+xi;
+                if(x<interX)inside=!inside;
+            }
         }
         return inside;
     };
 
     const dentroPoligono=(coords)=>{
         if(!Array.isArray(coords)||!coords.length)return false;
-        if(dentroAnillo(coords[0])){
-            // Agujeros: si está dentro de un anillo interior, no pertenece.
-            for(let i=1;i<coords.length;i++){
-                if(dentroAnillo(coords[i]))return false;
-            }
-            return true;
+        if(!dentroAnillo(coords[0]))return false;
+        for(let i=1;i<coords.length;i++){
+            // Un punto sobre el borde del agujero sigue perteneciendo al
+            // polígono exterior solo si no queda estrictamente dentro del hueco.
+            if(dentroAnillo(coords[i]))return false;
         }
-        return false;
+        return true;
     };
 
-    if(geometry.type==="Polygon") return dentroPoligono(geometry.coordinates);
-    if(geometry.type==="MultiPolygon"){
-        return (geometry.coordinates||[]).some(poly=>dentroPoligono(poly));
-    }
+    if(geometry.type==="Polygon")return dentroPoligono(geometry.coordinates);
+    if(geometry.type==="MultiPolygon")return (geometry.coordinates||[]).some(dentroPoligono);
     return false;
 }
 
@@ -10833,32 +10841,22 @@ function dvZonaGeoVisiblePorFiltros(feature){
 }
 
 function dvObtenerReclamosFiltradosMapa(){
-    const estado=String(dvMapFiltros.reclamo||"").trim();
-    const chofer=String(dvMapFiltros.chofer||"").trim();
+    const estado=dvNormalizar(dvMapFiltros.reclamo||"");
 
+    // AUTORIDAD GEOGRÁFICA DE RECLAMOS:
+    // Si existe filtro de CGM/ZONA, un reclamo geolocalizado solo puede
+    // entrar si su coordenada cae dentro del polígono correspondiente.
+    // LOCALIDAD/ZONA textual NO participa en esta decisión.
     return (Array.isArray(dvMapReclamos)?dvMapReclamos:[]).filter(d=>{
-        // 1) FILTRO GEOGRÁFICO: CGM/ZONA es obligatorio.
         if(!dvZonaVisiblePorFiltros(d)) return false;
 
-        // 2) Si se eligió chofer, se aplica sobre los reclamos que tengan
-        //    esa información. Si el reclamo no tiene chofer, no inventamos
-        //    una coincidencia.
-        if(chofer){
-            const nombre=String(
-                d.chofer??d.nombreChofer??d.usuario??d.NOMBRE_CHOFER??""
-            ).trim();
-            if(!nombre || dvNormalizar(nombre)!==dvNormalizar(chofer)) return false;
-        }
-
-        // 3) Estado del reclamo.
+        // Estado del reclamo.
         if(estado){
             const realizado=dvReclamoRealizado(d);
             if(estado==="realizado" ? !realizado : realizado) return false;
         }
 
-        // 4) SOLO entran al source los reclamos que realmente tienen
-        //    coordenadas. Los demás aparecen exclusivamente en
-        //    “Sin geolocalizar”.
+        // Los reclamos que se dibujan siempre necesitan coordenadas válidas.
         return !!dvReclamoLatLng(d);
     });
 }
@@ -10876,12 +10874,20 @@ function dvRenderMarcadoresReclamos(){
     });
     const src=dvMap.getSource(DV_RECLAMOS_SOURCE_ID);
     if(src)src.setData({type:"FeatureCollection",features});
-    console.info("DV CAPA RECLAMOS V24:", {
+    console.info("DV CAPA RECLAMOS V26:", {
         filtro: {...dvMapFiltros},
         visibles: reclamosVisibles.length,
         features: features.length,
         source: DV_RECLAMOS_SOURCE_ID
     });
+    if(dvMapFiltros.cgm||dvMapFiltros.zona){
+        console.info("DV VERDAD GEOGRÁFICA RECLAMOS:", {
+            filtroCgm:dvMapFiltros.cgm||"TODOS",
+            filtroZona:dvMapFiltros.zona||"TODAS",
+            fuente:DV_RECLAMOS_SOURCE_ID,
+            pinesDibujados:features.length
+        });
+    }
     // Purga de cualquier fuente/capa de reclamos de una versión anterior.
     const style=dvMap.getStyle();
     (style?.layers||[]).filter(l=>String(l.id||"").indexOf("dv-reclamos-pin-")===0 && l.id!==DV_RECLAMOS_CIRCLE_ID && l.id!==DV_RECLAMOS_ICON_ID)
@@ -11641,6 +11647,12 @@ function dvCambioCgmMapa(){
     dvAplicarFiltrosMapa();
 }
 
+// UN SOLO CAMINO DE APLICACIÓN PARA LOS FILTROS DEL MAPA.
+// No existe un segundo dvAplicarFiltrosReclamos ni un handler paralelo.
+function dvCambioZonaMapa(){ dvAplicarFiltrosMapa(); }
+function dvCambioChoferMapa(){ dvAplicarFiltrosMapa(); }
+function dvCambioReclamoMapa(){ dvAplicarFiltrosMapa(); }
+
 function dvDistanciaKmGPS(lat1,lng1,lat2,lng2){
     const a=Number(lat1),b=Number(lng1),c=Number(lat2),d=Number(lng2);
     if(![a,b,c,d].every(Number.isFinite))return Infinity;
@@ -11697,7 +11709,7 @@ function dvLimpiarFiltrosMapa(){
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV22";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV26";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
@@ -11796,7 +11808,7 @@ async function cargarMapaDiaVerde(){
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
-            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 21";
+            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 26";
             badge.classList.remove("badge-red");
             badge.classList.add("badge-green");
         }
