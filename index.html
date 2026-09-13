@@ -2865,7 +2865,7 @@ textarea.form-control{
             </div>
 
             <div id="dvMapFilterBar" class="dv-map-filterbar">
-                <select id="dvFiltroCgmMapa" class="dv-map-filter" title="Filtrar por CGM" onchange="dvAplicarFiltrosMapa()">
+                <select id="dvFiltroCgmMapa" class="dv-map-filter" title="Filtrar por CGM" onchange="dvCambioCgmMapa()">
                     <option value="">Todos los CGM</option>
                 </select>
                 <select id="dvFiltroZonaMapa" class="dv-map-filter" title="Filtrar por zona" onchange="dvAplicarFiltrosMapa()">
@@ -10070,6 +10070,7 @@ let dvMapStaticLoaded = false;
 let dvMapStaticLoading = false;
 let dvMapReclamos = [];
 let dvMapReclamoMarkers = [];
+let dvMapReclamosLayerHandlersBound = false;
 let dvMapZonas = [];
 let dvMapZoneHandlersBound = false;
 let dvMapGpsData = [];
@@ -10286,7 +10287,7 @@ function dvIniciarCorreccionReclamo(clave){
     dvMap.getCanvas().style.cursor="crosshair";
     const status=document.getElementById("dvMapStatusText");
     if(status) status.textContent="📍 Corrección activa: hacé clic en la ubicación real del reclamo";
-    if(dvMapReclamoMarkers) dvMapReclamoMarkers.forEach(m=>{try{m.getPopup()?.remove();}catch(e){}});
+    document.querySelectorAll(".maplibregl-popup").forEach(p=>{try{p.remove();}catch(e){}});
 }
 function dvCancelarCorreccionReclamo(){
     dvReclamoEnCorreccion=null;
@@ -10342,58 +10343,74 @@ function dvReclamoRealizado(d){
 
 let dvMapEvidencias=[];
 
-function dvCrearMarkerReclamo(d){
-    const pos=dvReclamoLatLng(d);
-    if(!pos || !dvMap) return null;
+function dvAsegurarCapasReclamos(){
+    if(!dvMap||!dvMap.isStyleLoaded()) return;
+    if(!dvMap.getSource("dv-reclamos-pins")){
+        dvMap.addSource("dv-reclamos-pins",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+        dvMap.addLayer({id:"dv-reclamos-pin-circle",type:"circle",source:"dv-reclamos-pins",paint:{
+            "circle-radius":9,
+            "circle-color":["match",["get","estado"],"realizado","#18a558","#c62828"],
+            "circle-stroke-color":"#ffffff",
+            "circle-stroke-width":3,
+            "circle-opacity":1
+        }});
+        dvMap.addLayer({id:"dv-reclamos-pin-icon",type:"symbol",source:"dv-reclamos-pins",layout:{
+            "text-field":"♻",
+            "text-size":11,
+            "text-font":["Open Sans Regular"],
+            "text-anchor":"center",
+            "text-allow-overlap":true,
+            "text-ignore-placement":true
+        },paint:{"text-color":"#ffffff","text-halo-color":"#ffffff","text-halo-width":0}});
+    }
+    if(!dvMapReclamosLayerHandlersBound){
+        dvMap.on("click","dv-reclamos-pin-circle",e=>{
+            if(dvReclamoEnCorreccion) return;
+            const f=e.features&&e.features[0];
+            const clave=f?.properties?.clave;
+            if(!clave) return;
+            const d=dvMapReclamos.find(x=>dvClaveReclamo(x)===clave);
+            if(!d) return;
+            dvAbrirPopupReclamo(d,e.lngLat);
+        });
+        dvMap.on("mouseenter","dv-reclamos-pin-circle",()=>{dvMap.getCanvas().style.cursor=dvReclamoEnCorreccion?"crosshair":"pointer"});
+        dvMap.on("mouseleave","dv-reclamos-pin-circle",()=>{dvMap.getCanvas().style.cursor=dvReclamoEnCorreccion?"crosshair":""});
+        dvMapReclamosLayerHandlersBound=true;
+    }
+}
+
+function dvAbrirPopupReclamo(d,lngLat){
     const realizado=dvReclamoRealizado(d);
-    const wrap=document.createElement("div");
-    wrap.className="dv-panel-reclamo-marker-wrap";
-    const el=document.createElement("div");
-    el.className="dv-panel-reclamo-marker "+(realizado?"realizado":"pendiente");
-    /* SVG sin transform: la punta del pin está en x=17,y=41,
-       exactamente donde MapLibre ancla el marker con anchor: bottom. */
-    el.innerHTML=`<div class="dv-panel-reclamo-marker-inner">
-      <svg class="dv-panel-reclamo-svg" viewBox="0 0 34 42" aria-hidden="true">
-        <path class="pin-body" d="M17 41 C15.2 38.4 4 27.0 4 16.5 C4 9.3 9.8 3.5 17 3.5 C24.2 3.5 30 9.3 30 16.5 C30 27 18.8 38.4 17 41 Z"></path>
-        <text class="pin-icon" x="17" y="16.5">♻</text>
-      </svg>
-    </div>`;
-    el.title=realizado?"Realizado hoy":"Pendiente";
-    wrap.appendChild(el);
-    const popup=new maplibregl.Popup({offset:20,maxWidth:"280px",className:"dv-map-popup",closeButton:true}).setHTML(`
+    const popup=new maplibregl.Popup({offset:12,maxWidth:"280px",className:"dv-map-popup",closeButton:true}).setLngLat(lngLat).setHTML(`
         <div class="dv-popup-card">
             <div class="dv-popup-title">♻️ Vecino Reciclador</div>
             <div class="dv-popup-row">📍 <strong>${dvEscapar(dvDireccionReclamo(d))}</strong></div>
             <div class="dv-popup-state ${realizado?"realizado":"pendiente"}">${realizado?"🟢 Realizado hoy":"🔴 Pendiente"}</div>
             <div class="dv-popup-sub">${dvEscapar(d.localidad || "")} · ${dvEscapar(d.zona || "")}</div>
             <div style="margin-top:9px;font-size:11px;opacity:.85">${dvReclamoTieneCorreccion(d)?"📍 Ubicación corregida manualmente":"📍 Ubicación automática"}</div>
-            <button type="button" class="dv-reclamo-corregir-btn" data-dv-reclamo-key="${dvEscapar(dvClaveReclamo(d))}">📍 Corregir ubicación</button>
-            ${dvReclamoTieneCorreccion(d)?'<button type="button" class="dv-reclamo-restaurar-btn" data-dv-reclamo-key="'+dvEscapar(dvClaveReclamo(d))+'">↩ Restaurar automática</button>':''}
+            <button type="button" class="dv-reclamo-corregir-btn">📍 Corregir ubicación</button>
+            ${dvReclamoTieneCorreccion(d)?'<button type="button" class="dv-reclamo-restaurar-btn">↩ Restaurar automática</button>':''}
         </div>`);
-    const marker=new maplibregl.Marker({element:wrap,anchor:"bottom"})
-        .setLngLat([pos[1],pos[0]]).setPopup(popup).addTo(dvMap);
-    marker.getElement().addEventListener("click",()=>{
-        document.querySelectorAll(".maplibregl-marker.dv-popup-marker-active").forEach(x=>x.classList.remove("dv-popup-marker-active"));
-        marker.getElement().classList.add("dv-popup-marker-active");
-    });
+    popup.addTo(dvMap);
     popup.on("open",()=>{
         const root=popup.getElement();
         const btn=root?.querySelector(".dv-reclamo-corregir-btn");
-        if(btn) btn.addEventListener("click",()=>dvIniciarCorreccionReclamo(dvClaveReclamo(d)));
+        if(btn) btn.addEventListener("click",()=>{popup.remove();dvIniciarCorreccionReclamo(dvClaveReclamo(d));});
         const restore=root?.querySelector(".dv-reclamo-restaurar-btn");
         if(restore) restore.addEventListener("click",async()=>{
             const ok=await dvBorrarCorreccionReclamo(dvClaveReclamo(d));
+            popup.remove();
             dvRenderMarcadoresReclamos();
             const status=document.getElementById("dvMapStatusText");
             if(status) status.textContent=ok?"✓ Ubicación automática restaurada en el sistema":"✓ Ubicación automática restaurada localmente";
         });
     });
-    popup.on("close",()=>marker.getElement().classList.remove("dv-popup-marker-active"));
-    dvMapReclamoMarkers.push(marker);
-    return marker;
 }
+
 function dvLimpiarMarcadoresReclamos(){
-    dvMapReclamoMarkers.forEach(marker=>{try{marker.remove();}catch(e){}});
+    if(!dvMap) return;
+    const src=dvMap.getSource("dv-reclamos-pins");
+    if(src) src.setData({type:"FeatureCollection",features:[]});
     dvMapReclamoMarkers=[];
 }
 
@@ -10439,10 +10456,24 @@ function dvZonaVisiblePorFiltros(o){
 }
 function dvRenderMarcadoresReclamos(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
-    dvLimpiarMarcadoresReclamos();
+    dvAsegurarCapasReclamos();
     const estado=dvMapFiltros.reclamo;
-    dvMapReclamos.filter(d=>{if(!dvZonaVisiblePorFiltros(d))return false;const realizado=dvReclamoRealizado(d);return !estado||(estado==="realizado"?realizado:!realizado);}).forEach(d=>dvCrearMarkerReclamo(d));
+    const features=dvMapReclamos.filter(d=>{
+        if(!dvZonaVisiblePorFiltros(d))return false;
+        const realizado=dvReclamoRealizado(d);
+        return !estado||(estado==="realizado"?realizado:!realizado);
+    }).map(d=>{
+        const pos=dvReclamoLatLng(d);
+        if(!pos)return null;
+        return {type:"Feature",geometry:{type:"Point",coordinates:[pos[1],pos[0]]},properties:{
+            clave:dvClaveReclamo(d),
+            estado:dvReclamoRealizado(d)?"realizado":"pendiente"
+        }};
+    }).filter(Boolean);
+    const src=dvMap.getSource("dv-reclamos-pins");
+    if(src) src.setData({type:"FeatureCollection",features});
 }
+
 function dvAplicarCapasEstaticas(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
     const zonasFiltradas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(f=>{
@@ -10674,29 +10705,67 @@ function dvValorNombreSeguro(p){return String(p?.nombre??p?.NOMBRE??"").trim();}
 function dvPoblarFiltrosMapa(){
     const cgmSel=document.getElementById("dvFiltroCgmMapa"),zonaSel=document.getElementById("dvFiltroZonaMapa"),choferSel=document.getElementById("dvFiltroChoferMapa");
     if(!cgmSel||!zonaSel||!choferSel)return;
-    const cgms=Object.keys(DV_CGM_ZONAS), zonas=dvListaZonasCgm(dvMapFiltros.cgm).slice().sort((a,b)=>a.localeCompare(b,"es")), choferes=[...new Set(dvMapGpsData.map(dvValorNombreSeguro).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+    const cgms=Object.keys(DV_CGM_ZONAS);
+    const zonas=dvListaZonasCgm(dvMapFiltros.cgm).slice().sort((a,b)=>a.localeCompare(b,"es"));
+    const choferes=[...new Set(dvMapGpsData.map(dvValorNombreSeguro).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
     cgmSel.innerHTML='<option value="">Todos los CGM</option>'+cgms.map(c=>`<option value="${dvEscapar(c)}">${dvEscapar(c.charAt(0)+c.slice(1).toLowerCase())}</option>`).join("");
     zonaSel.innerHTML='<option value="">Todas las zonas</option>'+zonas.map(z=>`<option value="${dvEscapar(z)}">${dvEscapar(z)}</option>`).join("");
     choferSel.innerHTML='<option value="">Todos los choferes</option>'+choferes.map(c=>`<option value="${dvEscapar(c)}">${dvEscapar(c)}</option>`).join("");
     cgmSel.value=cgms.includes(String(dvMapFiltros.cgm).toUpperCase())?String(dvMapFiltros.cgm).toUpperCase():"";
     zonaSel.value=zonas.includes(dvMapFiltros.zona)?dvMapFiltros.zona:"";
     choferSel.value=choferes.includes(dvMapFiltros.chofer)?dvMapFiltros.chofer:"";
-    zonaSel.disabled=!cgmSel.value;
+    // La zona queda disponible también con Todos los CGM.
+    zonaSel.disabled=false;
+}
+function dvCambioCgmMapa(){
+    const cgm=document.getElementById("dvFiltroCgmMapa")?.value||"";
+    const zonaSel=document.getElementById("dvFiltroZonaMapa");
+    // Cambiar de CGM siempre limpia la zona anterior. Esto evita que Llavallol,
+    // Banfield, etc. hereden una zona del CGM anterior.
+    if(zonaSel) zonaSel.value="";
+    dvMapFiltros.cgm=cgm.toUpperCase();
+    dvMapFiltros.zona="";
+    dvMapFiltros.chofer=document.getElementById("dvFiltroChoferMapa")?.value||"";
+    dvMapFiltros.reclamo=document.getElementById("dvFiltroReclamoMapa")?.value||"";
+    dvPoblarFiltrosMapa();
+    if(dvMap&&dvMap.isStyleLoaded()){
+        const gps=dvFiltrarGpsMapa();
+        dvRenderMapa(gps,dvMapHistoricoData);
+        dvAplicarCapasEstaticas();
+    }
+}
+function dvFiltrarGpsMapa(){
+    const cgm=String(dvMapFiltros.cgm||"").toUpperCase();
+    const zona=dvNormalizar(dvMapFiltros.zona||"");
+    const chofer=dvNormalizar(dvMapFiltros.chofer||"");
+    return dvMapGpsData.filter(p=>{
+        const okC=!cgm||dvCgmObjeto(p)===cgm;
+        const okZ=!zona||dvZonaCanonica(p)===zona;
+        const okN=!chofer||dvNormalizar(dvValorNombreSeguro(p))===chofer;
+        return okC&&okZ&&okN;
+    });
 }
 function dvAplicarFiltrosMapa(){
-    const cgm=document.getElementById("dvFiltroCgmMapa")?.value||"", zona=document.getElementById("dvFiltroZonaMapa")?.value||"", chofer=document.getElementById("dvFiltroChoferMapa")?.value||"", reclamo=document.getElementById("dvFiltroReclamoMapa")?.value||"";
+    const cgm=document.getElementById("dvFiltroCgmMapa")?.value||"";
+    const zona=document.getElementById("dvFiltroZonaMapa")?.value||"";
+    const chofer=document.getElementById("dvFiltroChoferMapa")?.value||"";
+    const reclamo=document.getElementById("dvFiltroReclamoMapa")?.value||"";
     dvMapFiltros={cgm:cgm.toUpperCase(),zona,chofer,reclamo};
     dvPoblarFiltrosMapa();
     if(!dvMap||!dvMap.isStyleLoaded())return;
-    const gps=dvMapGpsData.filter(p=>{const okC=!cgm||dvCgmObjeto(p)===cgm.toUpperCase();const okZ=!zona||dvZonaCanonica(p)===dvNormalizar(zona);const okN=!chofer||dvNormalizar(dvValorNombreSeguro(p))===dvNormalizar(chofer);return okC&&okZ&&okN;});
-    dvRenderMapa(gps,dvMapHistoricoData);
+    dvRenderMapa(dvFiltrarGpsMapa(),dvMapHistoricoData);
     dvAplicarCapasEstaticas();
 }
 function dvLimpiarFiltrosMapa(){
     dvMapFiltros={cgm:"",zona:"",chofer:"",reclamo:""};
-    const r=document.getElementById("dvFiltroReclamoMapa");if(r)r.value="";
-    dvPoblarFiltrosMapa();
-    if(dvMap&&dvMap.isStyleLoaded())dvRenderMapa(dvMapGpsData,dvMapHistoricoData);
+    if(dvMap&&dvMap.isStyleLoaded()){
+        dvPoblarFiltrosMapa();
+        const r=document.getElementById("dvFiltroReclamoMapa");if(r)r.value="";
+        dvRenderMapa(dvMapGpsData,dvMapHistoricoData);
+        dvAplicarCapasEstaticas();
+    }else{
+        dvPoblarFiltrosMapa();
+    }
 }
 
 const DV_CACHE_PREFIX="panelDiaVerdeMapaV2";
