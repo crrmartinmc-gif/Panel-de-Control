@@ -10574,6 +10574,8 @@ async function cargarCapasEstaticasDiaVerde(){
         // Las direcciones restantes se geocodifican en segundo plano para no bloquear el mapa.
         dvMapStaticLoaded=true;
         if(dvMap && dvMap.isStyleLoaded()) dvAplicarCapasEstaticas();
+        // El contador oficial se calcula sobre los mismos reclamos que alimentan el mapa.
+        dvCargarPendientesGeolocalizacion();
 
         // La geocodificación NO bloquea la carga inicial. Arranca unos segundos después.
         if(!dvMapGeocodingProgramado){
@@ -11124,18 +11126,57 @@ function cerrarDetalleUsuario(event){
 
 
 async function dvCargarPendientesGeolocalizacion(){
+    /*
+     * VERDAD DEL MAPA:
+     * El contador y el listado NO se calculan desde la hoja de pendientes del backend.
+     * Se calculan directamente sobre dvMapReclamos, que es exactamente la colección
+     * que alimenta los pines visibles del mapa.
+     *
+     * De esta forma:
+     * TOTAL RECLAMOS - RECLAMOS CON COORDENADAS EN EL MAPA = SIN GEOLOCALIZAR REAL
+     *
+     * También toma las coordenadas que vienen del localStorage/cache y las correcciones
+     * remotas, porque ambas terminan resolviendo mediante dvReclamoLatLng().
+     */
     try{
-        const r=await fetch(BACKEND_URL+"?accion="+DV_PENDIENTES_GEO_ACCION+"&t="+Date.now(),{cache:"no-store"});
-        if(!r.ok)throw new Error("HTTP "+r.status);
-        const j=await r.json();
-        if(!j?.ok)throw new Error(j?.error||"No se pudieron cargar los pendientes");
-        dvPendientesGeo=Array.isArray(j?.datos?.pendientes)?j.datos.pendientes:[];
+        const reclamos=Array.isArray(dvMapReclamos)?dvMapReclamos:[];
+        const pendientes=reclamos.filter(d=>!dvReclamoLatLng(d)).map(d=>({
+            clave:dvClaveReclamo(d),
+            localidad:d.localidad||d.LOCALIDAD||"",
+            zona:d.zona||d.ZONA||"",
+            direccion:dvDireccionReclamo(d),
+            estado:"PENDIENTE"
+        }));
+
+        dvPendientesGeo=pendientes;
+        const total=reclamos.length;
+        const geolocalizados=total-pendientes.length;
         const count=document.getElementById("dvPendientesGeoCount");
-        if(count)count.textContent=String(dvPendientesGeo.length);
-        return dvPendientesGeo;
+        if(count)count.textContent=String(pendientes.length);
+
+        const status=document.getElementById("dvMapStatusText");
+        if(status && total){
+            status.textContent=`Día Verde conectado · ${geolocalizados} geolocalizados · ${pendientes.length} sin geolocalizar`;
+        }
+
+        console.info("VERDAD DEL MAPA Día Verde:",
+            {total,geolocalizados,sinGeolocalizar:pendientes.length});
+
+        /*
+         * Sincronización auxiliar: intentamos actualizar el backend, pero el resultado
+         * del backend NO decide el contador. El mapa siempre tiene prioridad.
+         */
+        try{
+            fetch(BACKEND_URL+"?accion="+DV_PENDIENTES_GEO_ACCION+"&t="+Date.now(),{cache:"no-store"})
+                .catch(()=>{});
+        }catch(e){}
+
+        return pendientes;
     }catch(e){
-        console.warn("Pendientes de geolocalización",e);
-        return dvPendientesGeo;
+        console.warn("Pendientes de geolocalización desde mapa",e);
+        const count=document.getElementById("dvPendientesGeoCount");
+        if(count)count.textContent="0";
+        return [];
     }
 }
 
