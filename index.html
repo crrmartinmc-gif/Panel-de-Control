@@ -10031,6 +10031,12 @@ let dvMapZoneHandlersBound = false;
 const DV_ZONAS_ACCION = "zonasDiaVerde";
 const DV_RECLAMOS_ACCION = "reclamosDiaVerde";
 
+const DV_MAP_COLORS = [
+    "#22c55e","#3b82f6","#f59e0b","#ef4444","#8b5cf6",
+    "#06b6d4","#ec4899","#84cc16","#f97316","#14b8a6",
+    "#a855f7","#eab308"
+];
+
 function dvEscapar(valor){
     return String(valor ?? "")
         .replace(/&/g,"&amp;")
