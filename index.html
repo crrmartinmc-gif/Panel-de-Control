@@ -901,6 +901,99 @@ tr:hover td{
    RESPONSIVE
    ========================================================= */
 
+/* =========================================================
+   EVIDENCIA DESDE POPUP DEL MAPA
+   ========================================================= */
+.dv-evidencia-btn{
+    width:100%;
+    margin-top:9px;
+    border:1px solid #63b57f;
+    border-radius:9px;
+    padding:9px 11px;
+    background:#e9f7ed;
+    color:#087a3d;
+    font:800 11px Inter,Arial,sans-serif;
+    cursor:pointer;
+    transition:.15s;
+}
+.dv-evidencia-btn:hover{background:#d8f1df;transform:translateY(-1px);}
+.dv-evidencia-modal{
+    position:fixed;
+    inset:0;
+    z-index:99999;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:22px;
+    background:rgba(3,10,18,.78);
+    backdrop-filter:blur(5px);
+}
+.dv-evidencia-modal.show{display:flex;}
+.dv-evidencia-card{
+    width:min(720px,96vw);
+    max-height:92vh;
+    overflow:auto;
+    background:#fff;
+    color:#17231c;
+    border-radius:15px;
+    box-shadow:0 24px 70px rgba(0,0,0,.45);
+    position:relative;
+    padding:18px;
+}
+.dv-evidencia-close{
+    position:absolute;
+    top:8px;
+    right:10px;
+    width:34px;
+    height:34px;
+    border:0;
+    border-radius:50%;
+    background:#17231c;
+    color:#fff;
+    font-size:21px;
+    font-weight:800;
+    cursor:pointer;
+}
+.dv-evidencia-title{font-size:17px;font-weight:900;color:#176331;padding-right:42px;}
+.dv-evidencia-sub{font-size:11px;color:#5a665f;margin-top:4px;margin-bottom:12px;}
+.dv-evidencia-img{
+    display:block;
+    width:100%;
+    max-height:62vh;
+    object-fit:contain;
+    border-radius:10px;
+    background:#eef2f0;
+    border:1px solid #d8e0db;
+}
+.dv-evidencia-info{
+    margin-top:11px;
+    padding:10px 12px;
+    border-radius:9px;
+    background:#f3f7f4;
+    border:1px solid #dce8df;
+    font-size:11px;
+    line-height:1.5;
+}
+.dv-evidencia-link{
+    display:inline-block;
+    margin-top:9px;
+    color:#087a3d;
+    font-weight:800;
+    text-decoration:none;
+}
+.dv-evidencia-link:hover{text-decoration:underline;}
+.dv-evidencia-noimg{
+    display:flex;align-items:center;justify-content:center;
+    min-height:220px;
+    border-radius:10px;
+    background:#eef2f0;
+    border:1px dashed #b9c8bd;
+    color:#5a665f;
+    text-align:center;
+    padding:20px;
+    font-size:12px;
+}
+
 @media(max-width:1200px){
 
     .kpi-grid{
@@ -10400,21 +10493,104 @@ function dvAsegurarCapasReclamos(){
     }
 }
 
+function dvUrlEvidencia(e){
+    if(!e) return "";
+    return String(e.foto || e.enlaceFoto || e.urlDrive || e.url || e.URL || "").trim();
+}
+
+function dvConvertirUrlImagenDrive(url){
+    const texto=String(url||"").trim();
+    if(!texto) return "";
+    if(texto.startsWith("data:image/")) return texto;
+    let match=texto.match(/\/file\/d\/([^/]+)/);
+    if(!match) match=texto.match(/[?&]id=([^&]+)/);
+    if(!match) match=texto.match(/\/d\/([^/]+)/);
+    if(match && match[1]) return "https://drive.google.com/thumbnail?id="+encodeURIComponent(match[1])+"&sz=w1200";
+    return texto;
+}
+
+function dvBuscarEvidenciaReclamo(d){
+    const ev=Array.isArray(d?.__evidencias) && d.__evidencias.length ? d.__evidencias : (dvMapEvidencias||[]);
+    return ev.find(e=>dvEvidenciaCoincide(d,e)) || null;
+}
+
+function dvEscaparAtributo(v){
+    return dvEscapar(v).replace(/'/g,"&#39;");
+}
+
+function dvAbrirEvidenciaReclamo(d){
+    const evidencia=dvBuscarEvidenciaReclamo(d);
+    if(!evidencia){
+        alert("No se encontró la evidencia registrada para este reclamo.");
+        return;
+    }
+    const modal=document.getElementById("dvEvidenciaModal");
+    const img=document.getElementById("dvEvidenciaImagen");
+    const noImg=document.getElementById("dvEvidenciaSinImagen");
+    const info=document.getElementById("dvEvidenciaInfo");
+    const link=document.getElementById("dvEvidenciaLink");
+    const titulo=document.getElementById("dvEvidenciaTitulo");
+    const sub=document.getElementById("dvEvidenciaSub");
+    if(!modal) return;
+
+    const url=dvUrlEvidencia(evidencia);
+    const preview=dvConvertirUrlImagenDrive(url);
+    titulo.textContent="📷 Evidencia del reclamo";
+    sub.textContent=`${dvDireccionReclamo(d)} · ${dvEscapar(d.localidad||"")} · ${dvEscapar(d.zona||"")}`;
+    info.innerHTML=(evidencia.latitud && evidencia.longitud)
+        ? `🟢 <strong>Realizado hoy</strong><br>📍 Latitud: ${dvEscapar(evidencia.latitud)} · Longitud: ${dvEscapar(evidencia.longitud)}`
+        : `🟢 <strong>Realizado hoy</strong><br>📍 Sin coordenadas registradas en la evidencia.`;
+
+    if(preview){
+        img.src=preview;
+        img.style.display="block";
+        noImg.style.display="none";
+        img.onerror=()=>{
+            img.style.display="none";
+            noImg.style.display="flex";
+        };
+    }else{
+        img.removeAttribute("src");
+        img.style.display="none";
+        noImg.style.display="flex";
+    }
+
+    if(url){
+        link.href=url;
+        link.style.display="inline-block";
+    }else{
+        link.removeAttribute("href");
+        link.style.display="none";
+    }
+    modal.classList.add("show");
+}
+
+function dvCerrarEvidenciaReclamo(){
+    const modal=document.getElementById("dvEvidenciaModal");
+    if(modal) modal.classList.remove("show");
+    const img=document.getElementById("dvEvidenciaImagen");
+    if(img){img.removeAttribute("src");img.style.display="none";}
+}
+
 function dvAbrirPopupReclamo(d,lngLat){
     const realizado=dvReclamoRealizado(d);
-    const popup=new maplibregl.Popup({offset:12,maxWidth:"280px",className:"dv-map-popup",closeButton:true}).setLngLat(lngLat).setHTML(`
+    const evidencia=realizado ? dvBuscarEvidenciaReclamo(d) : null;
+    const popup=new maplibregl.Popup({offset:12,maxWidth:"300px",className:"dv-map-popup",closeButton:true}).setLngLat(lngLat).setHTML(`
         <div class="dv-popup-card">
             <div class="dv-popup-title">♻️ Vecino Reciclador</div>
             <div class="dv-popup-row">📍 <strong>${dvEscapar(dvDireccionReclamo(d))}</strong></div>
             <div class="dv-popup-state ${realizado?"realizado":"pendiente"}">${realizado?"🟢 Realizado hoy":"🔴 Pendiente"}</div>
             <div class="dv-popup-sub">${dvEscapar(d.localidad || "")} · ${dvEscapar(d.zona || "")}</div>
             <div style="margin-top:9px;font-size:11px;opacity:.85">${(()=>{const c=dvCoordenadaManualReclamo(d); const u=c?(dvCorreccionesRemotas[dvClaveReclamo(d)]?.usuario||dvCargarCorreccionesReclamos()[dvClaveReclamo(d)]?.usuario||""):""; return c && String(u).toUpperCase().includes("NOMINATIM")?"📍 Ubicación automática geolocalizada":"📍 Ubicación automática";})()}</div>
+            ${realizado && evidencia ? '<button type="button" class="dv-evidencia-btn">📷 Ver evidencia</button>' : ''}
             <button type="button" class="dv-reclamo-corregir-btn">📍 Corregir ubicación</button>
             ${dvReclamoTieneCorreccion(d)?'<button type="button" class="dv-reclamo-restaurar-btn">↩ Restaurar automática</button>':''}
         </div>`);
     popup.addTo(dvMap);
     popup.on("open",()=>{
         const root=popup.getElement();
+        const evidenceBtn=root?.querySelector(".dv-evidencia-btn");
+        if(evidenceBtn) evidenceBtn.addEventListener("click",()=>{popup.remove();dvAbrirEvidenciaReclamo(d);});
         const btn=root?.querySelector(".dv-reclamo-corregir-btn");
         if(btn) btn.addEventListener("click",()=>{popup.remove();dvIniciarCorreccionReclamo(dvClaveReclamo(d));});
         const restore=root?.querySelector(".dv-reclamo-restaurar-btn");
@@ -10540,13 +10716,35 @@ function dvRenderMarcadoresReclamos(){
 
 function dvAplicarCapasEstaticas(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
-    const zonasFiltradas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
-    const zonas={type:"FeatureCollection",features:zonasFiltradas};
+
+    // VISUAL DE ZONAS: mantenemos TODAS las demarcaciones visibles.
+    // Las zonas no seleccionadas quedan gris/transparente y la selección
+    // queda resaltada en verde. Así el usuario siempre ve los límites.
+    const todasLasZonas={type:"FeatureCollection",features:Array.isArray(dvMapZonas)?dvMapZonas:[]};
+    const seleccionadas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
+    const nombresSeleccionados=new Set(seleccionadas.map(f=>dvNormalizar(f?.properties?.name||f?.properties?.zona||"")));
+
     if(!dvMap.getSource("dv-zonas")){
-        dvMap.addSource("dv-zonas",{type:"geojson",data:zonas});
-        dvMap.addLayer({id:"dv-zonas-fill",type:"fill",source:"dv-zonas",paint:{"fill-color":"#18a558","fill-opacity":0.10}});
-        dvMap.addLayer({id:"dv-zonas-line",type:"line",source:"dv-zonas",paint:{"line-color":"#087a3d","line-width":2.2,"line-opacity":0.82}});
-    }else dvMap.getSource("dv-zonas").setData(zonas);
+        dvMap.addSource("dv-zonas",{type:"geojson",data:todasLasZonas});
+        dvMap.addLayer({id:"dv-zonas-fill",type:"fill",source:"dv-zonas",paint:{"fill-color":"#64748b","fill-opacity":0.075}});
+        dvMap.addLayer({id:"dv-zonas-line",type:"line",source:"dv-zonas",paint:{"line-color":"#475569","line-width":1.6,"line-opacity":0.62}});
+        dvMap.addLayer({id:"dv-zonas-selected-fill",type:"fill",source:"dv-zonas",paint:{"fill-color":"#18a558","fill-opacity":0.14}});
+        dvMap.addLayer({id:"dv-zonas-selected-line",type:"line",source:"dv-zonas",paint:{"line-color":"#087a3d","line-width":2.8,"line-opacity":0.95}});
+    }else{
+        dvMap.getSource("dv-zonas").setData(todasLasZonas);
+    }
+
+    // MapLibre no conoce nuestras funciones de normalización, por eso el
+    // filtro visual se construye con los nombres reales del GeoJSON.
+    const nombresReales=seleccionadas.map(f=>f?.properties?.name||f?.properties?.zona||"").filter(Boolean);
+    const filtroSeleccion="all";
+    if(dvMap.getLayer("dv-zonas-selected-fill")){
+        dvMap.setFilter("dv-zonas-selected-fill",nombresReales.length?["in",["get","name"],...nombresReales]:["==",["get","name"],"__NINGUNA__"]);
+    }
+    if(dvMap.getLayer("dv-zonas-selected-line")){
+        dvMap.setFilter("dv-zonas-selected-line",nombresReales.length?["in",["get","name"],...nombresReales]:["==",["get","name"],"__NINGUNA__"]);
+    }
+
     if(!dvMapZoneHandlersBound){
         dvMap.on("click","dv-zonas-fill",e=>{const f=e.features&&e.features[0];const nombre=f?.properties?.name||"Zona Día Verde";new maplibregl.Popup({offset:8,className:"dv-map-popup"}).setLngLat(e.lngLat).setHTML(`<div class="dv-popup-card"><div class="dv-popup-title">♻️ ${dvEscapar(nombre)}</div><div class="dv-popup-sub">Zona operativa Día Verde</div></div>`).addTo(dvMap);});
         dvMap.on("mouseenter","dv-zonas-fill",()=>{dvMap.getCanvas().style.cursor="pointer"});
@@ -10963,7 +11161,7 @@ async function cargarMapaDiaVerde(){
         }
         if(dot) dot.classList.remove("off");
         const badge=document.getElementById("dvMapBadge");
-        if(badge){badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 7";badge.classList.remove("badge-red");badge.classList.add("badge-green");}
+        if(badge){badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 8";badge.classList.remove("badge-red");badge.classList.add("badge-green");}
     }catch(error){
         console.error("Mapa Día Verde:",error);
         if(dot) dot.classList.add("off");
@@ -12642,5 +12840,23 @@ function dvOrdenarCapasMapa(){
   </div>
 </div>
 
-</body>
+
+<!-- ======================================================
+     MODAL EVIDENCIA DESDE EL MAPA
+     ====================================================== -->
+<div id="dvEvidenciaModal" class="dv-evidencia-modal" onclick="if(event.target===this)dvCerrarEvidenciaReclamo()">
+    <div class="dv-evidencia-card">
+        <button type="button" class="dv-evidencia-close" onclick="dvCerrarEvidenciaReclamo()">×</button>
+        <div id="dvEvidenciaTitulo" class="dv-evidencia-title">📷 Evidencia del reclamo</div>
+        <div id="dvEvidenciaSub" class="dv-evidencia-sub"></div>
+        <img id="dvEvidenciaImagen" class="dv-evidencia-img" alt="Evidencia del reclamo" style="display:none">
+        <div id="dvEvidenciaSinImagen" class="dv-evidencia-noimg" style="display:none">⚠️ No se pudo visualizar la fotografía directamente.<br>Podés abrir el archivo original desde el enlace de abajo.</div>
+        <div id="dvEvidenciaInfo" class="dv-evidencia-info"></div>
+        <a id="dvEvidenciaLink" class="dv-evidencia-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none">🔗 Abrir fotografía original</a>
+    </div>
+</div>
+
+<script>
+document.addEventListener("keydown",e=>{if(e.key==="Escape")dvCerrarEvidenciaReclamo();});
+</script></body>
 </html>
