@@ -1994,10 +1994,17 @@ textarea.form-control{
 #mapa .maplibregl-popup-close-button{color:#17231c !important;font-size:18px;font-weight:900;z-index:10001;}
 #mapa .maplibregl-marker{z-index:20;}
 #mapa .maplibregl-marker.dv-popup-marker-active{z-index:10050 !important;}
-#mapa .dv-panel-reclamo-marker-wrap,#mapa .dv-map-marker-wrap{width:34px;height:34px;display:flex;align-items:center;justify-content:center;position:relative;}
-#mapa .dv-panel-reclamo-marker{position:relative;z-index:1;transform:none !important;transform-origin:center center;}
-#mapa .dv-panel-reclamo-marker-inner{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);font-size:16px;font-weight:900;cursor:pointer;}
-#mapa .dv-panel-reclamo-marker-inner span{display:block;transform:rotate(45deg)}
+/* PINES GEOREFERENCIADOS: MapLibre controla el transform del root.
+   El dibujo interno NO usa transform/rotate. El punto geografico coincide
+   exactamente con la punta inferior del SVG. */
+#mapa .dv-panel-reclamo-marker-wrap{width:34px;height:42px;position:relative;display:block;}
+#mapa .dv-panel-reclamo-marker{position:absolute;left:0;top:0;width:34px;height:42px;z-index:1;transform:none !important;}
+#mapa .dv-panel-reclamo-marker-inner{position:absolute;left:0;top:0;width:34px;height:42px;display:block;transform:none !important;}
+#mapa .dv-panel-reclamo-svg{display:block;width:34px;height:42px;overflow:visible;transform:none !important;}
+#mapa .dv-panel-reclamo-svg .pin-body{stroke:#fff;stroke-width:2.5;}
+#mapa .dv-panel-reclamo-marker.pendiente .pin-body{fill:#c62828;}
+#mapa .dv-panel-reclamo-marker.realizado .pin-body{fill:#18a558;}
+#mapa .dv-panel-reclamo-svg .pin-icon{fill:#fff;font-family:Arial,sans-serif;font-size:15px;font-weight:900;text-anchor:middle;dominant-baseline:middle;}
 #mapa .dv-panel-reclamo-marker.pendiente,#mapa .dv-panel-reclamo-marker.realizado{color:#fff !important;}
 #mapa .dv-map-popup .maplibregl-popup-content{padding:12px 13px !important;}
 #mapa .dv-popup-card{min-width:220px;color:#17231c !important;font-family:Inter,Arial,sans-serif;font-size:12px;line-height:1.45;}
@@ -2025,14 +2032,6 @@ textarea.form-control{
 @media(max-width:500px){#mapa .dv-history{grid-template-columns:1fr 1fr;}}
 
 
-.dv-panel-reclamo-marker{
-    width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
-    display:flex;align-items:center;justify-content:center;border:3px solid #fff;
-    box-shadow:0 2px 8px rgba(0,0,0,.35);font-size:16px;font-weight:900;cursor:pointer;z-index:30;
-}
-.dv-panel-reclamo-marker span{display:block;transform:rotate(45deg)}
-.dv-panel-reclamo-marker.pendiente{background:#c62828;color:#fff}
-.dv-panel-reclamo-marker.realizado{background:#18a558;color:#fff}
 .dv-legend-zone{display:inline-block;width:18px;height:10px;border:2px solid #087a3d;background:rgba(24,165,88,.15);border-radius:2px}
 .dv-legend-reclamo{display:inline-flex;width:20px;height:20px;border-radius:50%;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:900}
 .dv-legend-reclamo.pendiente{background:#c62828}.dv-legend-reclamo.realizado{background:#18a558}
@@ -10351,7 +10350,14 @@ function dvCrearMarkerReclamo(d){
     wrap.className="dv-panel-reclamo-marker-wrap";
     const el=document.createElement("div");
     el.className="dv-panel-reclamo-marker "+(realizado?"realizado":"pendiente");
-    el.innerHTML=`<div class="dv-panel-reclamo-marker-inner"><span>♻</span></div>`;
+    /* SVG sin transform: la punta del pin está en x=17,y=41,
+       exactamente donde MapLibre ancla el marker con anchor: bottom. */
+    el.innerHTML=`<div class="dv-panel-reclamo-marker-inner">
+      <svg class="dv-panel-reclamo-svg" viewBox="0 0 34 42" aria-hidden="true">
+        <path class="pin-body" d="M17 41 C15.2 38.4 4 27.0 4 16.5 C4 9.3 9.8 3.5 17 3.5 C24.2 3.5 30 9.3 30 16.5 C30 27 18.8 38.4 17 41 Z"></path>
+        <text class="pin-icon" x="17" y="16.5">♻</text>
+      </svg>
+    </div>`;
     el.title=realizado?"Realizado hoy":"Pendiente";
     wrap.appendChild(el);
     const popup=new maplibregl.Popup({offset:20,maxWidth:"280px",className:"dv-map-popup",closeButton:true}).setHTML(`
@@ -10364,7 +10370,7 @@ function dvCrearMarkerReclamo(d){
             <button type="button" class="dv-reclamo-corregir-btn" data-dv-reclamo-key="${dvEscapar(dvClaveReclamo(d))}">📍 Corregir ubicación</button>
             ${dvReclamoTieneCorreccion(d)?'<button type="button" class="dv-reclamo-restaurar-btn" data-dv-reclamo-key="'+dvEscapar(dvClaveReclamo(d))+'">↩ Restaurar automática</button>':''}
         </div>`);
-    const marker=new maplibregl.Marker({element:wrap,anchor:"center"})
+    const marker=new maplibregl.Marker({element:wrap,anchor:"bottom"})
         .setLngLat([pos[1],pos[0]]).setPopup(popup).addTo(dvMap);
     marker.getElement().addEventListener("click",()=>{
         document.querySelectorAll(".maplibregl-marker.dv-popup-marker-active").forEach(x=>x.classList.remove("dv-popup-marker-active"));
@@ -10421,9 +10427,14 @@ function dvInferirCgmPorZona(zona){
 }
 function dvCgmObjeto(o){return dvNormalizar(o?.cgm??o?.CGM??o?.Cgm??"").toUpperCase()||dvInferirCgmPorZona(dvZonaCanonica(o));}
 function dvZonaVisiblePorFiltros(o){
-    const c=dvCgmObjeto(o),z=dvZonaCanonica(o);
-    if(dvMapFiltros.cgm && c!==dvNormalizar(dvMapFiltros.cgm).toUpperCase())return false;
-    if(dvMapFiltros.zona && z!==dvNormalizar(dvMapFiltros.zona))return false;
+    const z=dvZonaCanonica(o);
+    const c= dvInferirCgmPorZona(z) || dvCgmObjeto(o);
+    const cgmSeleccionado=dvNormalizar(dvMapFiltros.cgm).toUpperCase();
+    const zonaSeleccionada=dvNormalizar(dvMapFiltros.zona);
+    // La geometría de zonas.geojson trae el nombre de la zona, no CGM.
+    // Por eso el filtro se resuelve SIEMPRE a partir del nombre canónico.
+    if(zonaSeleccionada && z!==zonaSeleccionada) return false;
+    if(cgmSeleccionado && c!==cgmSeleccionado) return false;
     return true;
 }
 function dvRenderMarcadoresReclamos(){
@@ -10434,7 +10445,17 @@ function dvRenderMarcadoresReclamos(){
 }
 function dvAplicarCapasEstaticas(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
-    const zonasFiltradas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(f=>{const p=f?.properties||{};return dvZonaVisiblePorFiltros({cgm:p.cgm??p.CGM??p.Cgm??"",zona:p.name??p.zona??p.ZONA??""});});
+    const zonasFiltradas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(f=>{
+        const p=f?.properties||{};
+        const nombreZona=p.name??p.zona??p.ZONA??"";
+        const zonaCanonica=dvNormalizar(nombreZona);
+        const cgmZona=dvInferirCgmPorZona(zonaCanonica);
+        const cgmSeleccionado=dvNormalizar(dvMapFiltros.cgm).toUpperCase();
+        const zonaSeleccionada=dvNormalizar(dvMapFiltros.zona);
+        if(zonaSeleccionada) return zonaCanonica===zonaSeleccionada;
+        if(cgmSeleccionado) return cgmZona===cgmSeleccionado;
+        return true;
+    });
     const zonas={type:"FeatureCollection",features:zonasFiltradas};
     if(!dvMap.getSource("dv-zonas")){
         dvMap.addSource("dv-zonas",{type:"geojson",data:zonas});
