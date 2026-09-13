@@ -10405,7 +10405,7 @@ function dvAbrirPopupReclamo(d,lngLat){
             <div class="dv-popup-row">📍 <strong>${dvEscapar(dvDireccionReclamo(d))}</strong></div>
             <div class="dv-popup-state ${realizado?"realizado":"pendiente"}">${realizado?"🟢 Realizado hoy":"🔴 Pendiente"}</div>
             <div class="dv-popup-sub">${dvEscapar(d.localidad || "")} · ${dvEscapar(d.zona || "")}</div>
-            <div style="margin-top:9px;font-size:11px;opacity:.85">${dvReclamoTieneCorreccion(d)?"📍 Ubicación corregida manualmente":"📍 Ubicación automática"}</div>
+            <div style="margin-top:9px;font-size:11px;opacity:.85">${(()=>{const c=dvCoordenadaManualReclamo(d); const u=c?(dvCorreccionesRemotas[dvClaveReclamo(d)]?.usuario||dvCargarCorreccionesReclamos()[dvClaveReclamo(d)]?.usuario||""):""; return c && String(u).toUpperCase().includes("NOMINATIM")?"📍 Ubicación automática geolocalizada":"📍 Ubicación automática";})()}</div>
             <button type="button" class="dv-reclamo-corregir-btn">📍 Corregir ubicación</button>
             ${dvReclamoTieneCorreccion(d)?'<button type="button" class="dv-reclamo-restaurar-btn">↩ Restaurar automática</button>':''}
         </div>`);
@@ -10461,17 +10461,25 @@ function dvInferirCgmPorZona(zona){
     return "";
 }
 function dvCgmObjeto(o){return dvNormalizar(o?.cgm??o?.CGM??o?.Cgm??"").toUpperCase()||dvInferirCgmPorZona(dvZonaCanonica(o));}
-function dvZonaVisiblePorFiltros(o){
+function dvFiltroCoincideObjeto(o){
     const z=dvZonaCanonica(o);
-    const c= dvInferirCgmPorZona(z) || dvCgmObjeto(o);
+    const c=dvInferirCgmPorZona(z) || dvCgmObjeto(o);
     const cgmSeleccionado=dvNormalizar(dvMapFiltros.cgm).toUpperCase();
     const zonaSeleccionada=dvNormalizar(dvMapFiltros.zona);
-    // La geometría de zonas.geojson trae el nombre de la zona, no CGM.
-    // Por eso el filtro se resuelve SIEMPRE a partir del nombre canónico.
-    if(zonaSeleccionada && z!==zonaSeleccionada) return false;
-    if(cgmSeleccionado && c!==cgmSeleccionado) return false;
-    return true;
+    const okZona=!zonaSeleccionada || z===zonaSeleccionada;
+    const okCgm=!cgmSeleccionado || c===cgmSeleccionado;
+    return okZona && okCgm;
 }
+function dvZonaVisiblePorFiltros(o){ return dvFiltroCoincideObjeto(o); }
+function dvZonaGeoVisiblePorFiltros(feature){
+    const nombre=feature?.properties?.name ?? feature?.properties?.zona ?? feature?.properties?.ZONA ?? "";
+    const z=dvNormalizar(nombre);
+    const c=dvInferirCgmPorZona(z);
+    const cgmSeleccionado=dvNormalizar(dvMapFiltros.cgm).toUpperCase();
+    const zonaSeleccionada=dvNormalizar(dvMapFiltros.zona);
+    return (!zonaSeleccionada || z===zonaSeleccionada) && (!cgmSeleccionado || c===cgmSeleccionado);
+}
+
 function dvRenderMarcadoresReclamos(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
     dvAsegurarCapasReclamos();
@@ -10495,17 +10503,7 @@ function dvRenderMarcadoresReclamos(){
 
 function dvAplicarCapasEstaticas(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
-    const zonasFiltradas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(f=>{
-        const p=f?.properties||{};
-        const nombreZona=p.name??p.zona??p.ZONA??"";
-        const zonaCanonica=dvNormalizar(nombreZona);
-        const cgmZona=dvInferirCgmPorZona(zonaCanonica);
-        const cgmSeleccionado=dvNormalizar(dvMapFiltros.cgm).toUpperCase();
-        const zonaSeleccionada=dvNormalizar(dvMapFiltros.zona);
-        if(zonaSeleccionada) return zonaCanonica===zonaSeleccionada;
-        if(cgmSeleccionado) return cgmZona===cgmSeleccionado;
-        return true;
-    });
+    const zonasFiltradas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
     const zonas={type:"FeatureCollection",features:zonasFiltradas};
     if(!dvMap.getSource("dv-zonas")){
         dvMap.addSource("dv-zonas",{type:"geojson",data:zonas});
@@ -10562,8 +10560,10 @@ async function cargarCapasEstaticasDiaVerde(){
         if(!dvMapGeocodingProgramado){
             dvMapGeocodingProgramado=true;
             setTimeout(()=>{
-                dvGeocodificarReclamosSinCoordenadas().then(()=>{
+                dvGeocodificarReclamosSinCoordenadas().then(async ()=>{
                     if(dvMap && dvMap.isStyleLoaded()) dvRenderMarcadoresReclamos();
+                    // El backend ya recibió las coordenadas automáticas; refrescamos el contador real.
+                    try{await dvCargarPendientesGeolocalizacion();}catch(e){}
                 });
             },5000);
         }
@@ -10586,7 +10586,8 @@ async function dvGeocodificarReclamosSinCoordenadas(){
         const directa=dvReclamoLatLng(d);
         if(directa) return d;
         const key=dvClaveReclamo(d);
-        if(cache[key]) return {...d,lat:Number(cache[key].lat),lng:Number(cache[key].lng)};
+        if(cache[key] && Number.isFinite(Number(cache[key].lat)) && Number.isFinite(Number(cache[key].lng)))
+            return {...d,lat:Number(cache[key].lat),lng:Number(cache[key].lng)};
         if(pendientes.length<20) pendientes.push(d);
         return d;
     });
@@ -10606,6 +10607,11 @@ async function dvGeocodificarReclamosSinCoordenadas(){
                             const key=dvClaveReclamo(d);
                             cache[key]={lat,lng};
                             d.lat=lat;d.lng=lng;
+                            // IMPORTANTE: la geolocalización automática se persiste en Backend.
+                            // Así deja de depender del localStorage de esta PC y desaparece del contador de pendientes.
+                            try{
+                                await dvGuardarGeolocalizacionAutomatica(d,lat,lng);
+                            }catch(e){console.warn("No se pudo persistir geolocalización automática",q,e);}
                         }
                     }
                 }
@@ -10616,6 +10622,25 @@ async function dvGeocodificarReclamosSinCoordenadas(){
     const trabajadores=Math.min(2,pendientes.length);
     await Promise.all(Array.from({length:trabajadores},()=>trabajador()));
     try{localStorage.setItem(cacheKey,JSON.stringify(cache));}catch(e){}
+}
+
+async function dvGuardarGeolocalizacionAutomatica(d,lat,lng){
+    const payload={
+        accion:"guardarCorreccionReclamo",
+        clave:String(dvClaveReclamo(d)),
+        latitud:Number(lat),
+        longitud:Number(lng),
+        direccion:dvDireccionReclamo(d),
+        localidad:d?.localidad||"",
+        zona:d?.zona||"",
+        usuario:"NOMINATIM-AUTO"
+    };
+    const r=await fetch(BACKEND_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const j=await r.json();
+    if(!j?.ok)throw new Error(j?.error||"Backend rechazó la geolocalización automática");
+    dvCorreccionesRemotas[payload.clave]={lat:Number(lat),lng:Number(lng),fecha:j?.resultado?.fecha||new Date().toISOString(),usuario:"NOMINATIM-AUTO"};
+    return true;
 }
 
 function dvRenderMapa(gps,historico){
@@ -10802,11 +10827,17 @@ function dvAplicarFiltrosMapa(){
     const zona=document.getElementById("dvFiltroZonaMapa")?.value||"";
     const chofer=document.getElementById("dvFiltroChoferMapa")?.value||"";
     const reclamo=document.getElementById("dvFiltroReclamoMapa")?.value||"";
-    dvMapFiltros={cgm:cgm.toUpperCase(),zona,chofer,reclamo};
+    dvMapFiltros={cgm:String(cgm).trim().toUpperCase(),zona:String(zona).trim(),chofer:String(chofer).trim(),reclamo:String(reclamo).trim()};
     dvPoblarFiltrosMapa();
+    // Releer los valores después de poblar para evitar que un cambio de CGM/zona deje un valor viejo.
+    const zonaFinal=document.getElementById("dvFiltroZonaMapa")?.value||"";
+    const choferFinal=document.getElementById("dvFiltroChoferMapa")?.value||"";
+    dvMapFiltros.zona=zonaFinal;
+    dvMapFiltros.chofer=choferFinal;
     if(!dvMap||!dvMap.isStyleLoaded())return;
     dvRenderMapa(dvFiltrarGpsMapa(),dvMapHistoricoData);
     dvAplicarCapasEstaticas();
+    dvOrdenarCapasMapa();
 }
 function dvLimpiarFiltrosMapa(){
     dvMapFiltros={cgm:"",zona:"",chofer:"",reclamo:""};
