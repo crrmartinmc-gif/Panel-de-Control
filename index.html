@@ -11573,6 +11573,74 @@ function dvAplicarFiltrosMapa(){
     });
 }
 
+
+
+// TURBO 23: funciones de filtros restauradas.
+// Estas funciones son requeridas por la carga inicial y por los selectores.
+function dvValorNombreSeguro(p){return String(p?.nombre??p?.NOMBRE??"").trim();}
+
+function dvPoblarFiltrosMapa(){
+    const cgmSel=document.getElementById("dvFiltroCgmMapa"),zonaSel=document.getElementById("dvFiltroZonaMapa"),choferSel=document.getElementById("dvFiltroChoferMapa");
+    if(!cgmSel||!zonaSel||!choferSel)return;
+    const cgms=Object.keys(DV_CGM_ZONAS);
+    const cgmActual=dvClaveCgmCanonico(dvMapFiltros.cgm||"");
+    const zonas=(cgmActual && DV_CGM_ZONAS[cgmActual] ? DV_CGM_ZONAS[cgmActual] : Object.values(DV_CGM_ZONAS).flat()).slice().sort((a,b)=>a.localeCompare(b,"es"));
+    const choferes=[...new Set(dvMapGpsData.map(dvValorNombreSeguro).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+    const zonaActual=dvNormalizar(dvMapFiltros.zona||"");
+    const choferActual=dvNormalizar(dvMapFiltros.chofer||"");
+    cgmSel.innerHTML='<option value="">Todos los CGM</option>'+cgms.map(c=>`<option value="${dvEscapar(c)}">${dvEscapar(c.charAt(0)+c.slice(1).toLowerCase())}</option>`).join("");
+    zonaSel.innerHTML='<option value="">Todas las zonas</option>'+zonas.map(z=>`<option value="${dvEscapar(z)}">${dvEscapar(z)}</option>`).join("");
+    choferSel.innerHTML='<option value="">Todos los choferes</option>'+choferes.map(c=>`<option value="${dvEscapar(c)}">${dvEscapar(c)}</option>`).join("");
+    cgmSel.value=cgmActual && cgms.includes(cgmActual)?cgmActual:"";
+    const zonaMatch=zonas.find(z=>dvNormalizar(z)===zonaActual);
+    zonaSel.value=zonaMatch||"";
+    const choferMatch=choferes.find(c=>dvNormalizar(c)===choferActual);
+    choferSel.value=choferMatch||"";
+    zonaSel.disabled=false;
+}
+
+function dvCambioCgmMapa(){
+    const cgm=String(document.getElementById("dvFiltroCgmMapa")?.value||"").trim().toUpperCase();
+    dvMapFiltros.cgm=cgm;
+    dvMapFiltros.zona="";
+    dvMapFiltros.chofer=String(document.getElementById("dvFiltroChoferMapa")?.value||"").trim();
+    dvMapFiltros.reclamo=String(document.getElementById("dvFiltroReclamoMapa")?.value||"").trim();
+    dvPoblarFiltrosMapa();
+    dvAplicarFiltrosMapa();
+}
+
+function dvFiltrarGpsMapa(){
+    const zona=dvNormalizar(dvMapFiltros.zona||"");
+    const cgm=dvClaveCgmCanonico(dvMapFiltros.cgm||"");
+    const chofer=dvNormalizar(dvMapFiltros.chofer||"");
+
+    return dvMapGpsData.filter(p=>{
+        if(chofer && dvNormalizar(dvValorNombreSeguro(p))!==chofer)return false;
+
+        if(cgm||zona){
+            const lat=dvLatPunto(p),lng=dvLngPunto(p);
+            let coincideEspacial=false;
+
+            if(Number.isFinite(lat)&&Number.isFinite(lng)){
+                const zonas=Array.isArray(dvMapZonas)?dvMapZonas:[];
+                coincideEspacial=zonas.some(f=>{
+                    const nombre=f?.properties?.name||f?.properties?.zona||"";
+                    const z=dvZonaCanonica({zona:nombre});
+                    return dvZonaPermitidaParaFiltro(z) &&
+                        dvPuntoDentroPoligono(lng,lat,f?.geometry);
+                });
+            }
+
+            if(!coincideEspacial){
+                const z=dvZonaCanonica(p);
+                const cObj=dvCgmObjeto(p)||dvInferirCgmPorZona(z);
+                if(cgm && cObj!==cgm)return false;
+                if(zona && z!==zona)return false;
+            }
+        }
+        return true;
+    });
+}
 function dvLimpiarFiltrosMapa(){
     dvMapFiltros={cgm:"",zona:"",chofer:"",reclamo:""};
     if(dvMap&&dvMap.isStyleLoaded()){
