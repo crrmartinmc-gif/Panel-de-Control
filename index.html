@@ -10674,23 +10674,99 @@ function dvCgmObjeto(o){
     if(String(localidad).trim()) return dvClaveCgmCanonico(localidad);
     return dvInferirCgmPorZona(dvZonaCanonica(o));
 }
+function dvPuntoDentroPoligono(lng,lat,geometry){
+    if(!geometry||!Number.isFinite(Number(lng))||!Number.isFinite(Number(lat)))return false;
+    const x=Number(lng),y=Number(lat);
+
+    const dentroAnillo=(ring)=>{
+        let inside=false;
+        if(!Array.isArray(ring)||ring.length<3)return false;
+        for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+            const xi=Number(ring[i]?.[0]), yi=Number(ring[i]?.[1]);
+            const xj=Number(ring[j]?.[0]), yj=Number(ring[j]?.[1]);
+            if(!Number.isFinite(xi)||!Number.isFinite(yi)||!Number.isFinite(xj)||!Number.isFinite(yj))continue;
+            const intersect=((yi>y)!==(yj>y)) &&
+                (x < (xj-xi)*(y-yi)/((yj-yi)||1e-12)+xi);
+            if(intersect)inside=!inside;
+        }
+        return inside;
+    };
+
+    const dentroPoligono=(coords)=>{
+        if(!Array.isArray(coords)||!coords.length)return false;
+        if(dentroAnillo(coords[0])){
+            // Agujeros: si está dentro de un anillo interior, no pertenece.
+            for(let i=1;i<coords.length;i++){
+                if(dentroAnillo(coords[i]))return false;
+            }
+            return true;
+        }
+        return false;
+    };
+
+    if(geometry.type==="Polygon") return dentroPoligono(geometry.coordinates);
+    if(geometry.type==="MultiPolygon"){
+        return (geometry.coordinates||[]).some(poly=>dentroPoligono(poly));
+    }
+    return false;
+}
+
+function dvFeatureZonaPorPunto(d){
+    const pos=dvReclamoLatLng(d);
+    if(!pos)return null;
+    const zonas=Array.isArray(dvMapZonas)?dvMapZonas:[];
+    for(const f of zonas){
+        if(dvPuntoDentroPoligono(pos[1],pos[0],f?.geometry))return f;
+    }
+    return null;
+}
+
+function dvZonaPermitidaParaFiltro(zonaCanonica){
+    const z=dvNormalizar(zonaCanonica||"");
+    if(!z)return false;
+    if(dvMapFiltros.zona){
+        return z===dvNormalizar(dvMapFiltros.zona);
+    }
+    if(dvMapFiltros.cgm){
+        const c=dvClaveCgmCanonico(dvMapFiltros.cgm);
+        const permitidas=dvListaZonasCgm(c).map(dvNormalizar);
+        return permitidas.includes(z);
+    }
+    return true;
+}
+
 function dvFiltroCoincideObjeto(o){
     const z=dvZonaCanonica(o);
-    const c=dvCgmObjeto(o) || dvInferirCgmPorZona(z);
+    const c=dvCgmObjeto(o)||dvInferirCgmPorZona(z);
     const cgmSeleccionado=dvClaveCgmCanonico(dvMapFiltros.cgm||"");
     const zonaSeleccionada=dvNormalizar(dvMapFiltros.zona||"");
+
     const okCgm=!dvMapFiltros.cgm || c===cgmSeleccionado;
     const okZona=!zonaSeleccionada || z===zonaSeleccionada;
     return okCgm && okZona;
 }
-function dvZonaVisiblePorFiltros(o){ return dvFiltroCoincideObjeto(o); }
+
+function dvZonaVisiblePorFiltros(o){
+    // Para reclamos con coordenadas, la geometría de la zona es la verdad
+    // visual. Evita que una localidad/zona textual mal cargada deje el pin
+    // fuera del área seleccionada.
+    const pos=dvReclamoLatLng(o);
+    if(pos && (dvMapFiltros.cgm||dvMapFiltros.zona)){
+        const feature=dvFeatureZonaPorPunto(o);
+        if(feature){
+            const nombre=feature?.properties?.name||feature?.properties?.zona||"";
+            const zGeo=dvZonaCanonica({zona:nombre});
+            return dvZonaPermitidaParaFiltro(zGeo);
+        }
+        // Si el punto no cae dentro de ninguna geometría, usamos metadata.
+    }
+    return dvFiltroCoincideObjeto(o);
+}
+
 function dvZonaGeoVisiblePorFiltros(feature){
     const nombre=feature?.properties?.name ?? feature?.properties?.zona ?? feature?.properties?.ZONA ?? "";
     const z=dvZonaCanonica({zona:nombre});
-    const c=dvInferirCgmPorZona(z);
-    const cgmSeleccionado=dvClaveCgmCanonico(dvMapFiltros.cgm||"");
-    const zonaSeleccionada=dvNormalizar(dvMapFiltros.zona||"");
-    return (!dvMapFiltros.cgm || c===cgmSeleccionado) && (!zonaSeleccionada || z===zonaSeleccionada);
+    return dvZonaPermitidaParaFiltro(z);
 }
 
 function dvRenderMarcadoresReclamos(){
@@ -10798,6 +10874,15 @@ function dvAplicarCapasEstaticas(){
     }
     if(dvMap.getLayer("dv-zonas-selected-line")){
         dvMap.setFilter("dv-zonas-selected-line",filtroSeleccion);
+    }
+    // Reafirmar estilo base: las zonas no seleccionadas nunca quedan verdes.
+    if(dvMap.getLayer("dv-zonas-fill")){
+        dvMap.setPaintProperty("dv-zonas-fill","fill-color","#64748b");
+        dvMap.setPaintProperty("dv-zonas-fill","fill-opacity",0.075);
+    }
+    if(dvMap.getLayer("dv-zonas-line")){
+        dvMap.setPaintProperty("dv-zonas-line","line-color","#475569");
+        dvMap.setPaintProperty("dv-zonas-line","line-opacity",0.62);
     }
 
     if(!dvMapZoneHandlersBound){
@@ -11123,16 +11208,37 @@ function dvCambioCgmMapa(){
     dvAplicarFiltrosMapa();
 }
 function dvFiltrarGpsMapa(){
-    const cgm=dvClaveCgmCanonico(dvMapFiltros.cgm||"");
     const zona=dvNormalizar(dvMapFiltros.zona||"");
+    const cgm=dvClaveCgmCanonico(dvMapFiltros.cgm||"");
     const chofer=dvNormalizar(dvMapFiltros.chofer||"");
+
     return dvMapGpsData.filter(p=>{
-        const z=dvZonaCanonica(p);
-        const c=dvCgmObjeto(p)||dvInferirCgmPorZona(z);
-        return (!dvMapFiltros.cgm||c===cgm) && (!zona||z===zona) && (!chofer||dvNormalizar(dvValorNombreSeguro(p))===chofer);
+        if(chofer && dvNormalizar(dvValorNombreSeguro(p))!==chofer)return false;
+
+        if(cgm||zona){
+            const lat=dvLatPunto(p),lng=dvLngPunto(p);
+            let coincideEspacial=false;
+
+            if(Number.isFinite(lat)&&Number.isFinite(lng)){
+                const zonas=Array.isArray(dvMapZonas)?dvMapZonas:[];
+                coincideEspacial=zonas.some(f=>{
+                    const nombre=f?.properties?.name||f?.properties?.zona||"";
+                    const z=dvZonaCanonica({zona:nombre});
+                    return dvZonaPermitidaParaFiltro(z) &&
+                        dvPuntoDentroPoligono(lng,lat,f?.geometry);
+                });
+            }
+
+            if(!coincideEspacial){
+                const z=dvZonaCanonica(p);
+                const cObj=dvCgmObjeto(p)||dvInferirCgmPorZona(z);
+                if(cgm && cObj!==cgm)return false;
+                if(zona && z!==zona)return false;
+            }
+        }
+        return true;
     });
 }
-
 
 function dvActualizarGpsFiltradoSinDestruirCapas(gps){
     if(!dvMap||!dvMap.isStyleLoaded())return;
@@ -11266,7 +11372,7 @@ function dvCentrarReclamosFiltrados(){
     const chofer=String(dvMapFiltros.chofer||"").trim();
 
     const reclamos=(Array.isArray(dvMapReclamos)?dvMapReclamos:[])
-        .filter(d=>dvFiltroCoincideObjeto(d))
+        .filter(d=>dvZonaVisiblePorFiltros(d))
         .filter(d=>{
             if(chofer){
                 const nombre=String(
@@ -11392,7 +11498,7 @@ function dvLimpiarFiltrosMapa(){
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV3";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV4";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
