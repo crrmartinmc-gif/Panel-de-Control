@@ -2038,6 +2038,11 @@ textarea.form-control{
 .dv-legend-subtitle{margin:8px 0 4px;font-size:10px;font-weight:900;opacity:.7;letter-spacing:.06em}
 
 .dv-reclamo-corregir-btn,.dv-reclamo-restaurar-btn{display:block;width:100%;margin-top:7px;border:0;border-radius:8px;padding:7px 9px;font-weight:700;cursor:pointer;background:#087a3d;color:#fff}.dv-reclamo-restaurar-btn{background:#6b7280}.dv-reclamo-corregir-btn:hover,.dv-reclamo-restaurar-btn:hover{filter:brightness(1.08)}
+
+/* =========================================================
+   DIA VERDE — PENDIENTES DE GEOLOCALIZACION
+   ========================================================= */
+.dv-geo-pendientes-btn{border:1px solid #d7e4dc;background:#f7fbf8;color:#17663c;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;white-space:nowrap}.dv-geo-pendientes-btn:hover{background:#eaf6ee}.dv-geo-count{display:inline-flex;min-width:20px;height:20px;align-items:center;justify-content:center;border-radius:10px;background:#c62828;color:#fff;font-size:11px;margin-left:5px}.dv-geo-table{width:100%;border-collapse:collapse;font-size:12px}.dv-geo-table th,.dv-geo-table td{padding:9px 8px;border-bottom:1px solid #e6ece8;text-align:left;vertical-align:middle}.dv-geo-table th{background:#f4f8f5;position:sticky;top:0;z-index:1}.dv-geo-table-wrap{max-height:55vh;overflow:auto;border:1px solid #e1e9e4;border-radius:10px}.dv-geo-empty{text-align:center;padding:30px;color:#607066}.dv-geo-action{border:0;border-radius:7px;padding:6px 9px;background:#17663c;color:#fff;font-weight:700;cursor:pointer}.dv-geo-action:hover{filter:brightness(.94)}
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
@@ -2880,6 +2885,7 @@ textarea.form-control{
                     <option value="realizado">Solo realizados hoy</option>
                 </select>
                 <button type="button" class="dv-map-filter-reset" onclick="dvLimpiarFiltrosMapa()">Limpiar filtros</button>
+                <button type="button" class="dv-geo-pendientes-btn" onclick="dvAbrirPendientesGeolocalizacion()">📍 Sin geolocalizar <span id="dvPendientesGeoCount" class="dv-geo-count">0</span></button>
             </div>
 
             <div id="dvMap" class="dv-map"></div>
@@ -10080,6 +10086,8 @@ let dvMapZoneHandlersBound = false;
 let dvMapGpsData = [];
 let dvMapHistoricoData = [];
 let dvMapFiltros = {cgm:"",zona:"",chofer:"",reclamo:""};
+let dvPendientesGeo=[];
+const DV_PENDIENTES_GEO_ACCION="pendientesGeolocalizacionDiaVerde";
 const DV_ZONAS_ACCION = "zonasDiaVerde";
 const DV_RECLAMOS_ACCION = "reclamosDiaVerde";
 const DV_MAP_COLORS = ["#18a558","#2f80ed","#f2991f","#e74c3c","#8e5de7","#00a6a6"];
@@ -10729,6 +10737,7 @@ function dvRenderMapa(gps,historico){
         if(status) status.textContent=puntos.length ? `Día Verde conectado · GPS en vivo · ${dvMapZonas.length} zonas · ${dvMapReclamos.length} reclamos` : "Día Verde conectado · sin posiciones GPS";
 
         if(dvMapStaticLoaded) dvAplicarCapasEstaticas();
+        dvOrdenarCapasMapa();
         dvPoblarFiltrosMapa();
     };
 
@@ -10901,6 +10910,7 @@ document.addEventListener(
            Primera carga real contra el Backend Maestro.
         */
         actualizarDatosTurboInicial();
+        setTimeout(()=>dvCargarPendientesGeolocalizacion(),1800);
 
     }
 );
@@ -11046,6 +11056,78 @@ function cerrarDetalleUsuario(event){
     if(event && event.target !== event.currentTarget) return;
     const modal=document.getElementById("modalDetalleUsuario");
     if(modal) modal.classList.remove("active");
+}
+
+
+async function dvCargarPendientesGeolocalizacion(){
+    try{
+        const r=await fetch(BACKEND_URL+"?accion="+DV_PENDIENTES_GEO_ACCION+"&t="+Date.now(),{cache:"no-store"});
+        if(!r.ok)throw new Error("HTTP "+r.status);
+        const j=await r.json();
+        if(!j?.ok)throw new Error(j?.error||"No se pudieron cargar los pendientes");
+        dvPendientesGeo=Array.isArray(j?.datos?.pendientes)?j.datos.pendientes:[];
+        const count=document.getElementById("dvPendientesGeoCount");
+        if(count)count.textContent=String(dvPendientesGeo.length);
+        return dvPendientesGeo;
+    }catch(e){
+        console.warn("Pendientes de geolocalización",e);
+        return dvPendientesGeo;
+    }
+}
+
+async function dvAbrirPendientesGeolocalizacion(){
+    const modal=document.getElementById("modalPendientesGeoDV");
+    const body=document.getElementById("dvPendientesGeoBody");
+    if(!modal||!body)return;
+    modal.classList.add("open");
+    body.innerHTML="Cargando pendientes...";
+    const pendientes=await dvCargarPendientesGeolocalizacion();
+    if(!pendientes.length){
+        body.innerHTML='<div class="dv-geo-empty">✅ No hay reclamos pendientes de geolocalización.</div>';
+        return;
+    }
+    body.innerHTML=`<div style="margin-bottom:10px;font-size:12px"><strong>${pendientes.length}</strong> reclamos pendientes. Elegí <strong>Geolocalizar</strong> y después hacé clic en el punto exacto del mapa.</div>
+    <div class="dv-geo-table-wrap"><table class="dv-geo-table"><thead><tr><th>Localidad</th><th>Zona</th><th>Dirección</th><th>Acción</th></tr></thead><tbody>${pendientes.map(d=>`<tr><td>${dvEscapar(d.localidad||"-")}</td><td>${dvEscapar(d.zona||"-")}</td><td><strong>${dvEscapar(d.direccion||"-")}</strong></td><td><button type="button" class="dv-geo-action" onclick="dvSeleccionarPendienteGeo('${String(d.clave||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')">📍 Geolocalizar</button></td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function dvCerrarPendientesGeolocalizacion(event){
+    if(event && event.target!==event.currentTarget)return;
+    const modal=document.getElementById("modalPendientesGeoDV");
+    if(modal)modal.classList.remove("open");
+}
+
+function dvSeleccionarPendienteGeo(clave){
+    const d=dvMapReclamos.find(x=>dvClaveReclamo(x)===clave);
+    if(!d){
+        alert("No se encontró el reclamo en el mapa. Actualizá los datos e intentá nuevamente.");
+        return;
+    }
+    dvCerrarPendientesGeolocalizacion();
+    const mapa=document.getElementById("mapa");
+    if(mapa) mapa.scrollIntoView({behavior:"smooth",block:"start"});
+    setTimeout(()=>{
+        dvIniciarCorreccionReclamo(clave);
+        const status=document.getElementById("dvMapStatusText");
+        if(status)status.textContent="📍 Reclamo seleccionado: hacé clic en su ubicación exacta del mapa";
+    },350);
+}
+
+function dvOrdenarCapasMapa(){
+    if(!dvMap||!dvMap.isStyleLoaded())return;
+    const existe=id=>!!dvMap.getLayer(id);
+    // 1) Inferior: zonas
+    if(existe("dv-zonas-fill"))dvMap.moveLayer("dv-zonas-fill");
+    if(existe("dv-zonas-line"))dvMap.moveLayer("dv-zonas-line");
+    // 2) Medio: recorridos GPS y sus puntos
+    const capasMedias=[];
+    dvMap.getStyle().layers.forEach(l=>{
+        if((l.id||"").indexOf("dv-route-")===0 && l.type==="line")capasMedias.push(l.id);
+    });
+    capasMedias.forEach(id=>{try{if(existe(id)&&existe("dv-reclamos-pin-circle"))dvMap.moveLayer(id,"dv-reclamos-pin-circle")}catch(e){}});
+    ["dv-gps-puntos-circles","dv-gps-puntos-labels"].forEach(id=>{try{if(existe(id)&&existe("dv-reclamos-pin-circle"))dvMap.moveLayer(id,"dv-reclamos-pin-circle")}catch(e){}});
+    // 3) Superior: reclamos
+    if(existe("dv-reclamos-pin-circle"))dvMap.moveLayer("dv-reclamos-pin-circle");
+    if(existe("dv-reclamos-pin-icon"))dvMap.moveLayer("dv-reclamos-pin-icon");
 }
 
 </script>
@@ -12367,6 +12449,20 @@ function cerrarDetalleUsuario(event){
             <button type="button" class="btn btn-secondary" onclick="cerrarDetalleEvento()">Cerrar</button>
         </div>
     </div>
+</div>
+
+
+<div id="modalPendientesGeoDV" class="modal-overlay" onclick="dvCerrarPendientesGeolocalizacion(event)">
+  <div class="modal" style="width:min(1100px,96vw)" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div><div class="modal-title">📍 Reclamos sin geolocalización</div><div style="font-size:12px;opacity:.7;margin-top:3px">Reclamos que todavía no tienen una coordenada operativa registrada.</div></div>
+      <button class="modal-close" type="button" onclick="dvCerrarPendientesGeolocalizacion()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="dvPendientesGeoBody">Cargando pendientes...</div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="dvCerrarPendientesGeolocalizacion()">Cerrar</button></div>
+  </div>
 </div>
 
 </body>
