@@ -10230,7 +10230,16 @@ function dvCrearMapa(){
 
     dvMap.on("load",()=>{
         setTimeout(()=>dvMap.resize(),100);
-        if(dvMapStaticLoaded) dvAplicarCapasEstaticas();
+        // Si el usuario eligió un filtro antes de terminar de cargar MapLibre,
+        // el filtro queda guardado. Al quedar el mapa listo lo reaplicamos.
+        setTimeout(()=>{
+            if(dvMapStaticLoaded){
+                dvAplicarCapasEstaticas();
+                dvRenderMarcadoresReclamos();
+                dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
+                dvActualizarEstadoFiltroMapa();
+            }
+        },120);
     });
 
     if(!dvMapCorrectionHandlerBound){
@@ -10946,7 +10955,12 @@ async function cargarCapasEstaticasDiaVerde(){
         // Primero mostramos zonas y los reclamos que ya tienen coordenadas/cache.
         // Las direcciones restantes se geocodifican en segundo plano para no bloquear el mapa.
         dvMapStaticLoaded=true;
-        if(dvMap && dvMap.isStyleLoaded()) dvAplicarCapasEstaticas();
+        if(dvMap && dvMap.isStyleLoaded()){
+            dvAplicarCapasEstaticas();
+            dvRenderMarcadoresReclamos();
+            dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
+            dvActualizarEstadoFiltroMapa();
+        }
         // El contador oficial se calcula sobre los mismos reclamos que alimentan el mapa.
         dvCargarPendientesGeolocalizacion();
 
@@ -11438,6 +11452,35 @@ function dvCentrarReclamosFiltrados(){
     }
 }
 
+function dvActualizarEstadoFiltroMapa(){
+    const status=document.getElementById("dvMapStatusText");
+    if(!status) return;
+    if(!dvMap||!dvMap.isStyleLoaded()){
+        status.textContent="⏳ Cargando mapa...";
+        return;
+    }
+    if(!dvMapStaticLoaded){
+        status.textContent="⏳ Cargando zonas y reclamos...";
+        return;
+    }
+    const tieneFiltro=!!(dvMapFiltros.cgm||dvMapFiltros.zona||dvMapFiltros.chofer||dvMapFiltros.reclamo);
+    if(!tieneFiltro){
+        status.textContent=`Día Verde conectado · GPS activo · ${dvMapZonas.length} zonas · ${dvMapReclamos.length} reclamos`;
+        return;
+    }
+    const zonasSeleccionadas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
+    const reclamosVisibles=(dvMapReclamos||[])
+        .filter(d=>dvFiltroCoincideObjeto(d))
+        .filter(d=>{
+            const reclamo=dvMapFiltros.reclamo;
+            if(!reclamo)return true;
+            const realizado=dvReclamoRealizado(d);
+            return reclamo==="realizado"?realizado:!realizado;
+        })
+        .filter(d=>dvReclamoLatLng(d));
+    status.textContent=`✓ Filtro activo · ${zonasSeleccionadas.length} zonas · ${reclamosVisibles.length} reclamos con ubicación`;
+}
+
 function dvAplicarFiltrosMapa(){
     const cgm=String(document.getElementById("dvFiltroCgmMapa")?.value||"").trim().toUpperCase();
     const zona=String(document.getElementById("dvFiltroZonaMapa")?.value||"").trim();
@@ -11450,7 +11493,13 @@ function dvAplicarFiltrosMapa(){
     if(status)status.textContent="⏳ Aplicando filtro al mapa...";
 
     if(!dvMap||!dvMap.isStyleLoaded()){
-        if(status)status.textContent="Filtro guardado · esperando mapa";
+        if(status)status.textContent="⏳ Cargando mapa...";
+        return;
+    }
+
+    if(!dvMapStaticLoaded){
+        if(status)status.textContent="⏳ Cargando zonas y reclamos...";
+        cargarCapasEstaticasDiaVerde();
         return;
     }
 
@@ -11476,10 +11525,7 @@ function dvAplicarFiltrosMapa(){
         })
         .filter(d=>dvReclamoLatLng(d));
 
-    if(status){
-        status.textContent=
-            `✓ Filtro activo · ${zonasSeleccionadas.length} zonas · ${reclamosVisibles.length} reclamos con ubicación`;
-    }
+    dvActualizarEstadoFiltroMapa();
 
     requestAnimationFrame(()=>dvCentrarReclamosFiltrados());
 }
