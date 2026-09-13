@@ -10895,7 +10895,7 @@ function dvRenderMarcadoresReclamos(){
     });
     const src=dvMap.getSource(DV_RECLAMOS_SOURCE_ID);
     if(src)src.setData({type:"FeatureCollection",features});
-    console.info("DV CAPA RECLAMOS V22:", {
+    console.info("DV CAPA RECLAMOS V24:", {
         filtro: {...dvMapFiltros},
         visibles: reclamosVisibles.length,
         features: features.length,
@@ -11010,9 +11010,9 @@ function dvAplicarCapasEstaticas(){
     }
 
     if(!dvMapZoneHandlersBound){
-        dvMap.on("click","dv-zonas-fill",e=>{
+        const abrirPopupZona=e=>{
             const f=e.features&&e.features[0];
-            const nombre=f?.properties?.name||"Zona Día Verde";
+            const nombre=f?.properties?.name||f?.properties?.zona||"Zona Día Verde";
             new maplibregl.Popup({
                 offset:8,
                 className:"dv-map-popup"
@@ -11022,12 +11022,18 @@ function dvAplicarCapasEstaticas(){
                     <div class="dv-popup-sub">Zona operativa Día Verde</div>
                 </div>`
             ).addTo(dvMap);
+        };
+        // La capa verde está por encima de la base. Por eso el click debe
+        // estar asociado a AMBAS capas; de lo contrario, al seleccionar una
+        // zona el fill verde intercepta el clic y la zona deja de responder.
+        ["dv-zonas-fill","dv-zonas-selected-fill","dv-zonas-line","dv-zonas-selected-line"].forEach(layerId=>{
+            if(dvMap.getLayer(layerId)) dvMap.on("click",layerId,abrirPopupZona);
         });
-        dvMap.on("mouseenter","dv-zonas-fill",()=>{
-            dvMap.getCanvas().style.cursor="pointer";
-        });
-        dvMap.on("mouseleave","dv-zonas-fill",()=>{
-            dvMap.getCanvas().style.cursor="";
+        ["dv-zonas-fill","dv-zonas-selected-fill","dv-zonas-line","dv-zonas-selected-line"].forEach(layerId=>{
+            if(dvMap.getLayer(layerId)){
+                dvMap.on("mouseenter",layerId,()=>{dvMap.getCanvas().style.cursor="pointer";});
+                dvMap.on("mouseleave",layerId,()=>{dvMap.getCanvas().style.cursor="";});
+            }
         });
         dvMapZoneHandlersBound=true;
     }
@@ -11321,36 +11327,81 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
         orden:i
     })).filter(p=>p.lat!==null&&p.lng!==null);
 
+    // No agrupamos un recorrido únicamente por nombre. Un mismo nombre puede
+    // reutilizarse entre turnos y, además, un salto grande de tiempo/distancia
+    // no debe convertirse en una línea falsa.
     const porNombre={};
     puntos.forEach(p=>{
-        if(!porNombre[p.nombre])porNombre[p.nombre]=[];
-        porNombre[p.nombre].push(p);
+        const nombre=p.nombre||"SIN NOMBRE";
+        if(!porNombre[nombre])porNombre[nombre]=[];
+        porNombre[nombre].push(p);
     });
 
     const colores={};
     const gpsFeatures=[];
+    const MAX_GAP_MIN=15;
+    const MAX_JUMP_KM=3;
+    let routeIndex=0;
 
     Object.entries(porNombre).forEach(([nombre,lista])=>{
         lista.sort((a,b)=>new Date(a.fecha||0)-new Date(b.fecha||0));
         const color=dvColorPorNombre(nombre,colores);
-        const coordinates=lista.map(p=>[p.lng,p.lat]);
+        const segmentos=[];
+        let segmento=[];
 
-        if(coordinates.length>=2){
-            const sourceId="dv-route-"+Object.keys(porNombre).indexOf(nombre);
-            const layerId=sourceId+"-line";
-            dvMap.addSource(sourceId,{
-                type:"geojson",
-                data:{type:"Feature",geometry:{type:"LineString",coordinates}}
-            });
-            dvMap.addLayer({
-                id:layerId,
-                type:"line",
-                source:sourceId,
-                layout:{"line-cap":"round","line-join":"round"},
-                paint:{"line-color":color,"line-width":5,"line-opacity":0.88}
-            });
-        }
+        const cerrarSegmento=()=>{
+            if(segmento.length) segmentos.push(segmento);
+            segmento=[];
+        };
 
+        lista.forEach((p,i)=>{
+            if(!segmento.length){
+                segmento=[p];
+                return;
+            }
+            const anterior=segmento[segmento.length-1];
+            const t1=Date.parse(anterior.fecha||"");
+            const t2=Date.parse(p.fecha||"");
+            const gapMin=(Number.isFinite(t1)&&Number.isFinite(t2)) ? Math.abs(t2-t1)/60000 : 0;
+            const distKm=dvDistanciaKmGPS(anterior.lat,anterior.lng,p.lat,p.lng);
+
+            // Corta por día, salto temporal o salto espacial. Esto evita unir
+            // turnos distintos y evita líneas que atraviesan el municipio.
+            const diaAnterior=Number.isFinite(t1)?new Date(t1).toISOString().slice(0,10):"";
+            const diaActual=Number.isFinite(t2)?new Date(t2).toISOString().slice(0,10):diaAnterior;
+            const cortaPorTiempo=gapMin>MAX_GAP_MIN;
+            const cortaPorDistancia=distKm>MAX_JUMP_KM;
+            const cortaPorDia=!!diaAnterior&&!!diaActual&&diaAnterior!==diaActual;
+
+            if(cortaPorTiempo||cortaPorDistancia||cortaPorDia){
+                cerrarSegmento();
+                segmento=[p];
+            }else{
+                segmento.push(p);
+            }
+        });
+        cerrarSegmento();
+
+        segmentos.forEach(seg=>{
+            const coordinates=seg.map(p=>[p.lng,p.lat]);
+            if(coordinates.length>=2){
+                const sourceId="dv-route-"+(routeIndex++);
+                const layerId=sourceId+"-line";
+                dvMap.addSource(sourceId,{
+                    type:"geojson",
+                    data:{type:"Feature",geometry:{type:"LineString",coordinates}}
+                });
+                dvMap.addLayer({
+                    id:layerId,
+                    type:"line",
+                    source:sourceId,
+                    layout:{"line-cap":"round","line-join":"round"},
+                    paint:{"line-color":color,"line-width":5,"line-opacity":0.88}
+                });
+            }
+        });
+
+        // El punto visible es siempre el último punto válido del nombre.
         const ultimo=lista[lista.length-1];
         gpsFeatures.push({
             type:"Feature",
@@ -11575,7 +11626,7 @@ function dvAplicarFiltrosMapa(){
 
 
 
-// TURBO 23: funciones de filtros restauradas.
+// TURBO 24: filtros geográficos y recorridos reforzados.
 // Estas funciones son requeridas por la carga inicial y por los selectores.
 function dvValorNombreSeguro(p){return String(p?.nombre??p?.NOMBRE??"").trim();}
 
@@ -11609,6 +11660,16 @@ function dvCambioCgmMapa(){
     dvAplicarFiltrosMapa();
 }
 
+function dvDistanciaKmGPS(lat1,lng1,lat2,lng2){
+    const a=Number(lat1),b=Number(lng1),c=Number(lat2),d=Number(lng2);
+    if(![a,b,c,d].every(Number.isFinite))return Infinity;
+    const R=6371;
+    const rad=x=>x*Math.PI/180;
+    const dLat=rad(c-a),dLng=rad(d-b);
+    const h=Math.sin(dLat/2)**2 + Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dLng/2)**2;
+    return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+
 function dvFiltrarGpsMapa(){
     const zona=dvNormalizar(dvMapFiltros.zona||"");
     const cgm=dvClaveCgmCanonico(dvMapFiltros.cgm||"");
@@ -11617,21 +11678,20 @@ function dvFiltrarGpsMapa(){
     return dvMapGpsData.filter(p=>{
         if(chofer && dvNormalizar(dvValorNombreSeguro(p))!==chofer)return false;
 
+        // Cuando el GPS tiene coordenadas, la geometría es la VERDAD para
+        // CGM/ZONA. No hacemos fallback al texto si el punto cae fuera de
+        // los polígonos seleccionados: eso evitaba falsos positivos.
         if(cgm||zona){
             const lat=dvLatPunto(p),lng=dvLngPunto(p);
-            let coincideEspacial=false;
-
             if(Number.isFinite(lat)&&Number.isFinite(lng)){
-                const zonas=Array.isArray(dvMapZonas)?dvMapZonas:[];
-                coincideEspacial=zonas.some(f=>{
-                    const nombre=f?.properties?.name||f?.properties?.zona||"";
-                    const z=dvZonaCanonica({zona:nombre});
-                    return dvZonaPermitidaParaFiltro(z) &&
-                        dvPuntoDentroPoligono(lng,lat,f?.geometry);
-                });
-            }
-
-            if(!coincideEspacial){
+                const feature=dvFeatureZonaPorPunto({lat,lng});
+                if(!feature)return false;
+                const zGeo=dvZonaCanonica({zona:feature?.properties?.name||feature?.properties?.zona||""});
+                const cGeo=dvInferirCgmPorZona(zGeo);
+                if(cgm && cGeo!==cgm)return false;
+                if(zona && zGeo!==zona)return false;
+            }else{
+                // Sin coordenadas sí podemos usar los metadatos textuales.
                 const z=dvZonaCanonica(p);
                 const cObj=dvCgmObjeto(p)||dvInferirCgmPorZona(z);
                 if(cgm && cObj!==cgm)return false;
@@ -11641,6 +11701,7 @@ function dvFiltrarGpsMapa(){
         return true;
     });
 }
+
 function dvLimpiarFiltrosMapa(){
     dvMapFiltros={cgm:"",zona:"",chofer:"",reclamo:""};
     if(dvMap&&dvMap.isStyleLoaded()){
@@ -12111,7 +12172,7 @@ function dvOrdenarCapasMapa(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
     const existe=id=>!!(id&&dvMap.getLayer(id));
 
-    // TURBO 22 — ORDEN VISUAL OBLIGATORIO (de abajo hacia arriba):
+    // TURBO 24 — ORDEN VISUAL OBLIGATORIO (de abajo hacia arriba):
     // 1. ZONAS
     // 2. RECORRIDOS GPS
     // 3. PUNTOS GPS
