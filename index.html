@@ -10173,6 +10173,7 @@ let dvMapGpsHandlersBound = false;
 let dvMapStaticLoading = false;
 let dvMapStartupIniciado = false;
 let dvMapLastVisibleAt = 0;
+let dvUltimaFirmaVerdadMapa = "";
 let dvMapReclamos = [];
 let dvMapReclamoMarkers = [];
 let dvMapReclamosLayerHandlersBound = false;
@@ -10213,6 +10214,40 @@ function dvCrearMapa(){
     dvMap=new maplibregl.Map({
         container:el,
         style:"https://tiles.openfreemap.org/styles/liberty",
+        // OpenFreeMap sirve los glyphs con Noto Sans. El estilo Liberty
+        // puede pedir Open Sans/Arial Unicode MS en algunos symbol layers,
+        // generando 404 de glyphs. Normalizamos el font stack al cargar
+        // el estilo, sin tocar el fondo ni nuestras capas.
+        transformStyle:(previousStyle,nextStyle)=>{
+            try{
+                const style=JSON.parse(JSON.stringify(nextStyle||{}));
+                if(style.glyphs){
+                    style.glyphs="https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
+                }
+                if(Array.isArray(style.layers)){
+                    style.layers=style.layers.map(layer=>{
+                        const l={...layer};
+                        if(l.layout && Array.isArray(l.layout["text-font"])){
+                            l.layout={
+                                ...l.layout,
+                                "text-font":l.layout["text-font"].map(font=>{
+                                    const s=String(font||"");
+                                    if(/open sans regular/i.test(s)) return "Noto Sans Regular";
+                                    if(/open sans bold/i.test(s)) return "Noto Sans Bold";
+                                    if(/arial unicode ms/i.test(s)) return "Noto Sans Regular";
+                                    return font;
+                                })
+                            };
+                        }
+                        return l;
+                    });
+                }
+                return style;
+            }catch(e){
+                console.warn("No se pudo normalizar glyphs del estilo OpenFreeMap",e);
+                return nextStyle;
+            }
+        },
         center:[-58.3809,-34.7777],
         zoom:13,
         pitch:0,
@@ -11635,7 +11670,7 @@ function dvLimpiarFiltrosMapa(){
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV6";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV7";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
@@ -11998,8 +12033,12 @@ async function dvCargarPendientesGeolocalizacion(){
             status.textContent=`Día Verde conectado · ${geolocalizados} geolocalizados · ${pendientes.length} sin geolocalizar`;
         }
 
-        console.info("VERDAD DEL MAPA Día Verde:",
-            {total,geolocalizados,sinGeolocalizar:pendientes.length});
+        const firmaVerdad=`${total}|${geolocalizados}|${pendientes.length}`;
+        if(firmaVerdad!==dvUltimaFirmaVerdadMapa){
+            dvUltimaFirmaVerdadMapa=firmaVerdad;
+            console.info("VERDAD DEL MAPA Día Verde:",
+                {total,geolocalizados,sinGeolocalizar:pendientes.length});
+        }
 
         /*
          * Sincronización auxiliar: intentamos actualizar el backend, pero el resultado
