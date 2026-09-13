@@ -10717,40 +10717,110 @@ function dvRenderMarcadoresReclamos(){
 function dvAplicarCapasEstaticas(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
 
-    // VISUAL DE ZONAS: mantenemos TODAS las demarcaciones visibles.
-    // Las zonas no seleccionadas quedan gris/transparente y la selección
-    // queda resaltada en verde. Así el usuario siempre ve los límites.
-    const todasLasZonas={type:"FeatureCollection",features:Array.isArray(dvMapZonas)?dvMapZonas:[]};
-    const seleccionadas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
-    const nombresSeleccionados=new Set(seleccionadas.map(f=>dvNormalizar(f?.properties?.name||f?.properties?.zona||"")));
+    // ZONAS: SIEMPRE dejamos todo el GeoJSON cargado.
+    // La capa base es gris/transparente para las zonas no seleccionadas.
+    // Las zonas que cumplen el filtro se resaltan en verde.
+    // Esto evita que, al filtrar Banfield, las 3 zonas seleccionadas
+    // parezcan "todas verdes" y permite ver claramente el contexto del mapa.
+    const todasLasZonas={
+        type:"FeatureCollection",
+        features:Array.isArray(dvMapZonas)?dvMapZonas:[]
+    };
+    const seleccionadas=(Array.isArray(dvMapZonas)?dvMapZonas:[])
+        .filter(dvZonaGeoVisiblePorFiltros);
 
     if(!dvMap.getSource("dv-zonas")){
         dvMap.addSource("dv-zonas",{type:"geojson",data:todasLasZonas});
-        dvMap.addLayer({id:"dv-zonas-fill",type:"fill",source:"dv-zonas",paint:{"fill-color":"#64748b","fill-opacity":0.075}});
-        dvMap.addLayer({id:"dv-zonas-line",type:"line",source:"dv-zonas",paint:{"line-color":"#475569","line-width":1.6,"line-opacity":0.62}});
-        dvMap.addLayer({id:"dv-zonas-selected-fill",type:"fill",source:"dv-zonas",paint:{"fill-color":"#18a558","fill-opacity":0.14}});
-        dvMap.addLayer({id:"dv-zonas-selected-line",type:"line",source:"dv-zonas",paint:{"line-color":"#087a3d","line-width":2.8,"line-opacity":0.95}});
+
+        // Capa base: TODAS las zonas, siempre gris y transparente.
+        dvMap.addLayer({
+            id:"dv-zonas-fill",
+            type:"fill",
+            source:"dv-zonas",
+            paint:{
+                "fill-color":"#64748b",
+                "fill-opacity":0.075
+            }
+        });
+        dvMap.addLayer({
+            id:"dv-zonas-line",
+            type:"line",
+            source:"dv-zonas",
+            paint:{
+                "line-color":"#475569",
+                "line-width":1.6,
+                "line-opacity":0.62
+            }
+        });
+
+        // Capa de selección: solo las zonas que pasan el filtro.
+        dvMap.addLayer({
+            id:"dv-zonas-selected-fill",
+            type:"fill",
+            source:"dv-zonas",
+            paint:{
+                "fill-color":"#18a558",
+                "fill-opacity":0.14
+            }
+        });
+        dvMap.addLayer({
+            id:"dv-zonas-selected-line",
+            type:"line",
+            source:"dv-zonas",
+            paint:{
+                "line-color":"#087a3d",
+                "line-width":2.8,
+                "line-opacity":0.95
+            }
+        });
     }else{
-        dvMap.getSource("dv-zonas").setData(todasLasZonas);
+        // MUY IMPORTANTE: nunca reemplazar el source por solo las zonas
+        // filtradas. El source conserva TODAS y las capas selected
+        // determinan cuáles quedan verdes.
+        const source=dvMap.getSource("dv-zonas");
+        if(source) source.setData(todasLasZonas);
     }
 
-    // MapLibre no conoce nuestras funciones de normalización, por eso el
-    // filtro visual se construye con los nombres reales del GeoJSON.
-    const nombresReales=seleccionadas.map(f=>f?.properties?.name||f?.properties?.zona||"").filter(Boolean);
-    const filtroSeleccion="all";
+    // MapLibre recibe los nombres reales del GeoJSON para pintar en verde
+    // únicamente las zonas que corresponden al CGM/Zona seleccionados.
+    const nombresReales=seleccionadas
+        .map(f=>f?.properties?.name||f?.properties?.zona||"")
+        .filter(Boolean);
+
+    const filtroSeleccion=nombresReales.length
+        ? ["in",["get","name"],...nombresReales]
+        : ["==",["get","name"],"__NINGUNA__"];
+
     if(dvMap.getLayer("dv-zonas-selected-fill")){
-        dvMap.setFilter("dv-zonas-selected-fill",nombresReales.length?["in",["get","name"],...nombresReales]:["==",["get","name"],"__NINGUNA__"]);
+        dvMap.setFilter("dv-zonas-selected-fill",filtroSeleccion);
     }
     if(dvMap.getLayer("dv-zonas-selected-line")){
-        dvMap.setFilter("dv-zonas-selected-line",nombresReales.length?["in",["get","name"],...nombresReales]:["==",["get","name"],"__NINGUNA__"]);
+        dvMap.setFilter("dv-zonas-selected-line",filtroSeleccion);
     }
 
     if(!dvMapZoneHandlersBound){
-        dvMap.on("click","dv-zonas-fill",e=>{const f=e.features&&e.features[0];const nombre=f?.properties?.name||"Zona Día Verde";new maplibregl.Popup({offset:8,className:"dv-map-popup"}).setLngLat(e.lngLat).setHTML(`<div class="dv-popup-card"><div class="dv-popup-title">♻️ ${dvEscapar(nombre)}</div><div class="dv-popup-sub">Zona operativa Día Verde</div></div>`).addTo(dvMap);});
-        dvMap.on("mouseenter","dv-zonas-fill",()=>{dvMap.getCanvas().style.cursor="pointer"});
-        dvMap.on("mouseleave","dv-zonas-fill",()=>{dvMap.getCanvas().style.cursor=""});
+        dvMap.on("click","dv-zonas-fill",e=>{
+            const f=e.features&&e.features[0];
+            const nombre=f?.properties?.name||"Zona Día Verde";
+            new maplibregl.Popup({
+                offset:8,
+                className:"dv-map-popup"
+            }).setLngLat(e.lngLat).setHTML(
+                `<div class="dv-popup-card">
+                    <div class="dv-popup-title">♻️ ${dvEscapar(nombre)}</div>
+                    <div class="dv-popup-sub">Zona operativa Día Verde</div>
+                </div>`
+            ).addTo(dvMap);
+        });
+        dvMap.on("mouseenter","dv-zonas-fill",()=>{
+            dvMap.getCanvas().style.cursor="pointer";
+        });
+        dvMap.on("mouseleave","dv-zonas-fill",()=>{
+            dvMap.getCanvas().style.cursor="";
+        });
         dvMapZoneHandlersBound=true;
     }
+
     dvRenderMarcadoresReclamos();
     dvOrdenarCapasMapa();
 }
@@ -11060,6 +11130,80 @@ function dvFiltrarGpsMapa(){
         return (!dvMapFiltros.cgm||c===cgm) && (!zona||z===zona) && (!chofer||dvNormalizar(dvValorNombreSeguro(p))===chofer);
     });
 }
+
+function dvCentrarReclamosFiltrados(){
+    if(!dvMap||!dvMap.isStyleLoaded())return;
+
+    const reclamo=String(dvMapFiltros.reclamo||"").trim();
+
+    const reclamos=(Array.isArray(dvMapReclamos)?dvMapReclamos:[])
+        .filter(d=>dvFiltroCoincideObjeto(d))
+        .filter(d=>{
+            if(!reclamo)return true;
+            const realizado=dvReclamoRealizado(d);
+            return reclamo==="realizado"?realizado:!realizado;
+        })
+        .map(d=>dvReclamoLatLng(d))
+        .filter(Boolean);
+
+    // Si hay reclamos geolocalizados, el mapa se encuadra sobre ELLOS.
+    if(reclamos.length){
+        const bounds=new maplibregl.LngLatBounds();
+        reclamos.forEach(pos=>bounds.extend([pos[1],pos[0]]));
+
+        if(reclamos.length===1){
+            dvMap.easeTo({
+                center:[reclamos[0][1],reclamos[0][0]],
+                zoom:15.5,
+                duration:500
+            });
+        }else{
+            dvMap.fitBounds(bounds,{
+                padding:{top:105,bottom:80,left:70,right:70},
+                maxZoom:15.5,
+                duration:650
+            });
+        }
+        return;
+    }
+
+    // Sin reclamos geolocalizados, intentamos centrar la/s zona/s seleccionada/s.
+    const zonas=(Array.isArray(dvMapZonas)?dvMapZonas:[])
+        .filter(dvZonaGeoVisiblePorFiltros);
+
+    if(!zonas.length)return;
+
+    const bounds=new maplibregl.LngLatBounds();
+    let tieneBounds=false;
+
+    const extenderCoords=(coords)=>{
+        if(!Array.isArray(coords))return;
+        if(
+            coords.length>=2 &&
+            typeof coords[0]==="number" &&
+            typeof coords[1]==="number"
+        ){
+            bounds.extend([coords[0],coords[1]]);
+            tieneBounds=true;
+            return;
+        }
+        coords.forEach(extenderCoords);
+    };
+
+    zonas.forEach(f=>{
+        const geom=f?.geometry;
+        if(geom)extenderCoords(geom.coordinates);
+    });
+
+    if(tieneBounds){
+        dvMap.fitBounds(bounds,{
+            padding:{top:105,bottom:80,left:70,right:70},
+            maxZoom:14.5,
+            duration:650
+        });
+    }
+}
+
 function dvAplicarFiltrosMapa(){
     const cgm=String(document.getElementById("dvFiltroCgmMapa")?.value||"").trim().toUpperCase();
     const zona=String(document.getElementById("dvFiltroZonaMapa")?.value||"").trim();
@@ -11074,37 +11218,41 @@ function dvAplicarFiltrosMapa(){
         return;
     }
 
-    // FILTRO VISUAL INMEDIATO: no esperamos una nueva carga del backend ni
-    // reconstruimos las capas estáticas. Se actualizan directamente sus sources.
-    const zonasVisibles=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
-    const zonasSource=dvMap.getSource("dv-zonas");
-    if(zonasSource){
-        zonasSource.setData({type:"FeatureCollection",features:zonasVisibles});
-    }
+    // FILTRO VISUAL INMEDIATO.
+    // NO reducimos el source de zonas: debe contener TODAS las zonas para
+    // que las no seleccionadas sigan visibles en gris/transparente.
+    dvAplicarCapasEstaticas();
 
-    // Reclamos: actualizamos directamente el source GeoJSON.
-    dvRenderMarcadoresReclamos();
-
-    // GPS: se vuelve a dibujar únicamente con los puntos que pasan el filtro.
-    // Esto conserva el rendimiento Turbo sin tocar zonas/reclamos innecesariamente.
+    // GPS: únicamente los puntos que pasan el filtro.
     dvRenderMapa(dvFiltrarGpsMapa(),dvMapHistoricoData);
 
-    // dvRenderMapa puede limpiar/recrear las capas GPS; al terminar volvemos a
-    // imponer las dos capas estáticas con el filtro actual y el orden operativo.
+    // Al terminar de redibujar GPS, volvemos a imponer el estilo de zonas,
+    // los reclamos y el orden de capas.
     requestAnimationFrame(()=>{
         try{
-            const zonasActualizadas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
-            const zs=dvMap.getSource("dv-zonas");
-            if(zs) zs.setData({type:"FeatureCollection",features:zonasActualizadas});
-            dvRenderMarcadoresReclamos();
+            dvAplicarCapasEstaticas();
             dvOrdenarCapasMapa();
-        }catch(e){console.warn("Filtro visual Día Verde",e);}
+            dvCentrarReclamosFiltrados();
+        }catch(e){
+            console.warn("Filtro visual Día Verde",e);
+        }
     });
 
+    const zonasSeleccionadas=(Array.isArray(dvMapZonas)?dvMapZonas:[])
+        .filter(dvZonaGeoVisiblePorFiltros);
+
     const reclamosVisibles=(dvMapReclamos||[])
-        .filter(d=>dvFiltroCoincideObjeto(d)&&(!reclamo||(reclamo==="realizado"?dvReclamoRealizado(d):!dvReclamoRealizado(d))))
-        .filter(d=>dvReclamoLatLng(d)).length;
-    if(status) status.textContent=`✓ Filtro activo · ${zonasVisibles.length} zonas · ${reclamosVisibles} reclamos con ubicación`;
+        .filter(d=>dvFiltroCoincideObjeto(d)&&
+            (!reclamo ||
+             (reclamo==="realizado"
+                ? dvReclamoRealizado(d)
+                : !dvReclamoRealizado(d))))
+        .filter(d=>dvReclamoLatLng(d));
+
+    if(status){
+        status.textContent=
+            `✓ Filtro activo · ${zonasSeleccionadas.length} zonas · ${reclamosVisibles.length} reclamos con ubicación`;
+    }
 }
 function dvLimpiarFiltrosMapa(){
     dvMapFiltros={cgm:"",zona:"",chofer:"",reclamo:""};
@@ -11113,12 +11261,13 @@ function dvLimpiarFiltrosMapa(){
         const r=document.getElementById("dvFiltroReclamoMapa");if(r)r.value="";
         dvRenderMapa(dvMapGpsData,dvMapHistoricoData);
         dvAplicarCapasEstaticas();
+        requestAnimationFrame(()=>dvCentrarReclamosFiltrados());
     }else{
         dvPoblarFiltrosMapa();
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV2";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV3";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
