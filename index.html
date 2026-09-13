@@ -10232,9 +10232,7 @@ function dvCrearMapa(){
                                 ...l.layout,
                                 "text-font":l.layout["text-font"].map(font=>{
                                     const s=String(font||"");
-                                    if(/open sans regular/i.test(s)) return "Noto Sans Regular";
-                                    if(/open sans bold/i.test(s)) return "Noto Sans Bold";
-                                    if(/arial unicode ms/i.test(s)) return "Noto Sans Regular";
+                                    if(/open sans|arial unicode|maptiler/i.test(s)) return /bold/i.test(s)?"Noto Sans Bold":"Noto Sans Regular";
                                     return font;
                                 })
                             };
@@ -10503,38 +10501,45 @@ function dvReclamoRealizado(d){
 
 let dvMapEvidencias=[];
 
+const DV_RECLAMOS_SOURCE_ID="dv-reclamos-pins-v20";
+const DV_RECLAMOS_CIRCLE_ID="dv-reclamos-pin-circle-v20";
+const DV_RECLAMOS_ICON_ID="dv-reclamos-pin-icon-v20";
+
+function dvPurgarFuentesReclamosAntiguas(){
+    if(!dvMap||!dvMap.isStyleLoaded()) return;
+    const style=dvMap.getStyle();
+    (style?.layers||[]).map(l=>String(l.id||""))
+        .filter(id=>id.indexOf("dv-reclamos-pin-")===0)
+        .forEach(id=>{try{if(dvMap.getLayer(id))dvMap.removeLayer(id);}catch(e){}});
+    Object.keys(style?.sources||{})
+        .filter(id=>id.indexOf("dv-reclamos-pins")===0)
+        .forEach(id=>{try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}});
+}
+
 function dvAsegurarCapasReclamos(){
     if(!dvMap||!dvMap.isStyleLoaded()) return;
-    if(!dvMap.getSource("dv-reclamos-pins")){
-        dvMap.addSource("dv-reclamos-pins",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
-        dvMap.addLayer({id:"dv-reclamos-pin-circle",type:"circle",source:"dv-reclamos-pins",paint:{
-            "circle-radius":9,
-            "circle-color":["match",["get","estado"],"realizado","#0ea5e9","#ff7a00"],
-            "circle-stroke-color":"#ffffff",
-            "circle-stroke-width":3,
-            "circle-opacity":1
+    if(!dvMap.getSource(DV_RECLAMOS_SOURCE_ID)){
+        dvPurgarFuentesReclamosAntiguas();
+        dvMap.addSource(DV_RECLAMOS_SOURCE_ID,{type:"geojson",data:{type:"FeatureCollection",features:[]}});
+        dvMap.addLayer({id:DV_RECLAMOS_CIRCLE_ID,type:"circle",source:DV_RECLAMOS_SOURCE_ID,paint:{
+            "circle-radius":9,"circle-color":["match",["get","estado"],"realizado","#0ea5e9","#ff7a00"],
+            "circle-stroke-color":"#ffffff","circle-stroke-width":3,"circle-opacity":1
         }});
-        dvMap.addLayer({id:"dv-reclamos-pin-icon",type:"symbol",source:"dv-reclamos-pins",layout:{
-            "text-field":"♻",
-            "text-size":11,
-            "text-font":["Noto Sans Regular"],
-            "text-anchor":"center",
-            "text-allow-overlap":true,
-            "text-ignore-placement":true
+        dvMap.addLayer({id:DV_RECLAMOS_ICON_ID,type:"symbol",source:DV_RECLAMOS_SOURCE_ID,layout:{
+            "text-field":"♻","text-size":11,"text-font":["Noto Sans Regular"],"text-anchor":"center",
+            "text-allow-overlap":true,"text-ignore-placement":true
         },paint:{"text-color":"#ffffff","text-halo-color":"#ffffff","text-halo-width":0}});
     }
     if(!dvMapReclamosLayerHandlersBound){
-        dvMap.on("click","dv-reclamos-pin-circle",e=>{
+        dvMap.on("click",DV_RECLAMOS_CIRCLE_ID,e=>{
             if(dvReclamoEnCorreccion) return;
-            const f=e.features&&e.features[0];
-            const clave=f?.properties?.clave;
-            if(!clave) return;
+            const f=e.features&&e.features[0],clave=f?.properties?.clave;
+            if(!clave)return;
             const d=dvMapReclamos.find(x=>dvClaveReclamo(x)===clave);
-            if(!d) return;
-            dvAbrirPopupReclamo(d,e.lngLat);
+            if(d)dvAbrirPopupReclamo(d,e.lngLat);
         });
-        dvMap.on("mouseenter","dv-reclamos-pin-circle",()=>{dvMap.getCanvas().style.cursor=dvReclamoEnCorreccion?"crosshair":"pointer"});
-        dvMap.on("mouseleave","dv-reclamos-pin-circle",()=>{dvMap.getCanvas().style.cursor=dvReclamoEnCorreccion?"crosshair":""});
+        dvMap.on("mouseenter",DV_RECLAMOS_CIRCLE_ID,()=>{dvMap.getCanvas().style.cursor=dvReclamoEnCorreccion?"crosshair":"pointer"});
+        dvMap.on("mouseleave",DV_RECLAMOS_CIRCLE_ID,()=>{dvMap.getCanvas().style.cursor=dvReclamoEnCorreccion?"crosshair":""});
         dvMapReclamosLayerHandlersBound=true;
     }
 }
@@ -10652,7 +10657,7 @@ function dvAbrirPopupReclamo(d,lngLat){
 
 function dvLimpiarMarcadoresReclamos(){
     if(!dvMap) return;
-    const src=dvMap.getSource("dv-reclamos-pins");
+    const src=dvMap.getSource(DV_RECLAMOS_SOURCE_ID);
     if(src) src.setData({type:"FeatureCollection",features:[]});
     dvMapReclamoMarkers=[];
 }
@@ -10875,28 +10880,22 @@ function dvObtenerReclamosFiltradosMapa(){
 function dvRenderMarcadoresReclamos(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
     dvAsegurarCapasReclamos();
-
     const reclamosVisibles=dvObtenerReclamosFiltradosMapa();
     const features=reclamosVisibles.map(d=>{
         const pos=dvReclamoLatLng(d);
         return {type:"Feature",geometry:{type:"Point",coordinates:[pos[1],pos[0]]},properties:{
-            clave:dvClaveReclamo(d),
-            estado:dvReclamoRealizado(d)?"realizado":"pendiente"
+            clave:dvClaveReclamo(d),estado:dvReclamoRealizado(d)?"realizado":"pendiente",
+            cgm:dvClaveCgmCanonico(d.localidad||d.LOCALIDAD||""),zona:dvZonaCanonica(d)
         }};
     });
-
-    const src=dvMap.getSource("dv-reclamos-pins");
-    if(src){
-        // Primero vaciamos y luego cargamos el resultado filtrado.
-        // Así nunca quedan pines de un filtro anterior.
-        src.setData({type:"FeatureCollection",features:[]});
-        requestAnimationFrame(()=>{
-            try{
-                const actual=dvMap.getSource("dv-reclamos-pins");
-                if(actual) actual.setData({type:"FeatureCollection",features});
-            }catch(e){ console.warn("Actualización pines Día Verde",e); }
-        });
-    }
+    const src=dvMap.getSource(DV_RECLAMOS_SOURCE_ID);
+    if(src)src.setData({type:"FeatureCollection",features});
+    // Purga de cualquier fuente/capa de reclamos de una versión anterior.
+    const style=dvMap.getStyle();
+    (style?.layers||[]).filter(l=>String(l.id||"").indexOf("dv-reclamos-pin-")===0 && l.id!==DV_RECLAMOS_CIRCLE_ID && l.id!==DV_RECLAMOS_ICON_ID)
+        .forEach(l=>{try{if(dvMap.getLayer(l.id))dvMap.removeLayer(l.id);}catch(e){}});
+    Object.keys(style?.sources||{}).filter(id=>id.indexOf("dv-reclamos-pins")===0 && id!==DV_RECLAMOS_SOURCE_ID)
+        .forEach(id=>{try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}});
     dvOrdenarCapasMapa();
 }
 
@@ -11756,7 +11755,7 @@ function dvLimpiarFiltrosMapa(){
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV10";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV11";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
@@ -11836,7 +11835,7 @@ async function cargarMapaDiaVerde(){
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
-            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 19";
+            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 20";
             badge.classList.remove("badge-red");
             badge.classList.add("badge-green");
         }
@@ -11860,6 +11859,7 @@ async function cargarMapaDiaVerde(){
         }
     }finally{
         dvMapCargaEnCurso=false;
+        try{dvActualizarEstadoFiltroMapa();}catch(e){}
     }
 }
 
@@ -12218,8 +12218,8 @@ function dvOrdenarCapasMapa(){
 
     const reclamos=[];
     [
-        "dv-reclamos-pin-circle",
-        "dv-reclamos-pin-icon"
+        DV_RECLAMOS_CIRCLE_ID,
+        DV_RECLAMOS_ICON_ID
     ].forEach(id=>{if(existe(id))reclamos.push(id);});
 
     if(recorridos.length){
