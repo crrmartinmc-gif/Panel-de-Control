@@ -10876,8 +10876,12 @@ function dvAplicarCapasEstaticas(){
         .map(f=>f?.properties?.name||f?.properties?.zona||"")
         .filter(Boolean);
 
+    // IMPORTANTE:
+    // MapLibre no acepta ["in",["get","name"],...valores] como filtro
+    // en esta versión del estilo. Usamos "match", que es compatible
+    // y permite comparar el nombre real del GeoJSON contra varios valores.
     const filtroSeleccion=nombresReales.length
-        ? ["in",["get","name"],...nombresReales]
+        ? ["match",["get","name"],nombresReales,true,false]
         : ["==",["get","name"],"__NINGUNA__"];
 
     if(dvMap.getLayer("dv-zonas-selected-fill")){
@@ -11631,7 +11635,7 @@ function dvLimpiarFiltrosMapa(){
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV5";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV6";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
@@ -11711,7 +11715,7 @@ async function cargarMapaDiaVerde(){
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
-            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 14";
+            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 15";
             badge.classList.remove("badge-red");
             badge.classList.add("badge-green");
         }
