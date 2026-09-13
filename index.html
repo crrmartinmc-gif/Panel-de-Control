@@ -10067,6 +10067,10 @@ let dvMapLayers = [];
 let dvMapMarkers = [];
 let dvMapFirstFit = true;
 let dvMapStaticLoaded = false;
+let dvMapCargaEnCurso = false;
+let dvMapUltimaFirma = "";
+let dvMapGeocodingProgramado = false;
+let dvMapGpsHandlersBound = false;
 let dvMapStaticLoading = false;
 let dvMapReclamos = [];
 let dvMapReclamoMarkers = [];
@@ -10135,16 +10139,21 @@ function dvCrearMapa(){
     return true;
 }
 
-async function leerHojaDiaVerde(gid){
+async function leerMapaDiaVerdeCompleto(){
     const url=BACKEND_URL+"?accion=mapaDiaVerde&t="+Date.now();
     const r=await fetch(url,{method:"GET",cache:"no-store"});
     if(!r.ok) throw new Error("Backend HTTP "+r.status);
     const j=await r.json();
     if(!j || !j.ok) throw new Error((j&&j.error)||"El Backend Maestro no pudo leer Día Verde");
     const datos=j.datos||{};
-    if(gid===DIA_VERDE_GPS_GID) return Array.isArray(datos.gps)?datos.gps:[];
-    if(gid===DIA_VERDE_HISTORICO_GID) return Array.isArray(datos.historico)?datos.historico:[];
-    return [];
+    return {
+        gps:Array.isArray(datos.gps)?datos.gps:[],
+        historico:Array.isArray(datos.historico)?datos.historico:[]
+    };
+}
+async function leerHojaDiaVerde(gid){
+    const datos=await leerMapaDiaVerdeCompleto();
+    return gid===DIA_VERDE_GPS_GID?datos.gps:gid===DIA_VERDE_HISTORICO_GID?datos.historico:[];
 }
 
 function dvLimpiarCapas(){
@@ -10529,9 +10538,15 @@ async function cargarCapasEstaticasDiaVerde(){
         // Las direcciones restantes se geocodifican en segundo plano para no bloquear el mapa.
         dvMapStaticLoaded=true;
         if(dvMap && dvMap.isStyleLoaded()) dvAplicarCapasEstaticas();
-        dvGeocodificarReclamosSinCoordenadas().then(()=>{
-            if(dvMap && dvMap.isStyleLoaded()) dvRenderMarcadoresReclamos();
-        });
+        // La geocodificación NO bloquea la carga inicial. Arranca unos segundos después.
+        if(!dvMapGeocodingProgramado){
+            dvMapGeocodingProgramado=true;
+            setTimeout(()=>{
+                dvGeocodificarReclamosSinCoordenadas().then(()=>{
+                    if(dvMap && dvMap.isStyleLoaded()) dvRenderMarcadoresReclamos();
+                });
+            },5000);
+        }
     }catch(error){
         console.error("Capas Día Verde:",error);
         const status=document.getElementById("dvMapStatusText");
@@ -10552,7 +10567,7 @@ async function dvGeocodificarReclamosSinCoordenadas(){
         if(directa) return d;
         const key=dvClaveReclamo(d);
         if(cache[key]) return {...d,lat:Number(cache[key].lat),lng:Number(cache[key].lng)};
-        pendientes.push(d);
+        if(pendientes.length<20) pendientes.push(d);
         return d;
     });
 
@@ -10588,6 +10603,7 @@ function dvRenderMapa(gps,historico){
 
     const renderizar=()=>{
         dvLimpiarCapas();
+        window.__dvTurboGpsFeatures=[];
 
         const puntos=gps.map((p,i)=>({
             ...p,
@@ -10629,30 +10645,49 @@ function dvRenderMapa(gps,historico){
             }
 
             const ultimo=lista[lista.length-1];
-            const markerEl=document.createElement("div");
-            markerEl.className="dv-map-marker-wrap";
-            const markerDot=document.createElement("div");
-            markerDot.className="dv-map-marker-dot";
-            markerDot.style.background=color;
-            markerEl.appendChild(markerDot);
-            const popup=new maplibregl.Popup({offset:18,maxWidth:"280px",className:"dv-map-popup",closeButton:true}).setHTML(`
-                <div style="min-width:210px">
-                    <strong style="font-size:14px">${dvEscapar(nombre)}</strong><br>
-                    <span>Usuario: ${dvEscapar(ultimo.usuario)}</span><br>
-                    <span>Zona: ${dvEscapar(ultimo.zona)}</span><br>
-                    <span>Hora: ${dvEscapar(dvHoraTexto(ultimo.fecha))}</span><br>
-                    <span>Lat: ${ultimo.lat.toFixed(6)}</span><br>
-                    <span>Lng: ${ultimo.lng.toFixed(6)}</span>
-                </div>`);
-            const marker=new maplibregl.Marker({element:markerEl,anchor:"center"})
-                .setLngLat([ultimo.lng,ultimo.lat]).setPopup(popup).addTo(dvMap);
-            marker.getElement().addEventListener("click",()=>{
-                document.querySelectorAll(".maplibregl-marker.dv-popup-marker-active").forEach(x=>x.classList.remove("dv-popup-marker-active"));
-                marker.getElement().classList.add("dv-popup-marker-active");
-            });
-            popup.on("close",()=>marker.getElement().classList.remove("dv-popup-marker-active"));
-            dvMapMarkers.push(marker);
+            // TURBO: el punto GPS es una capa GeoJSON, NO un Marker DOM.
+            // Así la coordenada queda 100% ligada al mapa y no al tamaño/transformación del HTML.
+            const idx=Object.keys(porNombre).indexOf(nombre);
+            const feature={type:"Feature",geometry:{type:"Point",coordinates:[ultimo.lng,ultimo.lat]},properties:{
+                nombre,usuario:ultimo.usuario||"-",zona:ultimo.zona||"-",fecha:ultimo.fecha||"",
+                lat:ultimo.lat,lng:ultimo.lng,color
+            }};
+            let gpsFeatureCollection=dvMap.getSource("dv-gps-puntos")?.serialize?.().data || null;
+            if(!gpsFeatureCollection || gpsFeatureCollection.type!=="FeatureCollection") gpsFeatureCollection={type:"FeatureCollection",features:[]};
+            gpsFeatureCollection.features.push(feature);
+            // Se termina de publicar una sola vez después del recorrido.
+            if(!window.__dvTurboGpsFeatures) window.__dvTurboGpsFeatures=[];
+            window.__dvTurboGpsFeatures.push(feature);
         });
+
+        // TURBO: una única fuente/capa para todos los puntos GPS.
+        // No hay elementos DOM que puedan aparentar desplazarse con el zoom.
+        const gpsSourceData={type:"FeatureCollection",features:(window.__dvTurboGpsFeatures||[])};
+        if(dvMap.getSource("dv-gps-puntos")){
+            dvMap.getSource("dv-gps-puntos").setData(gpsSourceData);
+        }else{
+            dvMap.addSource("dv-gps-puntos",{type:"geojson",data:gpsSourceData});
+            dvMap.addLayer({id:"dv-gps-puntos-circles",type:"circle",source:"dv-gps-puntos",paint:{
+                "circle-radius":["interpolate",["linear"],["zoom"],8,5,14,7,18,9],
+                "circle-color":["get","color"],"circle-stroke-color":"#ffffff","circle-stroke-width":2.5,
+                "circle-opacity":0.98
+            }});
+            dvMap.addLayer({id:"dv-gps-puntos-labels",type:"symbol",source:"dv-gps-puntos",layout:{
+                "text-field":["get","nombre"],"text-size":10,"text-offset":[0,1.7],"text-anchor":"top","text-allow-overlap":false
+            },paint:{"text-color":"#17231c","text-halo-color":"#ffffff","text-halo-width":1.5}});
+            dvMapLayers.push("dv-gps-puntos-circles","dv-gps-puntos-labels","dv-gps-puntos");
+            if(!dvMapGpsHandlersBound) dvMap.on("click","dv-gps-puntos-circles",e=>{
+                const f=e.features?.[0],p=f?.properties||{};
+                if(!f)return;
+                new maplibregl.Popup({offset:10,maxWidth:"280px",className:"dv-map-popup",closeButton:true})
+                    .setLngLat(e.lngLat).setHTML(`<div style="min-width:210px"><strong style="font-size:14px">${dvEscapar(p.nombre||"GPS")}</strong><br><span>Usuario: ${dvEscapar(p.usuario||"-")}</span><br><span>Zona: ${dvEscapar(p.zona||"-")}</span><br><span>Hora: ${dvEscapar(dvHoraTexto(p.fecha||""))}</span><br><span>Lat: ${Number(p.lat).toFixed(6)}</span><br><span>Lng: ${Number(p.lng).toFixed(6)}</span></div>`).addTo(dvMap);
+            });
+            if(!dvMapGpsHandlersBound){
+                dvMap.on("mouseenter","dv-gps-puntos-circles",()=>dvMap.getCanvas().style.cursor="pointer");
+                dvMap.on("mouseleave","dv-gps-puntos-circles",()=>dvMap.getCanvas().style.cursor="");
+                dvMapGpsHandlersBound=true;
+            }
+        }
 
         // Las rutas GPS siempre quedan por encima de los polígonos de zona.
         dvMapLayers.forEach(id=>{try{if(dvMap.getLayer(id)) dvMap.moveLayer(id);}catch(e){}});
@@ -10718,21 +10753,17 @@ function dvPoblarFiltrosMapa(){
     zonaSel.disabled=false;
 }
 function dvCambioCgmMapa(){
-    const cgm=document.getElementById("dvFiltroCgmMapa")?.value||"";
+    const cgm=String(document.getElementById("dvFiltroCgmMapa")?.value||"").trim().toUpperCase();
     const zonaSel=document.getElementById("dvFiltroZonaMapa");
-    // Cambiar de CGM siempre limpia la zona anterior. Esto evita que Llavallol,
-    // Banfield, etc. hereden una zona del CGM anterior.
-    if(zonaSel) zonaSel.value="";
-    dvMapFiltros.cgm=cgm.toUpperCase();
+    // Cada cambio de CGM invalida SIEMPRE la zona anterior.
+    dvMapFiltros.cgm=cgm;
     dvMapFiltros.zona="";
-    dvMapFiltros.chofer=document.getElementById("dvFiltroChoferMapa")?.value||"";
-    dvMapFiltros.reclamo=document.getElementById("dvFiltroReclamoMapa")?.value||"";
+    if(zonaSel) zonaSel.value="";
     dvPoblarFiltrosMapa();
-    if(dvMap&&dvMap.isStyleLoaded()){
-        const gps=dvFiltrarGpsMapa();
-        dvRenderMapa(gps,dvMapHistoricoData);
-        dvAplicarCapasEstaticas();
-    }
+    // Tras poblar, forzamos explícitamente la opción Todas las zonas.
+    if(zonaSel) zonaSel.value="";
+    dvMapFiltros.zona="";
+    dvAplicarFiltrosMapa();
 }
 function dvFiltrarGpsMapa(){
     const cgm=String(dvMapFiltros.cgm||"").toUpperCase();
@@ -10779,6 +10810,8 @@ function dvCargarCacheInicial(){
 }
 
 async function cargarMapaDiaVerde(){
+    if(dvMapCargaEnCurso) return;
+    dvMapCargaEnCurso=true;
     const dot=document.getElementById("dvMapLiveDot");
     const status=document.getElementById("dvMapStatusText");
     try{
@@ -10789,35 +10822,35 @@ async function cargarMapaDiaVerde(){
         if(dvMap && !dvMap.isStyleLoaded()) await new Promise(resolve=>dvMap.once("load",resolve));
         try{dvMap.resize();}catch(e){}
 
+        // Cache primero: la interfaz aparece sin esperar al backend.
         if(!dvMapGpsData.length && !dvMapHistoricoData.length) dvCargarCacheInicial();
         if(!dvMapStaticLoaded) cargarCapasEstaticasDiaVerde();
 
-        const [gps,historico]=await Promise.all([
-            leerHojaDiaVerde(DIA_VERDE_GPS_GID),
-            leerHojaDiaVerde(DIA_VERDE_HISTORICO_GID)
-        ]);
-        dvMapGpsData=Array.isArray(gps)?gps:[];
-        dvMapHistoricoData=Array.isArray(historico)?historico:[];
+        // TURBO: una sola petición devuelve GPS + histórico.
+        const datos=await leerMapaDiaVerdeCompleto();
+        const gps=datos.gps,historico=datos.historico;
+        const firma=JSON.stringify(gps.map(p=>[dvNombrePunto(p),dvLatPunto(p),dvLngPunto(p),dvFechaPunto(p)]));
+        const cambio=firma!==dvMapUltimaFirma;
+        dvMapGpsData=gps;
+        dvMapHistoricoData=historico;
         dvGuardarCache("gps",dvMapGpsData);
         dvGuardarCache("historico",dvMapHistoricoData);
         dvPoblarFiltrosMapa();
-        const cgm=dvMapFiltros.cgm,zona=dvMapFiltros.zona,chofer=dvMapFiltros.chofer;
-        const gpsFiltrado=dvMapGpsData.filter(p=>{
-            const okC=!cgm||dvCgmObjeto(p)===cgm.toUpperCase();
-            const okZ=!zona||dvZonaCanonica(p)===dvNormalizar(zona);
-            const okN=!chofer||dvNormalizar(dvValorNombreSeguro(p))===dvNormalizar(chofer);
-            return okC&&okZ&&okN;
-        });
-        dvRenderMapa(gpsFiltrado,dvMapHistoricoData);
+        if(cambio){
+            dvMapUltimaFirma=firma;
+            dvRenderMapa(dvFiltrarGpsMapa(),dvMapHistoricoData);
+        }
         if(dot) dot.classList.remove("off");
         const badge=document.getElementById("dvMapBadge");
-        if(badge){badge.textContent="GPS + ZONAS + RECLAMOS";badge.classList.remove("badge-red");badge.classList.add("badge-green");}
+        if(badge){badge.textContent="GPS + ZONAS + RECLAMOS · TURBO";badge.classList.remove("badge-red");badge.classList.add("badge-green");}
     }catch(error){
         console.error("Mapa Día Verde:",error);
         if(dot) dot.classList.add("off");
         if(status) status.textContent="Error al leer GPS de Día Verde";
         const badge=document.getElementById("dvMapBadge");
         if(badge){badge.textContent="SIN CONEXIÓN";badge.classList.remove("badge-green");badge.classList.add("badge-red");}
+    }finally{
+        dvMapCargaEnCurso=false;
     }
 }
 
@@ -10829,6 +10862,22 @@ function iniciarMapaDiaVerde(){
     if(!dvMapTimer) dvMapTimer=setInterval(cargarMapaDiaVerde,15000);
 }
 
+
+async function actualizarDatosTurboInicial(){
+    try{
+        const conectado=await probarConexion();
+        if(!conectado) return;
+        // Primero lo visible y crítico.
+        await Promise.all([cargarResumenPanel(),cargarVehiculos(),cargarChoferes()]);
+        // El resto se carga en segundo plano sin bloquear la apertura del panel.
+        setTimeout(()=>Promise.all([
+            cargarServicios(),cargarAsignaciones(),cargarRutas(),cargarPuntosRuta(),
+            cargarViajes(),cargarInspecciones(),cargarReportes(),cargarMantenimiento(),
+            cargarEventos(),cargarUsuarios()
+        ]).catch(e=>console.warn("Carga secundaria Panel Turbo",e)),150);
+        estadoPanel.ultimaActualizacion=new Date();
+    }catch(e){console.warn("Carga inicial Turbo",e);}
+}
 
 /* =========================================================
    INICIO
@@ -10851,7 +10900,7 @@ document.addEventListener(
         /*
            Primera carga real contra el Backend Maestro.
         */
-        await actualizarDatos();
+        actualizarDatosTurboInicial();
 
     }
 );
