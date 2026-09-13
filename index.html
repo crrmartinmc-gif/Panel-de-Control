@@ -10793,34 +10793,46 @@ function dvFiltroCoincideObjeto(o){
 }
 
 function dvZonaVisiblePorFiltros(o){
-    // FILTRO OPERATIVO: la localidad/CGM y la zona informadas en el
-    // reclamo tienen prioridad. La geometría se usa solo como respaldo
-    // cuando el dato textual no existe. Así, seleccionar BANFIELD muestra
-    // exclusivamente los reclamos de Banfield y no los 230 reclamos globales.
-    const tieneCgmTexto=String(o?.cgm??o?.CGM??o?.Cgm??o?.localidad??o?.LOCALIDAD??o?.localidadNombre??"").trim();
-    const tieneZonaTexto=String(o?.zona??o?.ZONA??o?.zone??"").trim();
+    // FILTRO DE RECLAMOS: la fuente oficial de reclamos entrega LOCALIDAD
+    // (Banfield, Temperley, Lomas, etc.) y ZONA. Para evitar que un dato
+    // geográfico o un campo auxiliar provoque falsos positivos, cuando el
+    // reclamo tiene LOCALIDAD/ZONA usamos esos datos como verdad primaria.
+    const localidadRaw=o?.localidad??o?.LOCALIDAD??o?.localidadNombre??"";
+    const zonaRaw=o?.zona??o?.ZONA??o?.zone??"";
+    const localidad=String(localidadRaw||"").trim();
+    const zona=String(zonaRaw||"").trim();
 
-    if(dvMapFiltros.cgm && tieneCgmTexto){
-        const cgmTexto=dvClaveCgmCanonico(tieneCgmTexto);
-        if(cgmTexto!==dvClaveCgmCanonico(dvMapFiltros.cgm))return false;
-    }
-    if(dvMapFiltros.zona && tieneZonaTexto){
-        const zonaTexto=dvZonaCanonica(o);
-        if(zonaTexto!==dvNormalizar(dvMapFiltros.zona))return false;
-    }
-
-    // Si falta metadata, usamos la geometría del mapa como respaldo espacial.
-    const pos=dvReclamoLatLng(o);
-    if(pos && (dvMapFiltros.cgm||dvMapFiltros.zona) && (!tieneCgmTexto || (dvMapFiltros.zona&&!tieneZonaTexto))){
-        const feature=dvFeatureZonaPorPunto(o);
-        if(feature){
-            const nombre=feature?.properties?.name||feature?.properties?.zona||"";
-            const zGeo=dvZonaCanonica({zona:nombre});
-            return dvZonaPermitidaParaFiltro(zGeo);
+    if(dvMapFiltros.cgm){
+        const cgmSeleccionado=dvClaveCgmCanonico(dvMapFiltros.cgm);
+        if(localidad){
+            if(dvClaveCgmCanonico(localidad)!==cgmSeleccionado)return false;
+        }else if(zona){
+            if(dvInferirCgmPorZona(dvZonaCanonica({zona}))!==cgmSeleccionado)return false;
+        }else{
+            const pos=dvReclamoLatLng(o);
+            if(!pos)return false;
+            const feature=dvFeatureZonaPorPunto(o);
+            if(!feature)return false;
+            const zGeo=dvZonaCanonica({zona:feature?.properties?.name||feature?.properties?.zona||""});
+            if(!dvZonaPermitidaParaFiltro(zGeo))return false;
         }
     }
 
-    return dvFiltroCoincideObjeto(o);
+    if(dvMapFiltros.zona){
+        const zonaSeleccionada=dvNormalizar(dvMapFiltros.zona);
+        if(zona){
+            if(dvZonaCanonica({zona})!==zonaSeleccionada)return false;
+        }else{
+            const pos=dvReclamoLatLng(o);
+            if(!pos)return false;
+            const feature=dvFeatureZonaPorPunto(o);
+            if(!feature)return false;
+            const zGeo=dvZonaCanonica({zona:feature?.properties?.name||feature?.properties?.zona||""});
+            if(zGeo!==zonaSeleccionada)return false;
+        }
+    }
+
+    return true;
 }
 
 function dvZonaGeoVisiblePorFiltros(feature){
@@ -11058,10 +11070,11 @@ async function cargarCapasEstaticasDiaVerde(){
                 // IMPORTANTE: no llamamos dvRenderMapa() aquí.
                 // Eso evita borrar/recrear GPS y evita que parezca que
                 // el mapa se reinicia cuando llegan los reclamos.
-                dvAplicarCapasEstaticas();
-                dvRenderMarcadoresReclamos();
-                dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
+                try{dvAplicarCapasEstaticas();}catch(e){console.warn("Capas zonas Día Verde",e);}
+                try{dvRenderMarcadoresReclamos();}catch(e){console.warn("Pines reclamos Día Verde",e);}
+                try{dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());}catch(e){console.warn("GPS Día Verde",e);}
                 dvActualizarEstadoFiltroMapa();
+                requestAnimationFrame(()=>{try{dvCentrarReclamosFiltrados();}catch(e){}});
             }
 
             dvCargarPendientesGeolocalizacion();
@@ -11116,6 +11129,12 @@ async function cargarCapasEstaticasDiaVerde(){
         }
     }finally{
         dvMapStaticLoading=false;
+        if(dvMap && dvMap.isStyleLoaded() && dvMapStaticLoaded){
+            try{dvAplicarCapasEstaticas();}catch(e){}
+            try{dvRenderMarcadoresReclamos();}catch(e){}
+            try{dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());}catch(e){}
+            requestAnimationFrame(()=>{try{dvCentrarReclamosFiltrados();}catch(e){}});
+        }
         dvActualizarEstadoFiltroMapa();
     }
 }
@@ -11395,17 +11414,32 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
 
     // Cambio de filtro = actualizar GPS, NO reconstruir el mapa completo.
     // dvRenderMapa() limpia/recrea capas y puede alterar el orden visual.
-    const rutas=(dvMap.getStyle()?.layers||[])
-        .filter(l=>String(l.id||"").indexOf("dv-route-")===0 && l.type==="line")
-        .map(l=>({layerId:l.id,sourceId:l.source}))
-        .filter(x=>x.sourceId);
+    // LIMPIEZA ROBUSTA DE RUTAS: no dependemos de que exista la capa.
+    // En una carrera de refresco puede quedar el source sin layer y el
+    // siguiente addSource provoca: "Source dv-route-0 already exists".
+    const styleLayers=dvMap.getStyle()?.layers||[];
+    const routeLayerIds=styleLayers
+        .filter(l=>String(l.id||"").indexOf("dv-route-")===0)
+        .map(l=>l.id);
+    const routeSourceIds=[...new Set(
+        styleLayers
+            .filter(l=>String(l.id||"").indexOf("dv-route-")===0)
+            .map(l=>l.source)
+            .filter(Boolean)
+    )];
 
-    rutas.forEach(x=>{
-        try{if(dvMap.getLayer(x.layerId))dvMap.removeLayer(x.layerId);}catch(e){}
+    routeLayerIds.forEach(id=>{
+        try{if(dvMap.getLayer(id))dvMap.removeLayer(id);}catch(e){}
     });
-    [...new Set(rutas.map(x=>x.sourceId))].forEach(sourceId=>{
-        try{if(dvMap.getSource(sourceId))dvMap.removeSource(sourceId);}catch(e){}
+    routeSourceIds.forEach(id=>{
+        try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}
     });
+
+    // Segunda pasada: también elimina cualquier source dv-route-* que haya
+    // quedado huérfano y por eso no figure asociado a una capa.
+    Object.keys(dvMap.getStyle()?.sources||{})
+        .filter(id=>String(id).indexOf("dv-route-")===0)
+        .forEach(id=>{try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}});
 
     const puntos=(Array.isArray(gps)?gps:[]).map((p,i)=>({
         ...p,
@@ -11650,26 +11684,21 @@ function dvAplicarFiltrosMapa(){
     }
 
     if(!dvMapStaticLoaded){
-        if(status)status.textContent="⏳ Cargando zonas y reclamos...";
-        cargarCapasEstaticasDiaVerde();
+        if(status)status.textContent="⏳ Cargando reclamos de Día Verde...";
+        // No reiniciamos la carga. Cuando termine, cargarCapasEstaticasDiaVerde
+        // reaplica el filtro pendiente.
+        if(!dvMapStaticLoading)cargarCapasEstaticasDiaVerde();
         return;
     }
 
-    // 1. ZONAS: cambia solo el filtro de las capas.
-    dvAplicarCapasEstaticas();
-
-    // 2. RECLAMOS: actualiza únicamente su source GeoJSON.
-    // Esto evita que los pines desaparezcan al reconstruir el GPS.
-    dvRenderMarcadoresReclamos();
-
-    // 3. GPS: actualiza únicamente rutas/puntos GPS.
-    dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
-
-    const zonasSeleccionadas=(Array.isArray(dvMapZonas)?dvMapZonas:[])
-        .filter(dvZonaGeoVisiblePorFiltros);
+    // El filtro de reclamos es independiente del GPS. Primero actualizamos
+    // zonas y reclamos y dejamos el GPS en un bloque aislado: un error de una
+    // ruta nunca puede devolver los 233 reclamos al mapa.
+    try{dvAplicarCapasEstaticas();}catch(e){console.warn("Filtro zonas Día Verde",e);}
+    try{dvRenderMarcadoresReclamos();}catch(e){console.warn("Filtro reclamos Día Verde",e);}
 
     const reclamosVisibles=(dvMapReclamos||[])
-        .filter(d=>dvFiltroCoincideObjeto(d))
+        .filter(d=>dvZonaVisiblePorFiltros(d))
         .filter(d=>{
             if(!reclamo)return true;
             const realizado=dvReclamoRealizado(d);
@@ -11677,9 +11706,25 @@ function dvAplicarFiltrosMapa(){
         })
         .filter(d=>dvReclamoLatLng(d));
 
+    try{
+        dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
+    }catch(e){
+        console.warn("Filtro GPS Día Verde",e);
+    }
+
     dvActualizarEstadoFiltroMapa();
 
-    requestAnimationFrame(()=>dvCentrarReclamosFiltrados());
+    requestAnimationFrame(()=>{
+        try{dvCentrarReclamosFiltrados();}catch(e){console.warn("Centrado filtro Día Verde",e);}
+    });
+
+    console.info("FILTRO RECLAMOS APLICADO:", {
+        cgm:cgm||"TODOS",
+        zona:zona||"TODAS",
+        estado:reclamo||"TODOS",
+        visibles:reclamosVisibles.length,
+        total:dvMapReclamos.length
+    });
 }
 
 function dvLimpiarFiltrosMapa(){
@@ -11696,7 +11741,7 @@ function dvLimpiarFiltrosMapa(){
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV8";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV9";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
@@ -11776,7 +11821,7 @@ async function cargarMapaDiaVerde(){
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
-            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 17";
+            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 18";
             badge.classList.remove("badge-red");
             badge.classList.add("badge-green");
         }
