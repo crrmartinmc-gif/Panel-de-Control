@@ -10367,7 +10367,7 @@ function dvAsegurarCapasReclamos(){
         dvMap.addSource("dv-reclamos-pins",{type:"geojson",data:{type:"FeatureCollection",features:[]}});
         dvMap.addLayer({id:"dv-reclamos-pin-circle",type:"circle",source:"dv-reclamos-pins",paint:{
             "circle-radius":9,
-            "circle-color":["match",["get","estado"],"realizado","#18a558","#c62828"],
+            "circle-color":["match",["get","estado"],"realizado","#0ea5e9","#ff7a00"],
             "circle-stroke-color":"#ffffff",
             "circle-stroke-width":3,
             "circle-opacity":1
@@ -10444,7 +10444,15 @@ function dvListaZonasCgm(cgm){
     return DV_CGM_ZONAS[dvNormalizar(cgm).toUpperCase()]?.slice()||[];
 }
 function dvZonaCanonica(o){
-    const c=dvNormalizar(o?.cgm??o?.CGM??o?.Cgm??"").toUpperCase();
+    let c=dvNormalizar(o?.cgm??o?.CGM??o?.Cgm??"").toUpperCase();
+    const localidad=dvNormalizar(o?.localidad??o?.LOCALIDAD??o?.localidadNombre??"");
+    if(!c){
+        if(localidad.includes("BANFIELD")) c="BANFIELD";
+        else if(localidad.includes("TEMPERLEY")) c="TEMPERLEY";
+        else if(localidad.includes("LOMAS")) c="LOMAS";
+        else if(localidad.includes("LLAVALLOL")) c="LLAVALLOL";
+        else if(localidad.includes("TURDERA")) c="TURDERA";
+    }
     const z=dvNormalizar(o?.zona??o?.ZONA??o?.zone??"");
     if(!z)return "";
     if(c.includes("BANFIELD")){if(z==="este"||z==="banfield este")return dvNormalizar("Banfield Este");if(z==="oeste"||z==="banfield oeste")return dvNormalizar("Banfield Oeste");if(z==="3"||z==="banfield 3")return dvNormalizar("Banfield 3");}
@@ -10460,7 +10468,18 @@ function dvInferirCgmPorZona(zona){
     if(z.includes("banfield"))return "BANFIELD";if(z.includes("temperley"))return "TEMPERLEY";if(z.includes("lomas"))return "LOMAS";if(z.includes("llavallol"))return "LLAVALLOL";if(z.includes("turdera"))return "TURDERA";
     return "";
 }
-function dvCgmObjeto(o){return dvNormalizar(o?.cgm??o?.CGM??o?.Cgm??"").toUpperCase()||dvInferirCgmPorZona(dvZonaCanonica(o));}
+function dvCgmObjeto(o){
+    let c=dvNormalizar(o?.cgm??o?.CGM??o?.Cgm??"").toUpperCase();
+    if(!c){
+        const l=dvNormalizar(o?.localidad??o?.LOCALIDAD??o?.localidadNombre??"");
+        if(l.includes("BANFIELD"))c="BANFIELD";
+        else if(l.includes("TEMPERLEY"))c="TEMPERLEY";
+        else if(l.includes("LOMAS"))c="LOMAS";
+        else if(l.includes("LLAVALLOL"))c="LLAVALLOL";
+        else if(l.includes("TURDERA"))c="TURDERA";
+    }
+    return c||dvInferirCgmPorZona(dvZonaCanonica(o));
+}
 function dvFiltroCoincideObjeto(o){
     const z=dvZonaCanonica(o);
     const c=dvInferirCgmPorZona(z) || dvCgmObjeto(o);
@@ -10622,6 +10641,8 @@ async function dvGeocodificarReclamosSinCoordenadas(){
     const trabajadores=Math.min(2,pendientes.length);
     await Promise.all(Array.from({length:trabajadores},()=>trabajador()));
     try{localStorage.setItem(cacheKey,JSON.stringify(cache));}catch(e){}
+    // Actualizar el contador después de persistir las coordenadas automáticas.
+    try{await dvCargarPendientesGeolocalizacion();}catch(e){}
 }
 
 async function dvGuardarGeolocalizacionAutomatica(d,lat,lng){
