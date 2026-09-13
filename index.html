@@ -1988,7 +1988,27 @@ textarea.form-control{
 #mapa .dv-map-empty{padding:16px;color:var(--muted);font-size:12px;}
 #mapa .maplibregl-map{font-family:Inter,Arial,sans-serif;}
 #mapa .maplibregl-ctrl-top-left{margin-top:8px;margin-left:8px;}
-#mapa .maplibregl-popup-content{font-family:Inter,Arial,sans-serif;border-radius:10px;box-shadow:0 8px 25px rgba(0,0,0,.28);}
+#mapa .maplibregl-popup{z-index:10000 !important;}
+#mapa .maplibregl-popup-content{font-family:Inter,Arial,sans-serif;border-radius:10px;box-shadow:0 8px 25px rgba(0,0,0,.28);background:#fff !important;color:#17231c !important;}
+#mapa .maplibregl-popup-content *{color:#17231c;}
+#mapa .maplibregl-popup-close-button{color:#17231c !important;font-size:18px;font-weight:900;z-index:10001;}
+#mapa .dv-panel-reclamo-marker{position:relative;z-index:30;}
+#mapa .dv-panel-reclamo-marker.pendiente,#mapa .dv-panel-reclamo-marker.realizado{color:#fff !important;}
+#mapa .dv-map-popup .maplibregl-popup-content{padding:12px 13px !important;}
+#mapa .dv-popup-card{min-width:220px;color:#17231c !important;font-family:Inter,Arial,sans-serif;font-size:12px;line-height:1.45;}
+#mapa .dv-popup-card *{color:#17231c !important;}
+#mapa .dv-popup-title{font-size:14px;font-weight:900;color:#176331 !important;margin-bottom:6px;}
+#mapa .dv-popup-row{color:#17231c !important;}
+#mapa .dv-popup-state{margin-top:5px;font-weight:900;}
+#mapa .dv-popup-state.realizado{color:#087a3d !important;}
+#mapa .dv-popup-state.pendiente{color:#b42318 !important;}
+#mapa .dv-popup-sub{margin-top:4px;color:#5a665f !important;font-size:11px;}
+#mapa .dv-map-filterbar{position:absolute;left:14px;top:72px;z-index:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap;max-width:calc(100% - 320px);}
+#mapa .dv-map-filter{height:34px;border:1px solid #cfd7e3;border-radius:8px;background:#fff;color:#17231c;font:600 11px Inter,Arial,sans-serif;padding:0 9px;box-shadow:0 4px 14px rgba(0,0,0,.18);outline:none;}
+#mapa .dv-map-filter:focus{border-color:#18a558;box-shadow:0 0 0 2px rgba(24,165,88,.18),0 4px 14px rgba(0,0,0,.18);}
+#mapa .dv-map-filter-reset{height:34px;border:0;border-radius:8px;background:#17231c;color:#fff;font:800 11px Inter,Arial,sans-serif;padding:0 11px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18);}
+#mapa .dv-map-filter-reset:hover{background:#0e5f32;}
+@media(max-width:900px){#mapa .dv-map-filterbar{position:relative;left:auto;top:auto;max-width:none;padding:8px;background:#0f1b2d;border-bottom:1px solid var(--border);}}
 #mapa .dv-map-marker{width:20px;height:20px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:pointer;}
 #mapa .dv-map-marker-wrap{display:flex;align-items:center;justify-content:center;width:24px;height:24px;}
 #mapa .dv-map-marker-dot{width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);}
@@ -2836,6 +2856,21 @@ textarea.form-control{
                     <span>Puntos GPS: <strong id="dvMapPuntos">0</strong></span>
                     <span>Última actualización: <strong id="dvMapActualizacion">-</strong></span>
                 </div>
+            </div>
+
+            <div id="dvMapFilterBar" class="dv-map-filterbar">
+                <select id="dvFiltroZonaMapa" class="dv-map-filter" title="Filtrar por zona" onchange="dvAplicarFiltrosMapa()">
+                    <option value="">Todas las zonas</option>
+                </select>
+                <select id="dvFiltroChoferMapa" class="dv-map-filter" title="Filtrar por chofer" onchange="dvAplicarFiltrosMapa()">
+                    <option value="">Todos los choferes</option>
+                </select>
+                <select id="dvFiltroReclamoMapa" class="dv-map-filter" title="Filtrar reclamos" onchange="dvAplicarFiltrosMapa()">
+                    <option value="">Todos los reclamos</option>
+                    <option value="pendiente">Solo pendientes</option>
+                    <option value="realizado">Solo realizados hoy</option>
+                </select>
+                <button type="button" class="dv-map-filter-reset" onclick="dvLimpiarFiltrosMapa()">Limpiar filtros</button>
             </div>
 
             <div id="dvMap" class="dv-map"></div>
@@ -10028,6 +10063,9 @@ let dvMapReclamos = [];
 let dvMapReclamoMarkers = [];
 let dvMapZonas = [];
 let dvMapZoneHandlersBound = false;
+let dvMapGpsData = [];
+let dvMapHistoricoData = [];
+let dvMapFiltros = {zona:"",chofer:"",reclamo:""};
 const DV_ZONAS_ACCION = "zonasDiaVerde";
 const DV_RECLAMOS_ACCION = "reclamosDiaVerde";
 const DV_MAP_COLORS = ["#18a558","#2f80ed","#f2991f","#e74c3c","#8e5de7","#00a6a6"];
@@ -10196,12 +10234,13 @@ function dvCrearMarkerReclamo(d){
     el.className="dv-panel-reclamo-marker "+(realizado?"realizado":"pendiente");
     el.innerHTML="<span>♻</span>";
     el.title=realizado?"Realizado hoy":"Pendiente";
-    const popup=new maplibregl.Popup({offset:18,maxWidth:"280px"}).setHTML(`
-        <div style="min-width:220px;color:#17231c;font-family:Arial,sans-serif">
-            <div style="font-size:14px;font-weight:900;color:#176331;margin-bottom:6px">♻️ Vecino Reciclador</div>
-            <div>📍 <strong>${dvEscapar(dvDireccionReclamo(d))}</strong></div>
-            <div style="margin-top:5px;font-weight:800">${realizado?"🟢 Realizado hoy":"🔴 Pendiente"}</div>
-            <div style="margin-top:4px;color:#5a665f">${dvEscapar(d.localidad || "")} · ${dvEscapar(d.zona || "")}</div>
+    el.style.zIndex="30";
+    const popup=new maplibregl.Popup({offset:18,maxWidth:"280px",className:"dv-map-popup"}).setHTML(`
+        <div class="dv-popup-card">
+            <div class="dv-popup-title">♻️ Vecino Reciclador</div>
+            <div class="dv-popup-row">📍 <strong>${dvEscapar(dvDireccionReclamo(d))}</strong></div>
+            <div class="dv-popup-state ${realizado?"realizado":"pendiente"}">${realizado?"🟢 Realizado hoy":"🔴 Pendiente"}</div>
+            <div class="dv-popup-sub">${dvEscapar(d.localidad || "")} · ${dvEscapar(d.zona || "")}</div>
         </div>`);
     const marker=new maplibregl.Marker({element:el,anchor:"bottom"})
         .setLngLat([pos[1],pos[0]])
@@ -10219,15 +10258,30 @@ function dvLimpiarMarcadoresReclamos(){
 function dvRenderMarcadoresReclamos(){
     if(!dvMap || !dvMap.isStyleLoaded()) return;
     dvLimpiarMarcadoresReclamos();
-    dvMapReclamos.forEach(d=>dvCrearMarkerReclamo(d));
+    const zona=dvNormalizar(dvMapFiltros.zona);
+    const estado=dvMapFiltros.reclamo;
+    dvMapReclamos
+        .filter(d=>{
+            const coincideZona=!zona || dvNormalizar(d.zona)===zona || dvNormalizar(d.zona).includes(zona) || zona.includes(dvNormalizar(d.zona));
+            const realizado=dvReclamoRealizado(d);
+            const coincideEstado=!estado || (estado==="realizado" ? realizado : !realizado);
+            return coincideZona && coincideEstado;
+        })
+        .forEach(d=>dvCrearMarkerReclamo(d));
 }
 
 function dvAplicarCapasEstaticas(){
     if(!dvMap || !dvMap.isStyleLoaded()) return;
 
+    const filtroZona=dvNormalizar(dvMapFiltros.zona);
+    const zonasFiltradas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(f=>{
+        if(!filtroZona) return true;
+        const n=dvNormalizar(f?.properties?.name ?? f?.properties?.zona ?? f?.name ?? "");
+        return n===filtroZona || n.includes(filtroZona) || filtroZona.includes(n);
+    });
     const zonas={
         type:"FeatureCollection",
-        features:Array.isArray(dvMapZonas)?dvMapZonas:[]
+        features:zonasFiltradas
     };
 
     if(!dvMap.getSource("dv-zonas")){
@@ -10392,6 +10446,8 @@ function dvRenderMapa(gps,historico){
             const ultimo=lista[lista.length-1];
             const markerEl=document.createElement("div");
             markerEl.className="dv-map-marker-dot";
+            markerEl.style.position="relative";
+            markerEl.style.zIndex="20";
             markerEl.style.background=color;
             const popup=new maplibregl.Popup({offset:16,maxWidth:"280px"}).setHTML(`
                 <div style="min-width:210px">
@@ -10453,6 +10509,59 @@ function dvRenderMapa(gps,historico){
     else dvMap.once("load",renderizar);
 }
 
+function dvValorNombreSeguro(p){
+    return String(p?.nombre ?? p?.NOMBRE ?? "").trim();
+}
+
+function dvPoblarFiltrosMapa(){
+    const zonaSel=document.getElementById("dvFiltroZonaMapa");
+    const choferSel=document.getElementById("dvFiltroChoferMapa");
+    if(!zonaSel || !choferSel) return;
+
+    const zonaActual=dvMapFiltros.zona;
+    const choferActual=dvMapFiltros.chofer;
+    const zonas=[...new Set((Array.isArray(dvMapZonas)?dvMapZonas:[]).map(f=>String(f?.properties?.name ?? f?.properties?.zona ?? f?.name ?? "").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+    const choferes=[...new Set(dvMapGpsData.map(dvValorNombreSeguro).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+
+    zonaSel.innerHTML='<option value="">Todas las zonas</option>'+zonas.map(z=>`<option value="${dvEscapar(z)}">${dvEscapar(z)}</option>`).join("");
+    choferSel.innerHTML='<option value="">Todos los choferes</option>'+choferes.map(c=>`<option value="${dvEscapar(c)}">${dvEscapar(c)}</option>`).join("");
+    zonaSel.value=zonas.includes(zonaActual)?zonaActual:"";
+    choferSel.value=choferes.includes(choferActual)?choferActual:"";
+}
+
+function dvAplicarFiltrosMapa(){
+    const zonaSel=document.getElementById("dvFiltroZonaMapa");
+    const choferSel=document.getElementById("dvFiltroChoferMapa");
+    const reclamoSel=document.getElementById("dvFiltroReclamoMapa");
+    dvMapFiltros={
+        zona:zonaSel?.value || "",
+        chofer:choferSel?.value || "",
+        reclamo:reclamoSel?.value || ""
+    };
+    if(!dvMap || !dvMap.isStyleLoaded()) return;
+    const zona=dvNormalizar(dvMapFiltros.zona);
+    const chofer=dvNormalizar(dvMapFiltros.chofer);
+    const gpsFiltrado=dvMapGpsData.filter(p=>{
+        const z=dvNormalizar(p?.zona ?? p?.ZONA ?? "");
+        const n=dvNormalizar(dvValorNombreSeguro(p));
+        const okZona=!zona || z===zona || z.includes(zona) || zona.includes(z);
+        const okChofer=!chofer || n===chofer;
+        return okZona && okChofer;
+    });
+    dvRenderMapa(gpsFiltrado,dvMapHistoricoData);
+}
+
+function dvLimpiarFiltrosMapa(){
+    dvMapFiltros={zona:"",chofer:"",reclamo:""};
+    const zonaSel=document.getElementById("dvFiltroZonaMapa");
+    const choferSel=document.getElementById("dvFiltroChoferMapa");
+    const reclamoSel=document.getElementById("dvFiltroReclamoMapa");
+    if(zonaSel) zonaSel.value="";
+    if(choferSel) choferSel.value="";
+    if(reclamoSel) reclamoSel.value="";
+    if(dvMap && dvMap.isStyleLoaded()) dvRenderMapa(dvMapGpsData,dvMapHistoricoData);
+}
+
 async function cargarMapaDiaVerde(){
     const dot=document.getElementById("dvMapLiveDot");
     const status=document.getElementById("dvMapStatusText");
@@ -10470,7 +10579,19 @@ async function cargarMapaDiaVerde(){
             leerHojaDiaVerde(DIA_VERDE_GPS_GID),
             leerHojaDiaVerde(DIA_VERDE_HISTORICO_GID)
         ]);
-        dvRenderMapa(gps,historico);
+        dvMapGpsData=Array.isArray(gps)?gps:[];
+        dvMapHistoricoData=Array.isArray(historico)?historico:[];
+        dvPoblarFiltrosMapa();
+        const zona=dvNormalizar(dvMapFiltros.zona);
+        const chofer=dvNormalizar(dvMapFiltros.chofer);
+        const gpsFiltrado=dvMapGpsData.filter(p=>{
+            const z=dvNormalizar(p?.zona ?? p?.ZONA ?? "");
+            const n=dvNormalizar(dvValorNombreSeguro(p));
+            const okZona=!zona || z===zona || z.includes(zona) || zona.includes(z);
+            const okChofer=!chofer || n===chofer;
+            return okZona && okChofer;
+        });
+        dvRenderMapa(gpsFiltrado,dvMapHistoricoData);
         if(dot) dot.classList.remove("off");
         const badge=document.getElementById("dvMapBadge");
         if(badge){badge.textContent="GPS + ZONAS + RECLAMOS";badge.classList.remove("badge-red");badge.classList.add("badge-green");}
