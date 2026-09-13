@@ -2003,7 +2003,7 @@ textarea.form-control{
 .dv-panel-reclamo-marker{
     width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
     display:flex;align-items:center;justify-content:center;border:3px solid #fff;
-    box-shadow:0 2px 8px rgba(0,0,0,.35);font-size:16px;font-weight:900;cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,.35);font-size:16px;font-weight:900;cursor:pointer;z-index:30;
 }
 .dv-panel-reclamo-marker span{display:block;transform:rotate(45deg)}
 .dv-panel-reclamo-marker.pendiente{background:#c62828;color:#fff}
@@ -10030,12 +10030,7 @@ let dvMapZonas = [];
 let dvMapZoneHandlersBound = false;
 const DV_ZONAS_ACCION = "zonasDiaVerde";
 const DV_RECLAMOS_ACCION = "reclamosDiaVerde";
-
-const DV_MAP_COLORS = [
-    "#22c55e","#3b82f6","#f59e0b","#ef4444","#8b5cf6",
-    "#06b6d4","#ec4899","#84cc16","#f97316","#14b8a6",
-    "#a855f7","#eab308"
-];
+const DV_MAP_COLORS = ["#18a558","#2f80ed","#f2991f","#e74c3c","#8e5de7","#00a6a6"];
 
 function dvEscapar(valor){
     return String(valor ?? "")
@@ -10248,6 +10243,7 @@ async function cargarCapasEstaticasDiaVerde(){
         dvMapZonas=Array.isArray(geo.features)?geo.features:[];
         dvMapReclamos=Array.isArray(datos.reclamos)?datos.reclamos:[];
         dvMapEvidencias=Array.isArray(datos.evidencias)?datos.evidencias:[];
+        console.info("Día Verde reclamos recibidos:",dvMapReclamos.length,"con coordenadas:",dvMapReclamos.filter(d=>dvReclamoLatLng(d)).length);
 
         // Primero mostramos zonas y los reclamos que ya tienen coordenadas/cache.
         // Las direcciones restantes se geocodifican en segundo plano para no bloquear el mapa.
@@ -10305,47 +10301,6 @@ async function dvGeocodificarReclamosSinCoordenadas(){
     const trabajadores=Math.min(2,pendientes.length);
     await Promise.all(Array.from({length:trabajadores},()=>trabajador()));
     try{localStorage.setItem(cacheKey,JSON.stringify(cache));}catch(e){}
-}
-
-function dvNombrePunto(p){
-    return String(p?.nombre ?? p?.NOMBRE ?? "Sin nombre").trim() || "Sin nombre";
-}
-
-function dvUsuarioPunto(p){
-    return String(p?.usuario ?? p?.USUARIO ?? "-").trim() || "-";
-}
-
-function dvZonaPunto(p){
-    return String(p?.zona ?? p?.ZONA ?? "-").trim() || "-";
-}
-
-function dvLatPunto(p){
-    const n=Number(p?.latitud ?? p?.LATITUD ?? p?.lat ?? p?.Lat ?? p?.latitude ?? p?.Latitud);
-    return Number.isFinite(n) ? n : null;
-}
-
-function dvLngPunto(p){
-    const n=Number(p?.longitud ?? p?.LONGITUD ?? p?.lng ?? p?.Lng ?? p?.lon ?? p?.Lon ?? p?.longitude ?? p?.Longitud);
-    return Number.isFinite(n) ? n : null;
-}
-
-function dvFechaPunto(p){
-    return p?.timestamp ?? p?.TIMESTAMP ?? p?.fecha_hora ?? p?.FECHA_HORA ?? p?.fechaHora ?? p?.fecha ?? p?.FECHA ?? null;
-}
-
-function dvHoraTexto(valor){
-    if(!valor) return "-";
-    const d=new Date(valor);
-    if(Number.isNaN(d.getTime())) return String(valor);
-    return d.toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
-}
-
-function dvEsHoy(valor){
-    if(!valor) return false;
-    const d=new Date(valor);
-    if(Number.isNaN(d.getTime())) return false;
-    const hoy=new Date();
-    return d.getFullYear()===hoy.getFullYear() && d.getMonth()===hoy.getMonth() && d.getDate()===hoy.getDate();
 }
 
 function dvRenderMapa(gps,historico){
