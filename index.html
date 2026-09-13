@@ -10089,6 +10089,7 @@ let dvMapFiltros = {cgm:"",zona:"",chofer:"",reclamo:""};
 let dvPendientesGeo=[];
 const DV_PENDIENTES_GEO_ACCION="pendientesGeolocalizacionDiaVerde";
 const DV_ZONAS_ACCION = "zonasDiaVerde";
+const DV_ZONAS_LOCAL_URL = "./zonas.geojson";
 const DV_RECLAMOS_ACCION = "reclamosDiaVerde";
 const DV_MAP_COLORS = ["#18a558","#2f80ed","#f2991f","#e74c3c","#8e5de7","#00a6a6"];
 
@@ -10489,6 +10490,7 @@ function dvRenderMarcadoresReclamos(){
     }).filter(Boolean);
     const src=dvMap.getSource("dv-reclamos-pins");
     if(src) src.setData({type:"FeatureCollection",features});
+    dvOrdenarCapasMapa();
 }
 
 function dvAplicarCapasEstaticas(){
@@ -10517,35 +10519,45 @@ function dvAplicarCapasEstaticas(){
         dvMapZoneHandlersBound=true;
     }
     dvRenderMarcadoresReclamos();
+    dvOrdenarCapasMapa();
 }
 
 async function cargarCapasEstaticasDiaVerde(){
     if(dvMapStaticLoaded || dvMapStaticLoading) return;
     dvMapStaticLoading=true;
     try{
+        // ZONAS: se leen directamente del mismo repositorio de GitHub que contiene index.html.
+        // Así el mapa no depende de que el backend entregue el GeoJSON.
+        // RECLAMOS: continúan viniendo del backend, porque son datos dinámicos.
         const [zonaResp,reclamoResp]=await Promise.all([
-            fetch(BACKEND_URL+"?accion="+DV_ZONAS_ACCION+"&t="+Date.now(),{cache:"no-store"}),
+            fetch(DV_ZONAS_LOCAL_URL+"?t="+Date.now(),{cache:"no-store"}),
             fetch(BACKEND_URL+"?accion="+DV_RECLAMOS_ACCION+"&t="+Date.now(),{cache:"no-store"})
         ]);
-        if(!zonaResp.ok) throw new Error("Backend zonas HTTP "+zonaResp.status);
+        if(!zonaResp.ok) throw new Error("zonas.geojson HTTP "+zonaResp.status);
         if(!reclamoResp.ok) throw new Error("Backend reclamos HTTP "+reclamoResp.status);
-        const jz=await zonaResp.json();
+
+        const geo=await zonaResp.json();
         const jr=await reclamoResp.json();
-        if(!jz || !jz.ok) throw new Error((jz&&jz.error)||"No se pudieron cargar las zonas");
+        if(!geo || geo.type!=="FeatureCollection" || !Array.isArray(geo.features)){
+            throw new Error("zonas.geojson no contiene un FeatureCollection válido");
+        }
         if(!jr || !jr.ok) throw new Error((jr&&jr.error)||"No se pudieron cargar los reclamos");
-        const zd=jz.datos||{};
+
         const datos=jr.datos||{};
-        const geo=zd.geojson||{};
-        dvMapZonas=Array.isArray(geo.features)?geo.features:[];
+        dvMapZonas=geo.features;
         dvMapReclamos=Array.isArray(datos.reclamos)?datos.reclamos:[];
         dvMapEvidencias=Array.isArray(datos.evidencias)?datos.evidencias:[];
-        dvGuardarCache("zonas",dvMapZonas);dvGuardarCache("reclamos",dvMapReclamos);dvGuardarCache("evidencias",dvMapEvidencias);
-        console.info("Día Verde reclamos recibidos:",dvMapReclamos.length,"con coordenadas:",dvMapReclamos.filter(d=>dvReclamoLatLng(d)).length);
+        dvGuardarCache("zonas",dvMapZonas);
+        dvGuardarCache("reclamos",dvMapReclamos);
+        dvGuardarCache("evidencias",dvMapEvidencias);
+
+        console.info("Día Verde zonas locales:",dvMapZonas.length,"· reclamos:",dvMapReclamos.length,"· con coordenadas:",dvMapReclamos.filter(d=>dvReclamoLatLng(d)).length);
 
         // Primero mostramos zonas y los reclamos que ya tienen coordenadas/cache.
         // Las direcciones restantes se geocodifican en segundo plano para no bloquear el mapa.
         dvMapStaticLoaded=true;
         if(dvMap && dvMap.isStyleLoaded()) dvAplicarCapasEstaticas();
+
         // La geocodificación NO bloquea la carga inicial. Arranca unos segundos después.
         if(!dvMapGeocodingProgramado){
             dvMapGeocodingProgramado=true;
@@ -10558,7 +10570,7 @@ async function cargarCapasEstaticasDiaVerde(){
     }catch(error){
         console.error("Capas Día Verde:",error);
         const status=document.getElementById("dvMapStatusText");
-        if(status) status.textContent="Día Verde conectado · GPS activo · capas pendientes";
+        if(status) status.textContent="Día Verde conectado · GPS activo · error cargando capas";
     }finally{
         dvMapStaticLoading=false;
     }
@@ -11113,21 +11125,47 @@ function dvSeleccionarPendienteGeo(clave){
 }
 
 function dvOrdenarCapasMapa(){
-    if(!dvMap||!dvMap.isStyleLoaded())return;
-    const existe=id=>!!dvMap.getLayer(id);
-    // 1) Inferior: zonas
-    if(existe("dv-zonas-fill"))dvMap.moveLayer("dv-zonas-fill");
-    if(existe("dv-zonas-line"))dvMap.moveLayer("dv-zonas-line");
-    // 2) Medio: recorridos GPS y sus puntos
-    const capasMedias=[];
-    dvMap.getStyle().layers.forEach(l=>{
-        if((l.id||"").indexOf("dv-route-")===0 && l.type==="line")capasMedias.push(l.id);
+    if(!dvMap || !dvMap.isStyleLoaded()) return;
+    const existe=id=>!!(id && dvMap.getLayer(id));
+
+    // Orden operativo fijo del mapa:
+    // 1) ZONAS = inferior
+    // 2) RECORRIDOS GPS = medio
+    // 3) RECLAMOS = superior
+    const zonas=[];
+    ["dv-zonas-fill","dv-zonas-line"].forEach(id=>{if(existe(id))zonas.push(id);});
+
+    const recorridos=[];
+    (dvMap.getStyle()?.layers||[]).forEach(l=>{
+        const id=l.id||"";
+        if((id.indexOf("dv-route-")===0 && l.type==="line") || id==="dv-gps-puntos-circles" || id==="dv-gps-puntos-labels"){
+            recorridos.push(id);
+        }
     });
-    capasMedias.forEach(id=>{try{if(existe(id)&&existe("dv-reclamos-pin-circle"))dvMap.moveLayer(id,"dv-reclamos-pin-circle")}catch(e){}});
-    ["dv-gps-puntos-circles","dv-gps-puntos-labels"].forEach(id=>{try{if(existe(id)&&existe("dv-reclamos-pin-circle"))dvMap.moveLayer(id,"dv-reclamos-pin-circle")}catch(e){}});
-    // 3) Superior: reclamos
-    if(existe("dv-reclamos-pin-circle"))dvMap.moveLayer("dv-reclamos-pin-circle");
-    if(existe("dv-reclamos-pin-icon"))dvMap.moveLayer("dv-reclamos-pin-icon");
+
+    const reclamos=[];
+    ["dv-reclamos-pin-circle","dv-reclamos-pin-icon"].forEach(id=>{if(existe(id))reclamos.push(id);});
+
+    // Primero aseguramos que las zonas estén debajo de los recorridos.
+    recorridos.forEach(id=>{
+        try{
+            if(existe(id)){
+                const ancla=reclamos[0]||null;
+                if(ancla) dvMap.moveLayer(id,ancla);
+                else dvMap.moveLayer(id);
+            }
+        }catch(e){}
+    });
+
+    // Finalmente los reclamos quedan arriba de todo.
+    reclamos.forEach(id=>{try{dvMap.moveLayer(id);}catch(e){}});
+
+    // Si por algún cambio futuro se agregara una capa operativa después,
+    // las zonas se vuelven a dejar abajo explícitamente.
+    if(recorridos.length){
+        const primeraRuta=recorridos[0];
+        zonas.forEach(id=>{try{if(existe(id))dvMap.moveLayer(id,primeraRuta);}catch(e){}});
+    }
 }
 
 </script>
