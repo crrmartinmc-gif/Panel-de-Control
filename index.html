@@ -10841,24 +10841,62 @@ function dvZonaGeoVisiblePorFiltros(feature){
     return dvZonaPermitidaParaFiltro(z);
 }
 
+function dvObtenerReclamosFiltradosMapa(){
+    const estado=String(dvMapFiltros.reclamo||"").trim();
+    const chofer=String(dvMapFiltros.chofer||"").trim();
+
+    return (Array.isArray(dvMapReclamos)?dvMapReclamos:[]).filter(d=>{
+        // 1) FILTRO GEOGRÁFICO: CGM/ZONA es obligatorio.
+        if(!dvZonaVisiblePorFiltros(d)) return false;
+
+        // 2) Si se eligió chofer, se aplica sobre los reclamos que tengan
+        //    esa información. Si el reclamo no tiene chofer, no inventamos
+        //    una coincidencia.
+        if(chofer){
+            const nombre=String(
+                d.chofer??d.nombreChofer??d.usuario??d.NOMBRE_CHOFER??""
+            ).trim();
+            if(!nombre || dvNormalizar(nombre)!==dvNormalizar(chofer)) return false;
+        }
+
+        // 3) Estado del reclamo.
+        if(estado){
+            const realizado=dvReclamoRealizado(d);
+            if(estado==="realizado" ? !realizado : realizado) return false;
+        }
+
+        // 4) SOLO entran al source los reclamos que realmente tienen
+        //    coordenadas. Los demás aparecen exclusivamente en
+        //    “Sin geolocalizar”.
+        return !!dvReclamoLatLng(d);
+    });
+}
+
 function dvRenderMarcadoresReclamos(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
     dvAsegurarCapasReclamos();
-    const estado=dvMapFiltros.reclamo;
-    const features=dvMapReclamos.filter(d=>{
-        if(!dvZonaVisiblePorFiltros(d))return false;
-        const realizado=dvReclamoRealizado(d);
-        return !estado||(estado==="realizado"?realizado:!realizado);
-    }).map(d=>{
+
+    const reclamosVisibles=dvObtenerReclamosFiltradosMapa();
+    const features=reclamosVisibles.map(d=>{
         const pos=dvReclamoLatLng(d);
-        if(!pos)return null;
         return {type:"Feature",geometry:{type:"Point",coordinates:[pos[1],pos[0]]},properties:{
             clave:dvClaveReclamo(d),
             estado:dvReclamoRealizado(d)?"realizado":"pendiente"
         }};
-    }).filter(Boolean);
+    });
+
     const src=dvMap.getSource("dv-reclamos-pins");
-    if(src) src.setData({type:"FeatureCollection",features});
+    if(src){
+        // Primero vaciamos y luego cargamos el resultado filtrado.
+        // Así nunca quedan pines de un filtro anterior.
+        src.setData({type:"FeatureCollection",features:[]});
+        requestAnimationFrame(()=>{
+            try{
+                const actual=dvMap.getSource("dv-reclamos-pins");
+                if(actual) actual.setData({type:"FeatureCollection",features});
+            }catch(e){ console.warn("Actualización pines Día Verde",e); }
+        });
+    }
     dvOrdenarCapasMapa();
 }
 
@@ -11553,22 +11591,7 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
 function dvCentrarReclamosFiltrados(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
 
-    const reclamo=String(dvMapFiltros.reclamo||"").trim();
-    const chofer=String(dvMapFiltros.chofer||"").trim();
-
-    const reclamos=(Array.isArray(dvMapReclamos)?dvMapReclamos:[])
-        .filter(d=>dvZonaVisiblePorFiltros(d))
-        .filter(d=>{
-            if(chofer){
-                const nombre=String(
-                    d.chofer??d.nombreChofer??d.usuario??d.NOMBRE_CHOFER??""
-                ).trim();
-                if(nombre && dvNormalizar(nombre)!==dvNormalizar(chofer))return false;
-            }
-            if(!reclamo)return true;
-            const realizado=dvReclamoRealizado(d);
-            return reclamo==="realizado"?realizado:!realizado;
-        })
+    const reclamos=dvObtenerReclamosFiltradosMapa()
         .map(d=>dvReclamoLatLng(d))
         .filter(Boolean);
 
@@ -11644,15 +11667,7 @@ function dvActualizarEstadoFiltroMapa(){
         return;
     }
     const zonasSeleccionadas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
-    const reclamosVisibles=(dvMapReclamos||[])
-        .filter(d=>dvZonaVisiblePorFiltros(d))
-        .filter(d=>{
-            const reclamo=dvMapFiltros.reclamo;
-            if(!reclamo)return true;
-            const realizado=dvReclamoRealizado(d);
-            return reclamo==="realizado"?realizado:!realizado;
-        })
-        .filter(d=>dvReclamoLatLng(d));
+    const reclamosVisibles=dvObtenerReclamosFiltradosMapa();
     status.textContent=`✓ Filtro activo · ${zonasSeleccionadas.length} zonas · ${reclamosVisibles.length} reclamos con ubicación`;
     const firmaFiltro=[dvMapFiltros.cgm,dvMapFiltros.zona,dvMapFiltros.chofer,dvMapFiltros.reclamo,reclamosVisibles.length].join("|");
     if(window.dvUltimaFirmaFiltroMapa!==firmaFiltro){
@@ -11741,7 +11756,7 @@ function dvLimpiarFiltrosMapa(){
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV9";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV10";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
@@ -11821,7 +11836,7 @@ async function cargarMapaDiaVerde(){
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
-            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 18";
+            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 19";
             badge.classList.remove("badge-red");
             badge.classList.add("badge-green");
         }
@@ -12101,7 +12116,14 @@ async function dvCargarPendientesGeolocalizacion(){
 
         const status=document.getElementById("dvMapStatusText");
         if(status && total){
-            status.textContent=`Día Verde conectado · ${geolocalizados} geolocalizados · ${pendientes.length} sin geolocalizar`;
+            // El contador global de geolocalización no debe pisar el estado
+            // del filtro activo. El estado visual del mapa siempre se calcula
+            // con la misma función que alimenta los pines.
+            if(dvMapFiltros.cgm||dvMapFiltros.zona||dvMapFiltros.chofer||dvMapFiltros.reclamo){
+                dvActualizarEstadoFiltroMapa();
+            }else{
+                status.textContent=`Día Verde conectado · ${geolocalizados} geolocalizados · ${pendientes.length} sin geolocalizar`;
+            }
         }
 
         const firmaVerdad=`${total}|${geolocalizados}|${pendientes.length}`;
