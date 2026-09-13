@@ -10564,9 +10564,9 @@ function dvReclamoRealizado(d){
 
 let dvMapEvidencias=[];
 
-const DV_RECLAMOS_SOURCE_ID="dv-reclamos-pins-v32";
-const DV_RECLAMOS_CIRCLE_ID="dv-reclamos-pin-circle-v32";
-const DV_RECLAMOS_ICON_ID="dv-reclamos-pin-icon-v32";
+const DV_RECLAMOS_SOURCE_ID="dv-reclamos-pins-v33";
+const DV_RECLAMOS_CIRCLE_ID="dv-reclamos-pin-circle-v33";
+const DV_RECLAMOS_ICON_ID="dv-reclamos-pin-icon-v33";
 
 function dvPurgarFuentesReclamosAntiguas(){
     if(!dvMap||!dvMapReady) return;
@@ -10894,37 +10894,47 @@ function dvFiltroCoincideObjeto(o){
     return okCgm && okZona;
 }
 
-// V32: geometría primero; localidad/zona textual solo como fallback cuando no hay polígono.
+// V33: la geometría manda para zonas; la localidad solo sirve como respaldo para CGM.
 function dvZonaVisiblePorFiltros(reclamo) {
     const hayFiltro = !!(dvMapFiltros.cgm || dvMapFiltros.zona);
     if (!hayFiltro) return true;
 
-    // REGLA GEO V31:
-    // 1) Si la coordenada cae dentro de un polígono, manda la geometría.
-    // 2) Si la coordenada existe pero queda fuera de todos los polígonos,
-    //    usamos LOCALIDAD/ZONA como respaldo. Esto contempla reclamos válidos
-    //    que están fuera de la cobertura geométrica de las zonas.
-    // 3) Si no hay coordenadas, también usamos el dato textual disponible.
-    // Nunca descartamos automáticamente un reclamo solo porque el GeoJSON
-    // no tenga un polígono que cubra su posición.
     const punto = dvReclamoLatLng(reclamo);
+
+    // REGLA V33:
+    // - Si se filtra una ZONA, la coordenada debe caer físicamente dentro
+    //   de ese polígono. NO usamos LOCALIDAD/ZONA textual como respaldo,
+    //   porque eso es exactamente lo que estaba devolviendo pines fuera
+    //   del polígono seleccionado.
+    // - Si se filtra solo un CGM, una coordenada que cae en un polígono
+    //   usa exclusivamente ese polígono. Si queda fuera de todos los
+    //   polígonos, recién ahí usamos LOCALIDAD como respaldo para el CGM.
+    // - Si no hay coordenadas, para CGM usamos LOCALIDAD; para ZONA no
+    //   inventamos una ubicación geográfica.
+
+    if (dvMapFiltros.zona) {
+        if (!punto) return false;
+        const zonaGeo = dvFeatureZonaPorPunto(reclamo);
+        if (!zonaGeo) return false;
+        const nombreZona = zonaGeo.properties?.name || zonaGeo.properties?.zona || "";
+        return dvNormalizar(dvZonaCanonica({zona:nombreZona})) === dvNormalizar(dvMapFiltros.zona);
+    }
+
+    // Filtro por CGM.
+    const cgmSeleccionado = dvClaveCgmCanonico(dvMapFiltros.cgm);
+
     if (punto) {
-        const zona = dvFeatureZonaPorPunto(reclamo);
-        if (zona) {
-            const nombreZona =
-                zona.properties?.name ||
-                zona.properties?.zona ||
-                "";
-            const zonaCanonica = dvZonaCanonica({ zona: nombreZona });
-            return dvZonaPermitidaParaFiltro(zonaCanonica);
+        const zonaGeo = dvFeatureZonaPorPunto(reclamo);
+        if (zonaGeo) {
+            const nombreZona = zonaGeo.properties?.name || zonaGeo.properties?.zona || "";
+            const zonaCanonica = dvZonaCanonica({zona:nombreZona});
+            const cgmGeo = dvInferirCgmPorZona(zonaCanonica);
+            return cgmGeo === cgmSeleccionado;
         }
     }
 
-    // FALLBACK TEXTUAL: cuando no hay polígono que contenga el punto,
-    // la localidad/CGM del reclamo vuelve a ser la referencia operativa.
-    // Para un filtro CGM, por ejemplo LOCALIDAD=Banfield => BANFIELD.
-    // Para un filtro de ZONA, usamos únicamente una ZONA textual explícita;
-    // si no existe, no inventamos Este/Oeste/3 a partir de la localidad.
+    // Solo para CGM: respaldo por LOCALIDAD cuando el punto no está
+    // cubierto por ninguno de los polígonos o no tiene coordenadas.
     const localidad = String(
         reclamo?.localidad ??
         reclamo?.LOCALIDAD ??
@@ -10933,32 +10943,8 @@ function dvZonaVisiblePorFiltros(reclamo) {
         reclamo?.CGM ??
         ""
     ).trim();
-    const zonaTexto = String(
-        reclamo?.zona ??
-        reclamo?.ZONA ??
-        reclamo?.zone ??
-        ""
-    ).trim();
-
-    if (dvMapFiltros.zona) {
-        if (!zonaTexto) return false;
-        return dvZonaPermitidaParaFiltro(dvZonaCanonica({
-            cgm: localidad,
-            zona: zonaTexto
-        }));
-    }
-
-    if (dvMapFiltros.cgm) {
-        const cgmTexto = localidad || zonaTexto;
-        if (!cgmTexto) return false;
-        const cgm = dvCgmObjeto({
-            localidad: cgmTexto,
-            zona: zonaTexto
-        });
-        return cgm === dvClaveCgmCanonico(dvMapFiltros.cgm);
-    }
-
-    return true;
+    if (!localidad) return false;
+    return dvClaveCgmCanonico(localidad) === cgmSeleccionado;
 }
 
 function dvZonaGeoVisiblePorFiltros(feature){
@@ -11017,14 +11003,14 @@ function dvRenderMarcadoresReclamos(){
     if(dvMap.getLayer(DV_RECLAMOS_CIRCLE_ID))dvMap.setFilter(DV_RECLAMOS_CIRCLE_ID,filtroVisible);
     if(dvMap.getLayer(DV_RECLAMOS_ICON_ID))dvMap.setFilter(DV_RECLAMOS_ICON_ID,filtroVisible);
 
-    console.info("DV CAPA RECLAMOS V32:",{
+    console.info("DV CAPA RECLAMOS V33:",{
         filtro:{...dvMapFiltros},
         visibles:reclamosVisibles.length,
         features:features.length,
         source:DV_RECLAMOS_SOURCE_ID
     });
     if(dvMapFiltros.cgm||dvMapFiltros.zona||dvMapFiltros.reclamo){
-        console.info("DV VERDAD RECLAMOS V32:",{
+        console.info("DV VERDAD RECLAMOS V33:",{
             filtroCgm:dvMapFiltros.cgm||"TODOS",
             filtroZona:dvMapFiltros.zona||"TODAS",
             estado:dvMapFiltros.reclamo||"TODOS",
