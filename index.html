@@ -10726,8 +10726,10 @@ function dvAplicarCapasEstaticas(){
         type:"FeatureCollection",
         features:Array.isArray(dvMapZonas)?dvMapZonas:[]
     };
-    const seleccionadas=(Array.isArray(dvMapZonas)?dvMapZonas:[])
-        .filter(dvZonaGeoVisiblePorFiltros);
+    const haySeleccion=!!(dvMapFiltros.cgm||dvMapFiltros.zona);
+    const seleccionadas=haySeleccion
+        ? (Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros)
+        : [];
 
     if(!dvMap.getSource("dv-zonas")){
         dvMap.addSource("dv-zonas",{type:"geojson",data:todasLasZonas});
@@ -11131,14 +11133,147 @@ function dvFiltrarGpsMapa(){
     });
 }
 
+
+function dvActualizarGpsFiltradoSinDestruirCapas(gps){
+    if(!dvMap||!dvMap.isStyleLoaded())return;
+
+    // Cambio de filtro = actualizar GPS, NO reconstruir el mapa completo.
+    // dvRenderMapa() limpia/recrea capas y puede alterar el orden visual.
+    const rutas=(dvMap.getStyle()?.layers||[])
+        .filter(l=>String(l.id||"").indexOf("dv-route-")===0)
+        .map(l=>l.id);
+
+    rutas.forEach(id=>{
+        try{if(dvMap.getLayer(id))dvMap.removeLayer(id);}catch(e){}
+    });
+    rutas.forEach(id=>{
+        try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}
+    });
+
+    const puntos=(Array.isArray(gps)?gps:[]).map((p,i)=>({
+        ...p,
+        lat:dvLatPunto(p),
+        lng:dvLngPunto(p),
+        nombre:dvNombrePunto(p),
+        usuario:dvUsuarioPunto(p),
+        zona:dvZonaPunto(p),
+        fecha:dvFechaPunto(p),
+        orden:i
+    })).filter(p=>p.lat!==null&&p.lng!==null);
+
+    const porNombre={};
+    puntos.forEach(p=>{
+        if(!porNombre[p.nombre])porNombre[p.nombre]=[];
+        porNombre[p.nombre].push(p);
+    });
+
+    const colores={};
+    const gpsFeatures=[];
+
+    Object.entries(porNombre).forEach(([nombre,lista])=>{
+        lista.sort((a,b)=>new Date(a.fecha||0)-new Date(b.fecha||0));
+        const color=dvColorPorNombre(nombre,colores);
+        const coordinates=lista.map(p=>[p.lng,p.lat]);
+
+        if(coordinates.length>=2){
+            const sourceId="dv-route-"+Object.keys(porNombre).indexOf(nombre);
+            const layerId=sourceId+"-line";
+            dvMap.addSource(sourceId,{
+                type:"geojson",
+                data:{type:"Feature",geometry:{type:"LineString",coordinates}}
+            });
+            dvMap.addLayer({
+                id:layerId,
+                type:"line",
+                source:sourceId,
+                layout:{"line-cap":"round","line-join":"round"},
+                paint:{"line-color":color,"line-width":5,"line-opacity":0.88}
+            });
+        }
+
+        const ultimo=lista[lista.length-1];
+        gpsFeatures.push({
+            type:"Feature",
+            geometry:{type:"Point",coordinates:[ultimo.lng,ultimo.lat]},
+            properties:{
+                nombre,
+                usuario:ultimo.usuario||"-",
+                zona:ultimo.zona||"-",
+                fecha:ultimo.fecha||"",
+                lat:ultimo.lat,
+                lng:ultimo.lng,
+                color
+            }
+        });
+    });
+
+    const gpsData={type:"FeatureCollection",features:gpsFeatures};
+    const pointSource=dvMap.getSource("dv-gps-puntos");
+    if(pointSource){
+        pointSource.setData(gpsData);
+    }else{
+        dvMap.addSource("dv-gps-puntos",{type:"geojson",data:gpsData});
+        dvMap.addLayer({
+            id:"dv-gps-puntos-circles",
+            type:"circle",
+            source:"dv-gps-puntos",
+            paint:{
+                "circle-radius":["interpolate",["linear"],["zoom"],8,5,14,7,18,9],
+                "circle-color":["get","color"],
+                "circle-stroke-color":"#ffffff",
+                "circle-stroke-width":2.5,
+                "circle-opacity":0.98
+            }
+        });
+        dvMap.addLayer({
+            id:"dv-gps-puntos-labels",
+            type:"symbol",
+            source:"dv-gps-puntos",
+            layout:{
+                "text-field":["get","nombre"],
+                "text-size":10,
+                "text-offset":[0,1.7],
+                "text-anchor":"top",
+                "text-allow-overlap":false
+            },
+            paint:{
+                "text-color":"#17231c",
+                "text-halo-color":"#ffffff",
+                "text-halo-width":1.5
+            }
+        });
+    }
+
+    const legend=document.getElementById("dvMapLegendItems");
+    if(legend){
+        const nombres=Object.keys(porNombre);
+        const rutasHtml=nombres.length
+            ? nombres.map(nombre=>`<div class="dv-legend-item"><span class="dv-legend-line" style="background:${colores[nombre]}"></span><span>${dvEscapar(nombre)}</span></div>`).join("")
+            : "";
+        legend.innerHTML=`
+            <div class="dv-legend-item"><span class="dv-legend-zone"></span><span>Zonas operativas</span></div>
+            <div class="dv-legend-item"><span class="dv-legend-reclamo pendiente">♻</span><span>Pendiente</span></div>
+            <div class="dv-legend-item"><span class="dv-legend-reclamo realizado">♻</span><span>Realizado hoy</span></div>
+            <div class="dv-legend-subtitle">RECORRIDOS GPS</div>${rutasHtml}`;
+    }
+
+    dvOrdenarCapasMapa();
+}
 function dvCentrarReclamosFiltrados(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
 
     const reclamo=String(dvMapFiltros.reclamo||"").trim();
+    const chofer=String(dvMapFiltros.chofer||"").trim();
 
     const reclamos=(Array.isArray(dvMapReclamos)?dvMapReclamos:[])
         .filter(d=>dvFiltroCoincideObjeto(d))
         .filter(d=>{
+            if(chofer){
+                const nombre=String(
+                    d.chofer??d.nombreChofer??d.usuario??d.NOMBRE_CHOFER??""
+                ).trim();
+                if(nombre && dvNormalizar(nombre)!==dvNormalizar(chofer))return false;
+            }
             if(!reclamo)return true;
             const realizado=dvReclamoRealizado(d);
             return reclamo==="realizado"?realizado:!realizado;
@@ -11146,7 +11281,6 @@ function dvCentrarReclamosFiltrados(){
         .map(d=>dvReclamoLatLng(d))
         .filter(Boolean);
 
-    // Si hay reclamos geolocalizados, el mapa se encuadra sobre ELLOS.
     if(reclamos.length){
         const bounds=new maplibregl.LngLatBounds();
         reclamos.forEach(pos=>bounds.extend([pos[1],pos[0]]));
@@ -11167,10 +11301,8 @@ function dvCentrarReclamosFiltrados(){
         return;
     }
 
-    // Sin reclamos geolocalizados, intentamos centrar la/s zona/s seleccionada/s.
     const zonas=(Array.isArray(dvMapZonas)?dvMapZonas:[])
         .filter(dvZonaGeoVisiblePorFiltros);
-
     if(!zonas.length)return;
 
     const bounds=new maplibregl.LngLatBounds();
@@ -11178,11 +11310,7 @@ function dvCentrarReclamosFiltrados(){
 
     const extenderCoords=(coords)=>{
         if(!Array.isArray(coords))return;
-        if(
-            coords.length>=2 &&
-            typeof coords[0]==="number" &&
-            typeof coords[1]==="number"
-        ){
+        if(coords.length>=2&&typeof coords[0]==="number"&&typeof coords[1]==="number"){
             bounds.extend([coords[0],coords[1]]);
             tieneBounds=true;
             return;
@@ -11209,58 +11337,55 @@ function dvAplicarFiltrosMapa(){
     const zona=String(document.getElementById("dvFiltroZonaMapa")?.value||"").trim();
     const chofer=String(document.getElementById("dvFiltroChoferMapa")?.value||"").trim();
     const reclamo=String(document.getElementById("dvFiltroReclamoMapa")?.value||"").trim();
+
     dvMapFiltros={cgm,zona,chofer,reclamo};
 
     const status=document.getElementById("dvMapStatusText");
-    if(status) status.textContent="⏳ Aplicando filtro al mapa...";
+    if(status)status.textContent="⏳ Aplicando filtro al mapa...";
+
     if(!dvMap||!dvMap.isStyleLoaded()){
-        if(status) status.textContent="Filtro guardado · esperando mapa";
+        if(status)status.textContent="Filtro guardado · esperando mapa";
         return;
     }
 
-    // FILTRO VISUAL INMEDIATO.
-    // NO reducimos el source de zonas: debe contener TODAS las zonas para
-    // que las no seleccionadas sigan visibles en gris/transparente.
+    // 1. ZONAS: cambia solo el filtro de las capas.
     dvAplicarCapasEstaticas();
 
-    // GPS: únicamente los puntos que pasan el filtro.
-    dvRenderMapa(dvFiltrarGpsMapa(),dvMapHistoricoData);
+    // 2. RECLAMOS: actualiza únicamente su source GeoJSON.
+    // Esto evita que los pines desaparezcan al reconstruir el GPS.
+    dvRenderMarcadoresReclamos();
 
-    // Al terminar de redibujar GPS, volvemos a imponer el estilo de zonas,
-    // los reclamos y el orden de capas.
-    requestAnimationFrame(()=>{
-        try{
-            dvAplicarCapasEstaticas();
-            dvOrdenarCapasMapa();
-            dvCentrarReclamosFiltrados();
-        }catch(e){
-            console.warn("Filtro visual Día Verde",e);
-        }
-    });
+    // 3. GPS: actualiza únicamente rutas/puntos GPS.
+    dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
 
     const zonasSeleccionadas=(Array.isArray(dvMapZonas)?dvMapZonas:[])
         .filter(dvZonaGeoVisiblePorFiltros);
 
     const reclamosVisibles=(dvMapReclamos||[])
-        .filter(d=>dvFiltroCoincideObjeto(d)&&
-            (!reclamo ||
-             (reclamo==="realizado"
-                ? dvReclamoRealizado(d)
-                : !dvReclamoRealizado(d))))
+        .filter(d=>dvFiltroCoincideObjeto(d))
+        .filter(d=>{
+            if(!reclamo)return true;
+            const realizado=dvReclamoRealizado(d);
+            return reclamo==="realizado"?realizado:!realizado;
+        })
         .filter(d=>dvReclamoLatLng(d));
 
     if(status){
         status.textContent=
             `✓ Filtro activo · ${zonasSeleccionadas.length} zonas · ${reclamosVisibles.length} reclamos con ubicación`;
     }
+
+    requestAnimationFrame(()=>dvCentrarReclamosFiltrados());
 }
+
 function dvLimpiarFiltrosMapa(){
     dvMapFiltros={cgm:"",zona:"",chofer:"",reclamo:""};
     if(dvMap&&dvMap.isStyleLoaded()){
         dvPoblarFiltrosMapa();
         const r=document.getElementById("dvFiltroReclamoMapa");if(r)r.value="";
-        dvRenderMapa(dvMapGpsData,dvMapHistoricoData);
         dvAplicarCapasEstaticas();
+        dvRenderMarcadoresReclamos();
+        dvActualizarGpsFiltradoSinDestruirCapas(dvMapGpsData);
         requestAnimationFrame(()=>dvCentrarReclamosFiltrados());
     }else{
         dvPoblarFiltrosMapa();
@@ -11611,49 +11736,61 @@ function dvSeleccionarPendienteGeo(clave){
 }
 
 function dvOrdenarCapasMapa(){
-    if(!dvMap || !dvMap.isStyleLoaded()) return;
-    const existe=id=>!!(id && dvMap.getLayer(id));
+    if(!dvMap||!dvMap.isStyleLoaded())return;
+    const existe=id=>!!(id&&dvMap.getLayer(id));
 
-    // Orden operativo fijo del mapa:
-    // 1) ZONAS = inferior
-    // 2) RECORRIDOS GPS = medio
-    // 3) RECLAMOS = superior
+    // ORDEN DEFINITIVO:
+    // 1) zonas base + zonas seleccionadas
+    // 2) recorridos + puntos GPS
+    // 3) reclamos
     const zonas=[];
-    ["dv-zonas-fill","dv-zonas-line"].forEach(id=>{if(existe(id))zonas.push(id);});
+    [
+        "dv-zonas-fill",
+        "dv-zonas-line",
+        "dv-zonas-selected-fill",
+        "dv-zonas-selected-line"
+    ].forEach(id=>{if(existe(id))zonas.push(id);});
 
     const recorridos=[];
     (dvMap.getStyle()?.layers||[]).forEach(l=>{
         const id=l.id||"";
-        if((id.indexOf("dv-route-")===0 && l.type==="line") || id==="dv-gps-puntos-circles" || id==="dv-gps-puntos-labels"){
+        if(
+            (id.indexOf("dv-route-")===0&&l.type==="line") ||
+            id==="dv-gps-puntos-circles" ||
+            id==="dv-gps-puntos-labels"
+        ){
             recorridos.push(id);
         }
     });
 
     const reclamos=[];
-    ["dv-reclamos-pin-circle","dv-reclamos-pin-icon"].forEach(id=>{if(existe(id))reclamos.push(id);});
+    [
+        "dv-reclamos-pin-circle",
+        "dv-reclamos-pin-icon"
+    ].forEach(id=>{if(existe(id))reclamos.push(id);});
 
-    // Primero aseguramos que las zonas estén debajo de los recorridos.
-    recorridos.forEach(id=>{
-        try{
-            if(existe(id)){
-                const ancla=reclamos[0]||null;
-                if(ancla) dvMap.moveLayer(id,ancla);
-                else dvMap.moveLayer(id);
-            }
-        }catch(e){}
-    });
-
-    // Finalmente los reclamos quedan arriba de todo.
-    reclamos.forEach(id=>{try{dvMap.moveLayer(id);}catch(e){}});
-
-    // Si por algún cambio futuro se agregara una capa operativa después,
-    // las zonas se vuelven a dejar abajo explícitamente.
     if(recorridos.length){
         const primeraRuta=recorridos[0];
-        zonas.forEach(id=>{try{if(existe(id))dvMap.moveLayer(id,primeraRuta);}catch(e){}});
+        zonas.forEach(id=>{
+            try{if(existe(id))dvMap.moveLayer(id,primeraRuta);}catch(e){}
+        });
+    }else{
+        const ancla=reclamos[0]||null;
+        zonas.forEach(id=>{
+            try{
+                if(existe(id)){
+                    if(ancla)dvMap.moveLayer(id,ancla);
+                    else dvMap.moveLayer(id);
+                }
+            }catch(e){}
+        });
     }
-}
 
+    // Reclamos SIEMPRE al frente.
+    reclamos.forEach(id=>{
+        try{if(existe(id))dvMap.moveLayer(id);}catch(e){}
+    });
+}
 </script>
 
 
