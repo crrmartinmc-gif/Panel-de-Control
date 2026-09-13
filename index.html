@@ -11052,6 +11052,8 @@ async function cargarCapasEstaticasDiaVerde(){
 
             // La zona ya está disponible aunque reclamos todavía estén cargando.
             if(dvMap && dvMap.isStyleLoaded()){
+                // TURBO 21: las zonas se publican inmediatamente y quedan
+                // independientes de cualquier actualización del GPS.
                 dvAplicarCapasEstaticas();
                 dvActualizarEstadoFiltroMapa();
             }
@@ -11755,7 +11757,7 @@ function dvLimpiarFiltrosMapa(){
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV11";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV12";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
@@ -11822,20 +11824,36 @@ async function cargarMapaDiaVerde(){
             // Si las capas estáticas ya existen, actualizamos solamente GPS.
             // En el primer render se pueden crear las capas GPS sin tocar
             // zonas/reclamos.
-            if(dvMapStaticLoaded){
+            // TURBO 21: NUNCA reconstruimos el mapa durante el arranque.
+            // dvRenderMapa() llama a dvLimpiarCapas() y puede competir con la
+            // carga progresiva de zonas/reclamos. El GPS se crea/actualiza de
+            // forma aislada y luego reafirmamos las capas estáticas.
+            try{
                 dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
-            }else{
-                dvRenderMapa(dvFiltrarGpsMapa(),dvMapHistoricoData);
+            }catch(e){
+                console.warn("GPS inicial Día Verde",e);
+            }
+            if(dvMapStaticLoaded){
+                try{dvAplicarCapasEstaticas();}catch(e){
+                    console.warn("Reaplicación capas estáticas Día Verde",e);
+                }
             }
         }else if(dvMapStaticLoaded){
             dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
+        }
+
+        // TURBO 21: el GPS no puede dejar ocultas las zonas.
+        if(dvMap && dvMap.isStyleLoaded() && dvMapZonas.length){
+            try{dvAplicarCapasEstaticas();}catch(e){
+                console.warn("Reaplicación final zonas Día Verde",e);
+            }
         }
 
         if(dot) dot.classList.remove("off");
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
-            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 20";
+            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 21";
             badge.classList.remove("badge-red");
             badge.classList.add("badge-green");
         }
