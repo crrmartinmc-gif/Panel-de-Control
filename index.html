@@ -10802,47 +10802,28 @@ function dvFiltroCoincideObjeto(o){
     return okCgm && okZona;
 }
 
-function dvZonaVisiblePorFiltros(o){
-    // FILTRO DE RECLAMOS: la fuente oficial de reclamos entrega LOCALIDAD
-    // (Banfield, Temperley, Lomas, etc.) y ZONA. Para evitar que un dato
-    // geográfico o un campo auxiliar provoque falsos positivos, cuando el
-    // reclamo tiene LOCALIDAD/ZONA usamos esos datos como verdad primaria.
-    const localidadRaw=o?.localidad??o?.LOCALIDAD??o?.localidadNombre??"";
-    const zonaRaw=o?.zona??o?.ZONA??o?.zone??"";
-    const localidad=String(localidadRaw||"").trim();
-    const zona=String(zonaRaw||"").trim();
+function dvZonaVisiblePorFiltros(reclamo) {
+    const hayFiltro = !!(dvMapFiltros.cgm || dvMapFiltros.zona);
+    if (!hayFiltro) return true;
 
-    if(dvMapFiltros.cgm){
-        const cgmSeleccionado=dvClaveCgmCanonico(dvMapFiltros.cgm);
-        if(localidad){
-            if(dvClaveCgmCanonico(localidad)!==cgmSeleccionado)return false;
-        }else if(zona){
-            if(dvInferirCgmPorZona(dvZonaCanonica({zona}))!==cgmSeleccionado)return false;
-        }else{
-            const pos=dvReclamoLatLng(o);
-            if(!pos)return false;
-            const feature=dvFeatureZonaPorPunto(o);
-            if(!feature)return false;
-            const zGeo=dvZonaCanonica({zona:feature?.properties?.name||feature?.properties?.zona||""});
-            if(!dvZonaPermitidaParaFiltro(zGeo))return false;
-        }
-    }
+    // RECLAMOS GEOLOCALIZADOS: la coordenada es la única verdad geográfica.
+    // No usamos LOCALIDAD/ZONA textual para decidir el CGM o la zona cuando
+    // existe una posición. Así evitamos falsos positivos por datos antiguos
+    // o mal etiquetados en la planilla de reclamos.
+    const punto = dvReclamoLatLng(reclamo);
+    if (!punto) return false;
 
-    if(dvMapFiltros.zona){
-        const zonaSeleccionada=dvNormalizar(dvMapFiltros.zona);
-        if(zona){
-            if(dvZonaCanonica({zona})!==zonaSeleccionada)return false;
-        }else{
-            const pos=dvReclamoLatLng(o);
-            if(!pos)return false;
-            const feature=dvFeatureZonaPorPunto(o);
-            if(!feature)return false;
-            const zGeo=dvZonaCanonica({zona:feature?.properties?.name||feature?.properties?.zona||""});
-            if(zGeo!==zonaSeleccionada)return false;
-        }
-    }
+    const zona = dvFeatureZonaPorPunto(reclamo);
+    if (!zona) return false;
 
-    return true;
+    const nombreZona =
+        zona.properties?.name ||
+        zona.properties?.zona ||
+        "";
+
+    const zonaCanonica = dvZonaCanonica({ zona: nombreZona });
+
+    return dvZonaPermitidaParaFiltro(zonaCanonica);
 }
 
 function dvZonaGeoVisiblePorFiltros(feature){
@@ -11626,7 +11607,7 @@ function dvAplicarFiltrosMapa(){
 
 
 
-// TURBO 24: filtros geográficos y recorridos reforzados.
+// TURBO 25: filtros geográficos y recorridos reforzados.
 // Estas funciones son requeridas por la carga inicial y por los selectores.
 function dvValorNombreSeguro(p){return String(p?.nombre??p?.NOMBRE??"").trim();}
 
@@ -12172,7 +12153,7 @@ function dvOrdenarCapasMapa(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
     const existe=id=>!!(id&&dvMap.getLayer(id));
 
-    // TURBO 24 — ORDEN VISUAL OBLIGATORIO (de abajo hacia arriba):
+    // TURBO 25 — ORDEN VISUAL OBLIGATORIO (de abajo hacia arriba):
     // 1. ZONAS
     // 2. RECORRIDOS GPS
     // 3. PUNTOS GPS
