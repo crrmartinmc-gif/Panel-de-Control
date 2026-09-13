@@ -10868,16 +10868,45 @@ function dvAplicarFiltrosMapa(){
     const chofer=String(document.getElementById("dvFiltroChoferMapa")?.value||"").trim();
     const reclamo=String(document.getElementById("dvFiltroReclamoMapa")?.value||"").trim();
     dvMapFiltros={cgm,zona,chofer,reclamo};
-    if(!dvMap||!dvMap.isStyleLoaded())return;
-    dvRenderMapa(dvFiltrarGpsMapa(),dvMapHistoricoData);
-    dvAplicarCapasEstaticas();
-    dvOrdenarCapasMapa();
+
     const status=document.getElementById("dvMapStatusText");
-    if(status){
-        const zonasVisibles=(dvMapZonas||[]).filter(dvZonaGeoVisiblePorFiltros).length;
-        const reclamosVisibles=(dvMapReclamos||[]).filter(d=>dvFiltroCoincideObjeto(d)&&(!reclamo||(reclamo==="realizado"?dvReclamoRealizado(d):!dvReclamoRealizado(d)))).filter(d=>dvReclamoLatLng(d)).length;
-        status.textContent=`Filtro activo · ${zonasVisibles} zonas · ${reclamosVisibles} reclamos con ubicación`;
+    if(status) status.textContent="⏳ Aplicando filtro al mapa...";
+    if(!dvMap||!dvMap.isStyleLoaded()){
+        if(status) status.textContent="Filtro guardado · esperando mapa";
+        return;
     }
+
+    // FILTRO VISUAL INMEDIATO: no esperamos una nueva carga del backend ni
+    // reconstruimos las capas estáticas. Se actualizan directamente sus sources.
+    const zonasVisibles=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
+    const zonasSource=dvMap.getSource("dv-zonas");
+    if(zonasSource){
+        zonasSource.setData({type:"FeatureCollection",features:zonasVisibles});
+    }
+
+    // Reclamos: actualizamos directamente el source GeoJSON.
+    dvRenderMarcadoresReclamos();
+
+    // GPS: se vuelve a dibujar únicamente con los puntos que pasan el filtro.
+    // Esto conserva el rendimiento Turbo sin tocar zonas/reclamos innecesariamente.
+    dvRenderMapa(dvFiltrarGpsMapa(),dvMapHistoricoData);
+
+    // dvRenderMapa puede limpiar/recrear las capas GPS; al terminar volvemos a
+    // imponer las dos capas estáticas con el filtro actual y el orden operativo.
+    requestAnimationFrame(()=>{
+        try{
+            const zonasActualizadas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
+            const zs=dvMap.getSource("dv-zonas");
+            if(zs) zs.setData({type:"FeatureCollection",features:zonasActualizadas});
+            dvRenderMarcadoresReclamos();
+            dvOrdenarCapasMapa();
+        }catch(e){console.warn("Filtro visual Día Verde",e);}
+    });
+
+    const reclamosVisibles=(dvMapReclamos||[])
+        .filter(d=>dvFiltroCoincideObjeto(d)&&(!reclamo||(reclamo==="realizado"?dvReclamoRealizado(d):!dvReclamoRealizado(d))))
+        .filter(d=>dvReclamoLatLng(d)).length;
+    if(status) status.textContent=`✓ Filtro activo · ${zonasVisibles.length} zonas · ${reclamosVisibles} reclamos con ubicación`;
 }
 function dvLimpiarFiltrosMapa(){
     dvMapFiltros={cgm:"",zona:"",chofer:"",reclamo:""};
@@ -10934,7 +10963,7 @@ async function cargarMapaDiaVerde(){
         }
         if(dot) dot.classList.remove("off");
         const badge=document.getElementById("dvMapBadge");
-        if(badge){badge.textContent="GPS + ZONAS + RECLAMOS · TURBO";badge.classList.remove("badge-red");badge.classList.add("badge-green");}
+        if(badge){badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 7";badge.classList.remove("badge-red");badge.classList.add("badge-green");}
     }catch(error){
         console.error("Mapa Día Verde:",error);
         if(dot) dot.classList.add("off");
