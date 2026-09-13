@@ -10307,6 +10307,47 @@ async function dvGeocodificarReclamosSinCoordenadas(){
     try{localStorage.setItem(cacheKey,JSON.stringify(cache));}catch(e){}
 }
 
+function dvNombrePunto(p){
+    return String(p?.nombre ?? p?.NOMBRE ?? "Sin nombre").trim() || "Sin nombre";
+}
+
+function dvUsuarioPunto(p){
+    return String(p?.usuario ?? p?.USUARIO ?? "-").trim() || "-";
+}
+
+function dvZonaPunto(p){
+    return String(p?.zona ?? p?.ZONA ?? "-").trim() || "-";
+}
+
+function dvLatPunto(p){
+    const n=Number(p?.latitud ?? p?.LATITUD ?? p?.lat ?? p?.Lat ?? p?.latitude ?? p?.Latitud);
+    return Number.isFinite(n) ? n : null;
+}
+
+function dvLngPunto(p){
+    const n=Number(p?.longitud ?? p?.LONGITUD ?? p?.lng ?? p?.Lng ?? p?.lon ?? p?.Lon ?? p?.longitude ?? p?.Longitud);
+    return Number.isFinite(n) ? n : null;
+}
+
+function dvFechaPunto(p){
+    return p?.timestamp ?? p?.TIMESTAMP ?? p?.fecha_hora ?? p?.FECHA_HORA ?? p?.fechaHora ?? p?.fecha ?? p?.FECHA ?? null;
+}
+
+function dvHoraTexto(valor){
+    if(!valor) return "-";
+    const d=new Date(valor);
+    if(Number.isNaN(d.getTime())) return String(valor);
+    return d.toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+}
+
+function dvEsHoy(valor){
+    if(!valor) return false;
+    const d=new Date(valor);
+    if(Number.isNaN(d.getTime())) return false;
+    const hoy=new Date();
+    return d.getFullYear()===hoy.getFullYear() && d.getMonth()===hoy.getMonth() && d.getDate()===hoy.getDate();
+}
+
 function dvRenderMapa(gps,historico){
     if(!dvCrearMapa()) return;
 
