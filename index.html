@@ -10740,7 +10740,6 @@ function dvAbrirPopupReclamo(d,lngLat){
             <button type="button" class="dv-reclamo-corregir-btn">📍 Corregir ubicación</button>
             ${dvReclamoTieneCorreccion(d)?'<button type="button" class="dv-reclamo-restaurar-btn">↩ Restaurar automática</button>':''}
         </div>`);
-    popup.addTo(dvMap);
     popup.on("open",()=>{
         const root=popup.getElement();
         const evidenceBtn=root?.querySelector(".dv-evidencia-btn");
@@ -10756,6 +10755,7 @@ function dvAbrirPopupReclamo(d,lngLat){
             if(status) status.textContent=ok?"✓ Ubicación automática restaurada en el sistema":"✓ Ubicación automática restaurada localmente";
         });
     });
+    popup.addTo(dvMap);
 }
 
 function dvLimpiarMarcadoresReclamos(){
