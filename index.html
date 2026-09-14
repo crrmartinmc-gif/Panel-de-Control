@@ -1318,6 +1318,22 @@ textarea.form-control{
 .status-curso{color:#60a5fa;background:rgba(59,130,246,.12)}
 .status-finalizado{color:#6ee7a0;background:rgba(34,197,94,.12)}
 .status-cancelado{color:#f87171;background:rgba(239,68,68,.12)}
+.servicio-estado-select{
+    min-width:118px;
+    padding:6px 8px;
+    border-radius:8px;
+    border:1px solid rgba(255,255,255,.10);
+    background:#111c2d;
+    color:#e8eef6;
+    font-size:10px;
+    font-weight:700;
+    outline:none;
+}
+.servicio-estado-select.status-programado{color:#fbbf24;}
+.servicio-estado-select.status-curso{color:#6ee7a0;}
+.servicio-estado-select.status-finalizado{color:#60a5fa;}
+.servicio-estado-select.status-cancelado{color:#f87171;}
+
 .status-neutral{color:#a8b3c2;background:rgba(148,163,184,.12)}
 #modalServicio .modal{width:min(720px,100%)}
 
@@ -4323,14 +4339,59 @@ function fechaLocalISO(){
     return local.toISOString().slice(0,10);
 }
 
-function formatearFecha(valor){
+function fechaArgentinaISO(valor){
+    if(valor == null || String(valor).trim() === "") return "";
+    const texto=String(valor).trim();
+    const soloFecha=texto.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T)/);
+    if(soloFecha && !texto.includes("T")) return `${soloFecha[1]}-${soloFecha[2]}-${soloFecha[3]}`;
+    const d=new Date(valor);
+    if(Number.isNaN(d.getTime())) return "";
+    const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Argentina/Buenos_Aires",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
+    const o=Object.fromEntries(parts.map(x=>[x.type,x.value]));
+    return `${o.year}-${o.month}-${o.day}`;
+}
+
+function hoyArgentinaISO(){
+    const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Argentina/Buenos_Aires",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+    const o=Object.fromEntries(parts.map(x=>[x.type,x.value]));
+    return `${o.year}-${o.month}-${o.day}`;
+}
+
+function sumarDiasISO(iso,dias){
+    const [y,m,d]=String(iso).split("-").map(Number);
+    const base=new Date(Date.UTC(y,m-1,d));
+    base.setUTCDate(base.getUTCDate()+Number(dias||0));
+    return base.toISOString().slice(0,10);
+}
+
+function formatearFechaArgentina(valor){
+    const iso=fechaArgentinaISO(valor);
+    if(!iso) return valor ? String(valor) : "-";
+    const [y,m,d]=iso.split("-");
+    return `${d}/${m}/${y}`;
+}
+
+function formatearHoraArgentina(valor){
     if(!valor) return "-";
-    const fecha = new Date(valor);
-    if(Number.isNaN(fecha.getTime())) return String(valor);
-    return fecha.toLocaleString("es-AR",{
-        day:"2-digit",month:"2-digit",year:"numeric",
-        hour:"2-digit",minute:"2-digit"
-    });
+    const texto=String(valor).trim();
+    const hm=texto.match(/(?:^|T|\s)(\d{1,2}):(\d{2})(?::\d{2})?/);
+    if(!hm) return texto;
+    if(texto.includes("T") || /Z$|[+-]\d{2}:?\d{2}$/.test(texto)){
+        const d=new Date(valor);
+        if(!Number.isNaN(d.getTime())) return new Intl.DateTimeFormat("es-AR",{timeZone:"America/Argentina/Buenos_Aires",hour:"2-digit",minute:"2-digit",hour12:false}).format(d);
+    }
+    return String(hm[1]).padStart(2,"0")+":"+hm[2];
+}
+
+function formatearFechaHoraArgentina(valor){
+    if(!valor) return "-";
+    const iso=fechaArgentinaISO(valor);
+    if(!iso) return String(valor);
+    return `${formatearFechaArgentina(valor)} ${formatearHoraArgentina(valor)}`;
+}
+
+function formatearFecha(valor){
+    return formatearFechaHoraArgentina(valor);
 }
 
 
@@ -4879,48 +4940,19 @@ function actualizarKPIs(datos){
    ========================================================= */
 
 function fechaLocalISOArgentina(fecha){
-
-    if(fecha == null || fecha === "") return "";
-
-    const texto = String(fecha).trim();
-
-    // Formato ISO del backend: 2026-09-14T00:00:00.000Z
-    const iso = texto.match(/^(\d{4}-\d{2}-\d{2})/);
-    if(iso) return iso[1];
-
-    // Formato DD/MM/YYYY
-    const latam = texto.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
-    if(latam){
-        return `${latam[3]}-${String(latam[2]).padStart(2,"0")}-${String(latam[1]).padStart(2,"0")}`;
-    }
-
-    const d = new Date(fecha);
-    if(!Number.isNaN(d.getTime())){
-        // El sistema opera en Argentina; evitamos depender del formato visual.
-        const partes = new Intl.DateTimeFormat("en-CA", {
-            timeZone:"America/Argentina/Buenos_Aires",
-            year:"numeric", month:"2-digit", day:"2-digit"
-        }).formatToParts(d);
-        const obj = Object.fromEntries(partes.map(x=>[x.type,x.value]));
-        if(obj.year && obj.month && obj.day){
-            return `${obj.year}-${obj.month}-${obj.day}`;
-        }
-    }
-
-    return "";
-}
-
-function hoyArgentinaISO(){
-    const partes = new Intl.DateTimeFormat("en-CA", {
-        timeZone:"America/Argentina/Buenos_Aires",
-        year:"numeric", month:"2-digit", day:"2-digit"
-    }).formatToParts(new Date());
-    const obj = Object.fromEntries(partes.map(x=>[x.type,x.value]));
-    return `${obj.year}-${obj.month}-${obj.day}`;
+    return fechaArgentinaISO(fecha);
 }
 
 function servicioEsDeHoy(servicio){
-    return fechaLocalISOArgentina(servicio?.FECHA) === hoyArgentinaISO();
+    return fechaArgentinaISO(servicio?.FECHA) === hoyArgentinaISO();
+}
+
+function servicioEsDeManana(servicio){
+    return fechaArgentinaISO(servicio?.FECHA) === sumarDiasISO(hoyArgentinaISO(),1);
+}
+
+function servicioEsDeHoyOManana(servicio){
+    return servicioEsDeHoy(servicio) || servicioEsDeManana(servicio);
 }
 
 function obtenerServiciosVista(){
@@ -5065,23 +5097,54 @@ function renderizarServicios(servicios){
 
         return `
             <tr>
-                <td class="servicio-date">${escaparHTML(servicio.FECHA || "-")}</td>
+                <td class="servicio-date">${escaparHTML(formatearFechaArgentina(servicio.FECHA))}</td>
                 <td>${escaparHTML(servicio.HORA_PROGRAMADA || "-")}</td>
                 <td>${escaparHTML(servicio.TIPO_SERVICIO || "-")}</td>
                 <td><strong>${escaparHTML(servicio.NOMBRE_SERVICIO || "-")}</strong></td>
                 <td>${escaparHTML(servicio.ID_RUTA || "-")}</td>
                 <td>${escaparHTML(servicio.ID_ASIGNACION || "-")}</td>
                 <td>
-                    <span class="table-status ${claseEstadoServicio(estado)}">
-                        ${escaparHTML(estado)}
-                    </span>
+                    <select class="servicio-estado-select ${claseEstadoServicio(estado)}"
+                            onchange="cambiarEstadoServicio('${escaparHTML(servicio.ID_SERVICIO || "")}', this.value)"
+                            title="Cambiar estado del servicio">
+                        ${["PENDIENTE","EN CURSO","FINALIZADO","CANCELADO"].map(op=>`<option value="${op}" ${normalizar(op)===normalizar(estado)?"selected":""}>${op}</option>`).join("")}
+                    </select>
                 </td>
-                <td>${escaparHTML(servicio.HORA_INICIO || "-")}</td>
-                <td>${escaparHTML(servicio.HORA_FIN || "-")}</td>
+                <td>${escaparHTML(formatearFechaHoraArgentina(servicio.HORA_INICIO))}</td>
+                <td>${escaparHTML(formatearFechaHoraArgentina(servicio.HORA_FIN))}</td>
             </tr>
         `;
 
     }).join("");
+}
+
+
+async function cambiarEstadoServicio(idServicio, nuevoEstado){
+    const id=String(idServicio||"").trim();
+    const estado=normalizar(nuevoEstado);
+    if(!id || !["PENDIENTE","EN CURSO","FINALIZADO","CANCELADO"].includes(estado)){
+        alert("Estado de servicio inválido.");
+        await cargarServicios();
+        return;
+    }
+    try{
+        const respuesta=await fetch(BACKEND_URL,{
+            method:"POST",
+            body:JSON.stringify({accion:"actualizarServicio",idServicio:id,cambios:{ESTADO:estado}})
+        });
+        if(!respuesta.ok) throw new Error("HTTP "+respuesta.status);
+        const resultado=await respuesta.json();
+        if(!resultado?.ok) throw new Error(resultado?.error||"No se pudo actualizar el estado.");
+        const item=(estadoPanel.servicios||[]).find(s=>String(s.ID_SERVICIO||"").trim()===id);
+        if(item){ item.ESTADO=estado; if(estado==="FINALIZADO") item.HORA_FIN=item.HORA_FIN||new Date().toISOString(); }
+        filtrarServicios();
+        await cargarResumenPanel();
+        console.info("ESTADO DE SERVICIO ACTUALIZADO",id,estado);
+    }catch(error){
+        console.error("Error actualizando estado del servicio:",error);
+        alert("No se pudo actualizar el estado: "+error.message);
+        await cargarServicios();
+    }
 }
 
 
@@ -5538,33 +5601,11 @@ function datosRutaAsignacion(asignacion){
 }
 
 function formatearFechaAsignacion(valor){
-    if(!valor) return "-";
-    const s = String(valor).trim();
-
-    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
-
-    const d = new Date(s);
-    if(!Number.isNaN(d.getTime())){
-        return String(d.getDate()).padStart(2,"0") + "/" +
-            String(d.getMonth()+1).padStart(2,"0") + "/" +
-            d.getFullYear();
-    }
-
-    return s;
+    return formatearFechaArgentina(valor);
 }
 
 function formatearHoraAsignacion(valor){
-    if(!valor) return "-";
-    const s = String(valor).trim();
-
-    const m = s.match(/T(\d{2}):(\d{2})/);
-    if(m) return `${m[1]}:${m[2]}`;
-
-    const hm = s.match(/^(\d{1,2}):(\d{2})/);
-    if(hm) return `${String(hm[1]).padStart(2,"0")}:${hm[2]}`;
-
-    return s;
+    return formatearHoraArgentina(valor);
 }
 
 function renderizarAsignaciones(asignaciones){
@@ -5813,10 +5854,25 @@ async function cargarOpcionesAsignacion(){
 
     ]);
 
-    asignacionServiciosDisponibles =
+    const serviciosCargados =
         servicios?.ok && Array.isArray(servicios.datos)
             ? servicios.datos
             : [];
+
+    // Para una nueva asignación solo mostramos servicios operativos
+    // de HOY o de MAÑANA. Los históricos/futuros quedan para la planificación.
+    // Además, un servicio ya vinculado a una asignación no vuelve a ofrecerse.
+    asignacionServiciosDisponibles = serviciosCargados.filter(servicio => {
+        const estado=normalizar(servicio?.ESTADO||"");
+        if(!servicioEsDeHoyOManana(servicio)) return false;
+        if(["FINALIZADO","CANCELADO"].includes(estado)) return false;
+        if(String(servicio?.ID_ASIGNACION||"").trim()) return false;
+        return true;
+    }).sort((a,b)=>{
+        const fa=fechaArgentinaISO(a.FECHA), fb=fechaArgentinaISO(b.FECHA);
+        if(fa!==fb) return fa.localeCompare(fb);
+        return String(a.HORA_PROGRAMADA||"").localeCompare(String(b.HORA_PROGRAMADA||""));
+    });
 
     estadoPanel.choferes =
         choferes?.ok && Array.isArray(choferes.datos)
