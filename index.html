@@ -12227,13 +12227,22 @@ function dvOrdenarCapasMapa(){
     if(!dvMap||!dvMap.isStyleLoaded())return;
     const existe=id=>!!(id&&dvMap.getLayer(id));
 
-    // TURBO 25 — ORDEN VISUAL OBLIGATORIO (de abajo hacia arriba):
-    // 1. ZONAS
-    // 2. RECORRIDOS GPS
-    // 3. PUNTOS GPS
-    // 4. RECLAMOS
-    // No usamos moveLayer(id) indiscriminadamente sobre grupos mezclados.
-    // Construimos una secuencia única y la colocamos en ese orden.
+    /*
+     * TURBO 41 — ORDEN VISUAL BLINDADO.
+     *
+     * El problema de V40 no es el filtro: los reclamos ya se filtran bien.
+     * La fragilidad estaba en ordenar todos los grupos haciendo moveLayer(id)
+     * sin un ancla. Como las rutas GPS se destruyen y vuelven a crear durante
+     * cada actualización, una capa de recorridos que nace después puede
+     * quedar visualmente por encima de los reclamos hasta la siguiente pasada.
+     *
+     * Orden obligatorio (de abajo hacia arriba):
+     *   ZONAS -> RECORRIDOS GPS -> PUNTOS GPS -> RECLAMOS
+     *
+     * Usamos moveLayer(id, beforeId) para que el orden sea determinista.
+     * Los reclamos se colocan explícitamente arriba de GPS y rutas.
+     */
+
     const zonas=[
         "dv-zonas-fill",
         "dv-zonas-line",
@@ -12256,13 +12265,63 @@ function dvOrdenarCapasMapa(){
         DV_RECLAMOS_ICON_ID
     ].filter(existe);
 
-    const secuencia=[...zonas,...rutas,...gps,...reclamos];
-    if(!secuencia.length)return;
+    if(!reclamos.length && !gps.length && !rutas.length && !zonas.length)return;
 
-    // Movemos desde el elemento inferior al superior. Cada moveLayer(id)
-    // lo lleva al frente, por lo que el último grupo queda arriba de todos.
-    secuencia.forEach(id=>{
-        try{if(existe(id))dvMap.moveLayer(id);}catch(e){}
+    const anclaReclamo=reclamos[0]||null;
+    const anclaGps=gps[0]||null;
+    const anclaRuta=rutas[0]||null;
+
+    // 1) ZONAS: las dejamos por debajo de todo lo operativo.
+    if(zonas.length){
+        if(anclaRuta) zonas.forEach(id=>{try{dvMap.moveLayer(id,anclaRuta)}catch(e){}});
+        else if(anclaGps) zonas.forEach(id=>{try{dvMap.moveLayer(id,anclaGps)}catch(e){}});
+        else if(anclaReclamo) zonas.forEach(id=>{try{dvMap.moveLayer(id,anclaReclamo)}catch(e){}});
+    }
+
+    // 2) RECORRIDOS GPS: siempre antes de los puntos GPS y de reclamos.
+    rutas.forEach(id=>{
+        try{
+            if(anclaGps) dvMap.moveLayer(id,anclaGps);
+            else if(anclaReclamo) dvMap.moveLayer(id,anclaReclamo);
+            else dvMap.moveLayer(id);
+        }catch(e){}
+    });
+
+    // 3) PUNTOS GPS: debajo de los reclamos.
+    gps.forEach(id=>{
+        try{
+            if(anclaReclamo) dvMap.moveLayer(id,anclaReclamo);
+            else dvMap.moveLayer(id);
+        }catch(e){}
+    });
+
+    // 4) RECLAMOS: al frente, siempre.
+    // Primero el círculo y después el icono, para que ambos queden por encima
+    // de cualquier ruta/punto GPS.
+    if(existe(DV_RECLAMOS_CIRCLE_ID)){
+        try{dvMap.moveLayer(DV_RECLAMOS_CIRCLE_ID);}catch(e){}
+    }
+    if(existe(DV_RECLAMOS_ICON_ID)){
+        try{dvMap.moveLayer(DV_RECLAMOS_ICON_ID);}catch(e){}
+    }
+
+    // Segunda pasada defensiva: si una actualización asíncrona creó una ruta
+    // entre las operaciones anteriores, la volvemos a anclar debajo de los
+    // reclamos en el mismo ciclo.
+    const estiloFinal=dvMap.getStyle()?.layers||[];
+    estiloFinal
+        .filter(l=>String(l.id||"").indexOf("dv-route-")===0 && l.type==="line")
+        .forEach(l=>{
+            try{
+                if(existe(DV_RECLAMOS_CIRCLE_ID)) dvMap.moveLayer(l.id,DV_RECLAMOS_CIRCLE_ID);
+            }catch(e){}
+        });
+
+    console.debug("DV ORDEN CAPAS V41",{
+        zonas:zonas.length,
+        rutas:estiloFinal.filter(l=>String(l.id||"").indexOf("dv-route-")===0&&l.type==="line").length,
+        gps:gps.length,
+        reclamos:reclamos.length
     });
 }
 
