@@ -10487,7 +10487,7 @@ function dvDireccionReclamo(d){
     return `${d.calle || d.direccion || d.Direccion || d.domicilio || d.Domicilio || ""} ${d.numero || ""}`.trim();
 }
 
-// TURBO 39: estado de reclamo robusto.
+// TURBO 40: estado de reclamo robusto.
 // La evidencia puede venir con nombres de campos diferentes según el endpoint.
 // Priorizamos una clave/ID compartida y, si no existe, usamos calle+número
 // normalizados. La zona solo refuerza la coincidencia cuando ambos registros
@@ -10908,14 +10908,14 @@ function dvFiltroCoincideObjeto(o){
     return okCgm && okZona;
 }
 
-// V39: CGM visual = unión geográfica de sus polígonos.
+// V40: CGM visual = unión geográfica de sus polígonos.
 // La localidad/CGM administrativa NO puede hacer aparecer un pin fuera
 // de la zona geográfica cuando el reclamo ya tiene coordenadas.
 // Si no hay coordenadas, se conserva el dato administrativo para filtros
 // de datos, pero ese reclamo no puede dibujarse en el mapa.
 function dvZonaVisiblePorFiltros(reclamo) {
     /*
-     * V39 — MISMA LÓGICA QUE LA APP DÍA VERDE.
+     * V40 — MISMA LÓGICA QUE LA APP DÍA VERDE.
      *
      * En Día Verde el dato administrativo de Google Sheets es la verdad:
      *   1) CGM = reclamo.localidad
@@ -10973,7 +10973,7 @@ function dvObtenerReclamosFiltradosMapa(){
     if(window.dvUltimaFirmaDiagnosticoReclamosV37!==firma){
         window.dvUltimaFirmaDiagnosticoReclamosV37=firma;
         const realizadosTodos=todos.filter(d=>dvReclamoRealizado(d)).length;
-        console.info("DV FILTRO V39 — LÓGICA DÍA VERDE:",{
+        console.info("DV FILTRO V40 — PINES FILTRADOS · LÓGICA DÍA VERDE:",{
             cgm:dvMapFiltros.cgm||"TODOS",
             zona:dvMapFiltros.zona||"TODAS",
             estado:estado||"TODOS",
@@ -11028,14 +11028,14 @@ function dvRenderMarcadoresReclamos(){
     if(dvMap.getLayer(DV_RECLAMOS_CIRCLE_ID))dvMap.setFilter(DV_RECLAMOS_CIRCLE_ID,filtroVisible);
     if(dvMap.getLayer(DV_RECLAMOS_ICON_ID))dvMap.setFilter(DV_RECLAMOS_ICON_ID,filtroVisible);
 
-    console.info("DV CAPA RECLAMOS V39:",{
+    console.info("DV CAPA RECLAMOS V40:",{
         filtro:{...dvMapFiltros},
         visibles:reclamosVisibles.length,
         features:features.length,
         source:DV_RECLAMOS_SOURCE_ID
     });
     if(dvMapFiltros.cgm||dvMapFiltros.zona||dvMapFiltros.reclamo){
-        console.info("DV VERDAD RECLAMOS V39:",{
+        console.info("DV VERDAD RECLAMOS V40:",{
             filtroCgm:dvMapFiltros.cgm||"TODOS",
             filtroZona:dvMapFiltros.zona||"TODAS",
             estado:dvMapFiltros.reclamo||"TODOS",
@@ -11244,7 +11244,7 @@ async function cargarCapasEstaticasDiaVerde(){
 
             const realizadosDiagnostico=dvMapReclamos.filter(d=>dvReclamoRealizado(d)).length;
             const explicitosDiagnostico=dvMapReclamos.filter(d=>dvReclamoTieneEstadoExplicito(d)).length;
-            console.info("DV ESTADOS RECLAMOS V39:",{
+            console.info("DV ESTADOS RECLAMOS V40:",{
                 total:dvMapReclamos.length,
                 evidenciasRecibidas:dvMapEvidencias.length,
                 conEstadoExplicito:explicitosDiagnostico,
@@ -11730,10 +11730,18 @@ function dvAplicarFiltrosMapa(){
         return;
     }
 
-    // Un solo render de la parte estática: esta función actualiza zonas y
-    // llama una sola vez a dvRenderMarcadoresReclamos(). Evitamos el doble
-    // pintado que existía en versiones anteriores.
+    // Un solo render de la parte estática.
+    // IMPORTANTE V40: la versión anterior calculaba correctamente los
+    // reclamosVisibles, pero NO ejecutaba el render de los pines al cambiar
+    // el selector. Por eso el contador mostraba 19 (por ejemplo) mientras
+    // los 234 pines anteriores seguían dibujados en el mapa.
+    //
+    // Ahora el cambio de filtro tiene una única cadena visual:
+    //   1) actualiza/resalta zonas
+    //   2) reconstruye la fuente GeoJSON de reclamos SOLO con los filtrados
+    //   3) actualiza GPS sin tocar la capa de reclamos
     try{dvAplicarCapasEstaticas();}catch(e){console.warn("Filtro zonas/reclamos Día Verde",e);}
+    try{dvRenderMarcadoresReclamos();}catch(e){console.warn("Render filtro pines Día Verde",e);}
 
     const reclamosVisibles=dvObtenerReclamosFiltradosMapa();
 
