@@ -1423,6 +1423,65 @@ textarea.form-control{
     width:min(760px,100%);
 }
 
+.asignacion-form-title{
+    font-size:13px;
+    font-weight:800;
+    color:#eef4fb;
+    margin-bottom:3px;
+}
+.asignacion-form-help{
+    font-size:10px;
+    color:#718198;
+    margin-bottom:15px;
+}
+.asignacion-route-box{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:10px;
+}
+.asignacion-route-item{
+    padding:11px 12px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:10px;
+    background:rgba(255,255,255,.025);
+}
+.asignacion-route-label{
+    display:block;
+    font-size:9px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    color:#718198;
+    margin-bottom:5px;
+}
+.asignacion-route-value{
+    color:#eef4fb;
+    font-size:11px;
+    line-height:1.35;
+}
+.asignacion-service-detail{
+    margin-top:8px;
+    padding:9px 11px;
+    border-radius:9px;
+    background:rgba(34,197,94,.06);
+    border:1px solid rgba(34,197,94,.12);
+    font-size:10px;
+    color:#aebdce;
+}
+.asignacion-service-detail strong{
+    color:#eef4fb;
+}
+.asignacion-main-cell{
+    min-width:170px;
+}
+.asignacion-route-cell{
+    min-width:230px;
+}
+@media(max-width:760px){
+    .asignacion-route-box{grid-template-columns:1fr}
+}
+
 
 /* =========================================================
    MÓDULO RUTAS
@@ -3291,11 +3350,11 @@ textarea.form-control{
                     <tr>
                         <th>Fecha</th>
                         <th>Servicio</th>
+                        <th>Recorrido</th>
                         <th>Chofer</th>
                         <th>Vehículo</th>
-                        <th>Turno</th>
                         <th>Estado</th>
-                        <th>Hora asignación</th>
+                        <th>Hora</th>
                     </tr>
                 </thead>
 
@@ -5302,37 +5361,113 @@ function claseEstadoAsignacion(estado){
 }
 
 
-function renderizarAsignaciones(
-    asignaciones
-){
+function obtenerServicioAsignacionPorId(id){
+    const lista = Array.isArray(estadoPanel.servicios)
+        ? estadoPanel.servicios
+        : [];
+    return lista.find(s =>
+        String(s.ID_SERVICIO || "").trim() === String(id || "").trim()
+    ) || null;
+}
+
+function obtenerPersonaAsignacionPorId(id){
+    const lista = Array.isArray(estadoPanel.choferes)
+        ? estadoPanel.choferes
+        : [];
+    return lista.find(c =>
+        String(c.ID_CHOFER || "").trim() === String(id || "").trim()
+    ) || null;
+}
+
+function obtenerVehiculoAsignacionPorId(id){
+    const lista = Array.isArray(estadoPanel.vehiculos)
+        ? estadoPanel.vehiculos
+        : [];
+    return lista.find(v =>
+        String(v.ID_VEHICULO || "").trim() === String(id || "").trim()
+    ) || null;
+}
+
+function datosRutaAsignacion(asignacion){
+    const raw = String(asignacion?.OBSERVACIONES || "");
+    const out = {
+        inicial:"",
+        final:"",
+        tipo:"",
+        resto:""
+    };
+
+    raw.split(/\s*\|\s*/).forEach(parte=>{
+        const p = String(parte || "").trim();
+        const idx = p.indexOf(":");
+        if(idx < 0){
+            if(p) out.resto += (out.resto ? " | " : "") + p;
+            return;
+        }
+
+        const clave = normalizar(p.slice(0,idx));
+        const valor = p.slice(idx+1).trim();
+
+        if(clave === "PUNTO INICIAL"){
+            out.inicial = valor;
+        }else if(clave === "PUNTO FINAL"){
+            out.final = valor;
+        }else if(clave === "TIPO DE TRASLADO"){
+            out.tipo = valor;
+        }else if(valor){
+            out.resto += (out.resto ? " | " : "") + p;
+        }
+    });
+
+    return out;
+}
+
+function formatearFechaAsignacion(valor){
+    if(!valor) return "-";
+    const s = String(valor).trim();
+
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+
+    const d = new Date(s);
+    if(!Number.isNaN(d.getTime())){
+        return String(d.getDate()).padStart(2,"0") + "/" +
+            String(d.getMonth()+1).padStart(2,"0") + "/" +
+            d.getFullYear();
+    }
+
+    return s;
+}
+
+function formatearHoraAsignacion(valor){
+    if(!valor) return "-";
+    const s = String(valor).trim();
+
+    const m = s.match(/T(\d{2}):(\d{2})/);
+    if(m) return `${m[1]}:${m[2]}`;
+
+    const hm = s.match(/^(\d{1,2}):(\d{2})/);
+    if(hm) return `${String(hm[1]).padStart(2,"0")}:${hm[2]}`;
+
+    return s;
+}
+
+function renderizarAsignaciones(asignaciones){
 
     const tbody =
-        document.getElementById(
-            "tablaAsignaciones"
-        );
+        document.getElementById("tablaAsignaciones");
 
-    if(!tbody){
-        return;
-    }
+    if(!tbody) return;
 
     const contador =
-        document.getElementById(
-            "contadorAsignaciones"
-        );
+        document.getElementById("contadorAsignaciones");
 
     if(contador){
-
         contador.textContent =
-            `${Array.isArray(asignaciones)
-                ? asignaciones.length
-                : 0} asignaciones`;
+            `${Array.isArray(asignaciones) ? asignaciones.length : 0} asignaciones`;
     }
 
-    if(
-        !Array.isArray(asignaciones) ||
-        asignaciones.length === 0
-    ){
-
+    if(!Array.isArray(asignaciones) || asignaciones.length === 0){
         tbody.innerHTML = `
             <tr>
                 <td colspan="7">
@@ -5343,92 +5478,98 @@ function renderizarAsignaciones(
                 </td>
             </tr>
         `;
-
         return;
     }
 
-    tbody.innerHTML =
-        asignaciones.map(
-            asignacion => {
+    tbody.innerHTML = asignaciones.map(asignacion => {
 
-                const estado =
-                    normalizar(
-                        asignacion.ESTADO
-                    ) || "SIN ESTADO";
+        const estado =
+            normalizar(asignacion.ESTADO) || "SIN ESTADO";
 
-                const clase =
-                    claseEstadoAsignacion(
-                        estado
-                    );
+        const clase =
+            claseEstadoAsignacion(estado);
 
-                const servicio =
-                    asignacion.ID_SERVICIO ||
-                    "-";
+        const servicioObj =
+            obtenerServicioAsignacionPorId(asignacion.ID_SERVICIO);
 
-                const chofer =
-                    asignacion.ID_CHOFER ||
-                    "-";
+        const choferObj =
+            obtenerPersonaAsignacionPorId(asignacion.ID_CHOFER);
 
-                const vehiculo =
-                    asignacion.ID_VEHICULO ||
-                    "-";
+        const vehiculoObj =
+            obtenerVehiculoAsignacionPorId(asignacion.ID_VEHICULO);
 
-                return `
-                    <tr>
+        const servicio =
+            servicioObj?.NOMBRE_SERVICIO ||
+            asignacion.ID_SERVICIO ||
+            "-";
 
-                        <td class="asignacion-date">
-                            ${escaparHTML(
-                                asignacion.FECHA || "-"
-                            )}
-                        </td>
+        const tipoServicio =
+            servicioObj?.TIPO_SERVICIO || "";
 
-                        <td>
-                            <span class="asignacion-main">
-                                ${escaparHTML(servicio)}
-                            </span>
-                            ${
-                                asignacion.OBSERVACIONES
-                                ? `
-                                    <span class="asignacion-sub">
-                                        ${escaparHTML(
-                                            asignacion.OBSERVACIONES
-                                        )}
-                                    </span>
-                                `
-                                : ""
-                            }
-                        </td>
+        const chofer =
+            choferObj?.NOMBRE ||
+            asignacion.ID_CHOFER ||
+            "-";
 
-                        <td>
-                            ${escaparHTML(chofer)}
-                        </td>
+        const vehiculo =
+            vehiculoObj?.DOMINIO ||
+            asignacion.ID_VEHICULO ||
+            "-";
 
-                        <td>
-                            ${escaparHTML(vehiculo)}
-                        </td>
+        const ruta =
+            datosRutaAsignacion(asignacion);
 
-                        <td>
-                            ${escaparHTML(
-                                asignacion.TURNO || "-"
-                            )}
-                        </td>
+        return `
+            <tr>
+                <td class="asignacion-date">
+                    ${escaparHTML(formatearFechaAsignacion(asignacion.FECHA))}
+                </td>
 
-                        <td>
-                            <span class="table-status ${clase}">
-                                ${escaparHTML(estado)}
-                            </span>
-                        </td>
+                <td class="asignacion-main-cell">
+                    <span class="asignacion-main">
+                        ${escaparHTML(servicio)}
+                    </span>
+                    ${tipoServicio ? `
+                        <span class="asignacion-sub">
+                            ${escaparHTML(tipoServicio)}
+                        </span>
+                    ` : ""}
+                </td>
 
-                        <td>
-                            ${escaparHTML(
-                                asignacion.HORA_ASIGNACION || "-"
-                            )}
-                        </td>
+                <td class="asignacion-route-cell">
+                    <span class="asignacion-main">
+                        ${escaparHTML(ruta.inicial || "-")}
+                    </span>
+                    <span class="asignacion-sub">
+                        → ${escaparHTML(ruta.final || "-")}
+                    </span>
+                    ${ruta.tipo ? `
+                        <span class="asignacion-sub">
+                            ${escaparHTML(ruta.tipo)}
+                        </span>
+                    ` : ""}
+                </td>
 
-                    </tr>
-                `;
-            }
-        ).join("");
+                <td>
+                    ${escaparHTML(chofer)}
+                </td>
+
+                <td>
+                    ${escaparHTML(vehiculo)}
+                </td>
+
+                <td>
+                    <span class="table-status ${clase}">
+                        ${escaparHTML(estado)}
+                    </span>
+                </td>
+
+                <td>
+                    ${escaparHTML(formatearHoraAsignacion(asignacion.HORA_ASIGNACION))}
+                </td>
+            </tr>
+        `;
+    }).join("");
 }
 
 
@@ -5447,17 +5588,20 @@ function filtrarAsignaciones(){
             []
         ).filter(asignacion => {
 
-            const contenido = [
+            const servicio = obtenerServicioAsignacionPorId(asignacion.ID_SERVICIO);
+            const chofer = obtenerPersonaAsignacionPorId(asignacion.ID_CHOFER);
+            const vehiculo = obtenerVehiculoAsignacionPorId(asignacion.ID_VEHICULO);
 
+            const contenido = [
                 asignacion.FECHA,
-                asignacion.ID_SERVICIO,
-                asignacion.ID_CHOFER,
-                asignacion.ID_VEHICULO,
+                servicio?.NOMBRE_SERVICIO,
+                servicio?.TIPO_SERVICIO,
+                chofer?.NOMBRE,
+                vehiculo?.DOMINIO,
                 asignacion.TURNO,
                 asignacion.ESTADO,
                 asignacion.HORA_ASIGNACION,
                 asignacion.OBSERVACIONES
-
             ]
             .map(normalizar)
             .join(" ");
@@ -5472,6 +5616,74 @@ function filtrarAsignaciones(){
 }
 
 
+let asignacionServiciosDisponibles = [];
+
+function obtenerServicioSeleccionadoAsignacion(){
+    const id =
+        document.getElementById("asignacionServicio")?.value || "";
+    return asignacionServiciosDisponibles.find(s =>
+        String(s.ID_SERVICIO || "").trim() === String(id).trim()
+    ) || null;
+}
+
+function inferirTurnoAsignacion(servicio){
+    const hora = String(servicio?.HORA_PROGRAMADA || "").match(/(\d{1,2}):(\d{2})/);
+    const h = hora ? Number(hora[1]) : new Date().getHours();
+    if(h < 13) return "MAÑANA";
+    if(h < 19) return "TARDE";
+    return "NOCHE";
+}
+
+function actualizarDetalleServicioAsignacion(){
+
+    const servicio = obtenerServicioSeleccionadoAsignacion();
+
+    const detalle =
+        document.getElementById("asignacionServicioDetalle");
+
+    const fecha =
+        document.getElementById("asignacionFecha");
+
+    const turno =
+        document.getElementById("asignacionTurno");
+
+    if(fecha && servicio?.FECHA){
+        const raw = String(servicio.FECHA);
+        const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        fecha.value = m ? `${m[1]}-${m[2]}-${m[3]}` : raw;
+    }else if(fecha && !fecha.value){
+        fecha.value = fechaLocalISO();
+    }
+
+    if(turno){
+        turno.value = inferirTurnoAsignacion(servicio);
+    }
+
+    if(!detalle) return;
+
+    if(!servicio){
+        detalle.innerHTML = "Seleccioná el servicio que querés asignar.";
+        return;
+    }
+
+    const tipo =
+        servicio.TIPO_SERVICIO ||
+        "Sin tipo informado";
+
+    const fechaTexto =
+        formatearFechaAsignacion(servicio.FECHA);
+
+    const hora =
+        servicio.HORA_PROGRAMADA
+            ? ` · ${formatearHoraAsignacion(servicio.HORA_PROGRAMADA)}`
+            : "";
+
+    detalle.innerHTML =
+        `<strong>${escaparHTML(servicio.NOMBRE_SERVICIO || "Servicio")}</strong>` +
+        ` · ${escaparHTML(tipo)}` +
+        ` · ${escaparHTML(fechaTexto)}${escaparHTML(hora)}`;
+}
+
 async function cargarOpcionesAsignacion(){
 
     const [
@@ -5485,6 +5697,24 @@ async function cargarOpcionesAsignacion(){
         leerBackend("vehiculos")
 
     ]);
+
+    asignacionServiciosDisponibles =
+        servicios?.ok && Array.isArray(servicios.datos)
+            ? servicios.datos
+            : [];
+
+    estadoPanel.choferes =
+        choferes?.ok && Array.isArray(choferes.datos)
+            ? choferes.datos
+            : estadoPanel.choferes;
+
+    estadoPanel.vehiculos =
+        vehiculos?.ok && Array.isArray(vehiculos.datos)
+            ? vehiculos.datos
+            : estadoPanel.vehiculos;
+
+    estadoPanel.servicios =
+        asignacionServiciosDisponibles;
 
     const selectServicio =
         document.getElementById(
@@ -5505,10 +5735,7 @@ async function cargarOpcionesAsignacion(){
     if(selectServicio){
 
         const lista =
-            servicios?.ok &&
-            Array.isArray(servicios.datos)
-                ? servicios.datos
-                : [];
+            asignacionServiciosDisponibles;
 
         selectServicio.innerHTML =
             '<option value="">Seleccionar servicio</option>' +
@@ -5536,6 +5763,9 @@ async function cargarOpcionesAsignacion(){
                 `;
 
             }).join("");
+
+        selectServicio.onchange = actualizarDetalleServicioAsignacion;
+        actualizarDetalleServicioAsignacion();
 
     }
 
@@ -5802,47 +6032,48 @@ async function guardarAsignacion(
             "btnGuardarAsignacion"
         );
 
-    const datos = {
+    const servicioSeleccionado =
+        obtenerServicioSeleccionadoAsignacion();
 
+    const puntoInicial =
+        document.getElementById("asignacionPuntoInicial")?.value.trim();
+
+    const puntoFinal =
+        document.getElementById("asignacionPuntoFinal")?.value.trim();
+
+    const tipoTraslado =
+        document.getElementById("asignacionTipoTraslado")?.value.trim();
+
+    const observacionesDetalle = [
+        `Punto inicial: ${puntoInicial}`,
+        `Punto final: ${puntoFinal}`,
+        `Tipo de traslado: ${tipoTraslado}`
+    ].join(" | ");
+
+    const datos = {
         fecha:
-            document.getElementById(
-                "asignacionFecha"
-            )?.value,
+            document.getElementById("asignacionFecha")?.value,
 
         idServicio:
-            document.getElementById(
-                "asignacionServicio"
-            )?.value,
+            document.getElementById("asignacionServicio")?.value,
 
         idChofer:
-            document.getElementById(
-                "asignacionChofer"
-            )?.value,
+            document.getElementById("asignacionChofer")?.value,
 
         idVehiculo:
-            document.getElementById(
-                "asignacionVehiculo"
-            )?.value,
+            document.getElementById("asignacionVehiculo")?.value,
 
         turno:
-            document.getElementById(
-                "asignacionTurno"
-            )?.value.trim(),
+            document.getElementById("asignacionTurno")?.value.trim(),
 
         estado:
-            document.getElementById(
-                "asignacionEstado"
-            )?.value,
+            document.getElementById("asignacionEstado")?.value,
 
         horaAsignacion:
-            document.getElementById(
-                "asignacionHora"
-            )?.value,
+            document.getElementById("asignacionHora")?.value,
 
         observaciones:
-            document.getElementById(
-                "asignacionObservaciones"
-            )?.value.trim()
+            observacionesDetalle
     };
 
 
@@ -5887,12 +6118,34 @@ async function guardarAsignacion(
     }
 
     if(!datos.turno){
-
         mostrarMensajeAsignacion(
-            "El turno es obligatorio.",
+            "No se pudo determinar el turno.",
             "error"
         );
+        return;
+    }
 
+    if(!puntoInicial){
+        mostrarMensajeAsignacion(
+            "Indicá el punto inicial.",
+            "error"
+        );
+        return;
+    }
+
+    if(!puntoFinal){
+        mostrarMensajeAsignacion(
+            "Indicá el punto final.",
+            "error"
+        );
+        return;
+    }
+
+    if(!tipoTraslado){
+        mostrarMensajeAsignacion(
+            "Seleccioná el tipo de traslado.",
+            "error"
+        );
         return;
     }
 
@@ -12814,9 +13067,12 @@ function dvOrdenarCapasMapa(){
         <div class="modal-header">
 
             <div>
-                <div class="modal-title">Nueva asignación</div>
+                <div class="modal-title">
+                    Nueva asignación
+                </div>
+
                 <div class="panel-subtitle">
-                    Vinculación de servicio, chofer y vehículo
+                    Cargá el servicio y asignale chofer y vehículo
                 </div>
             </div>
 
@@ -12829,56 +13085,134 @@ function dvOrdenarCapasMapa(){
 
         </div>
 
+
         <form
             id="formAsignacion"
             onsubmit="guardarAsignacion(event)">
 
             <div class="modal-body">
 
+                <div class="asignacion-form-title">
+                    1. Seleccioná el servicio
+                </div>
+
+                <div class="asignacion-form-help">
+                    El servicio determina automáticamente la fecha y el turno.
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        Servicio *
+                    </label>
+
+                    <select
+                        id="asignacionServicio"
+                        class="form-control"
+                        required>
+
+                        <option value="">
+                            Cargando servicios...
+                        </option>
+
+                    </select>
+
+                    <div
+                        id="asignacionServicioDetalle"
+                        class="asignacion-service-detail">
+                        Seleccioná el servicio que querés asignar.
+                    </div>
+                </div>
+
+
+                <div class="asignacion-route-box">
+
+                    <div class="asignacion-route-item">
+
+                        <label class="asignacion-route-label">
+                            Punto inicial *
+                        </label>
+
+                        <input
+                            id="asignacionPuntoInicial"
+                            class="form-control"
+                            type="text"
+                            required
+                            placeholder="Ej.: Morgiundo y Hornos">
+
+                    </div>
+
+
+                    <div class="asignacion-route-item">
+
+                        <label class="asignacion-route-label">
+                            Punto final *
+                        </label>
+
+                        <input
+                            id="asignacionPuntoFinal"
+                            class="form-control"
+                            type="text"
+                            required
+                            placeholder="Ej.: Plaza Colón">
+
+                    </div>
+
+                </div>
+
+
+                <div class="form-group" style="margin-top:12px">
+
+                    <label class="form-label">
+                        Tipo de traslado *
+                    </label>
+
+                    <select
+                        id="asignacionTipoTraslado"
+                        class="form-control"
+                        required>
+
+                        <option value="">
+                            Seleccionar tipo de traslado
+                        </option>
+
+                        <option value="TRASLADO DE PERSONAL">
+                            Traslado de Personal
+                        </option>
+
+                        <option value="TRASLADO DE MATERIALES">
+                            Traslado de Materiales
+                        </option>
+
+                        <option value="SERVICIO OPERATIVO">
+                            Servicio Operativo
+                        </option>
+
+                        <option value="EMERGENCIA">
+                            Emergencia
+                        </option>
+
+                        <option value="OTRO">
+                            Otro
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="asignacion-form-title" style="margin-top:18px">
+                    2. Asigná los recursos
+                </div>
+
+                <div class="asignacion-form-help">
+                    Elegí quién realiza el servicio y con qué unidad.
+                </div>
+
+
                 <div class="form-grid">
 
                     <div class="form-group">
-                        <label class="form-label">
-                            Fecha *
-                        </label>
 
-                        <input
-                            id="asignacionFecha"
-                            class="form-control"
-                            type="date"
-                            required>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">
-                            Turno *
-                        </label>
-
-                        <input
-                            id="asignacionTurno"
-                            class="form-control"
-                            required
-                            placeholder="MAÑANA, TARDE, NOCHE...">
-                    </div>
-
-                    <div class="form-group full">
-                        <label class="form-label">
-                            Servicio *
-                        </label>
-
-                        <select
-                            id="asignacionServicio"
-                            class="form-control"
-                            required>
-
-                            <option value="">
-                                Cargando servicios...
-                            </option>
-
-                        </select>
-                    </div>
-
-                    <div class="form-group">
                         <label class="form-label">
                             Chofer *
                         </label>
@@ -12893,9 +13227,12 @@ function dvOrdenarCapasMapa(){
                             </option>
 
                         </select>
+
                     </div>
 
+
                     <div class="form-group">
+
                         <label class="form-label">
                             Vehículo *
                         </label>
@@ -12910,59 +13247,32 @@ function dvOrdenarCapasMapa(){
                             </option>
 
                         </select>
-                    </div>
 
-                    <div class="form-group">
-                        <label class="form-label">
-                            Estado
-                        </label>
-
-                        <select
-                            id="asignacionEstado"
-                            class="form-control">
-
-                            <option value="ACTIVA">
-                                ACTIVA
-                            </option>
-
-                            <option value="PROGRAMADA">
-                                PROGRAMADA
-                            </option>
-
-                            <option value="FINALIZADA">
-                                FINALIZADA
-                            </option>
-
-                            <option value="CANCELADA">
-                                CANCELADA
-                            </option>
-
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">
-                            Hora de asignación
-                        </label>
-
-                        <input
-                            id="asignacionHora"
-                            class="form-control"
-                            type="time">
-                    </div>
-
-                    <div class="form-group full">
-                        <label class="form-label">
-                            Observaciones
-                        </label>
-
-                        <textarea
-                            id="asignacionObservaciones"
-                            class="form-control"
-                            placeholder="Observaciones de la asignación"></textarea>
                     </div>
 
                 </div>
+
+
+                <!-- Datos técnicos mantenidos para compatibilidad con Backend Maestro -->
+
+                <input
+                    id="asignacionFecha"
+                    type="hidden">
+
+                <input
+                    id="asignacionTurno"
+                    type="hidden"
+                    value="MAÑANA">
+
+                <input
+                    id="asignacionEstado"
+                    type="hidden"
+                    value="ACTIVA">
+
+                <input
+                    id="asignacionHora"
+                    type="hidden">
+
 
                 <div
                     id="asignacionMensaje"
@@ -12970,6 +13280,7 @@ function dvOrdenarCapasMapa(){
                 </div>
 
             </div>
+
 
             <div class="modal-footer">
 
@@ -12984,7 +13295,7 @@ function dvOrdenarCapasMapa(){
                     id="btnGuardarAsignacion"
                     type="submit"
                     class="btn btn-primary">
-                    Guardar asignación
+                    Asignar servicio
                 </button>
 
             </div>
@@ -12994,9 +13305,6 @@ function dvOrdenarCapasMapa(){
     </div>
 
 </div>
-
-
-
 
 
 <!-- ======================================================
