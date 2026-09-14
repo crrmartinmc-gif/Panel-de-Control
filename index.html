@@ -1337,6 +1337,16 @@ textarea.form-control{
 .status-neutral{color:#a8b3c2;background:rgba(148,163,184,.12)}
 #modalServicio .modal{width:min(720px,100%)}
 
+.planificacion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.planificacion-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;margin-top:7px}
+.planificacion-day{display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.025);font-size:9px;color:#cbd5e1;cursor:pointer}
+.planificacion-day input{accent-color:#18a558}
+.planificacion-preview{margin-top:12px;padding:10px 12px;border-radius:9px;background:rgba(24,165,88,.08);border:1px solid rgba(24,165,88,.25);font-size:10px;line-height:1.5;color:#cbd5e1}
+.planificacion-preview strong{color:#6ee7a0}
+@media(max-width:760px){.planificacion-grid{grid-template-columns:1fr}.planificacion-days{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.servicio-assignment{display:flex;flex-direction:column;gap:2px}.servicio-assignment strong{color:#eef4fb;font-size:10px}.servicio-assignment span{font-size:8px;color:#718198}
+
+
 
 /* =========================================================
    MÓDULO ASIGNACIONES
@@ -3276,6 +3286,11 @@ textarea.form-control{
             <input id="filtroServicio" class="filter servicio-search"
                    placeholder="Buscar servicio, tipo o ruta..."
                    oninput="filtrarServicios()">
+            <button class="btn btn-secondary"
+                    type="button"
+                    onclick="abrirModalPlanificacionMasiva()">
+                📋 Carga masiva
+            </button>
             <button class="btn btn-primary"
                     onclick="abrirModalServicio()">
                 + Nuevo servicio
@@ -4339,59 +4354,18 @@ function fechaLocalISO(){
     return local.toISOString().slice(0,10);
 }
 
-function fechaArgentinaISO(valor){
-    if(valor == null || String(valor).trim() === "") return "";
-    const texto=String(valor).trim();
-    const soloFecha=texto.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T)/);
-    if(soloFecha && !texto.includes("T")) return `${soloFecha[1]}-${soloFecha[2]}-${soloFecha[3]}`;
-    const d=new Date(valor);
-    if(Number.isNaN(d.getTime())) return "";
-    const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Argentina/Buenos_Aires",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);
-    const o=Object.fromEntries(parts.map(x=>[x.type,x.value]));
-    return `${o.year}-${o.month}-${o.day}`;
-}
-
-function hoyArgentinaISO(){
-    const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Argentina/Buenos_Aires",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
-    const o=Object.fromEntries(parts.map(x=>[x.type,x.value]));
-    return `${o.year}-${o.month}-${o.day}`;
-}
-
-function sumarDiasISO(iso,dias){
-    const [y,m,d]=String(iso).split("-").map(Number);
-    const base=new Date(Date.UTC(y,m-1,d));
-    base.setUTCDate(base.getUTCDate()+Number(dias||0));
-    return base.toISOString().slice(0,10);
-}
-
-function formatearFechaArgentina(valor){
-    const iso=fechaArgentinaISO(valor);
-    if(!iso) return valor ? String(valor) : "-";
-    const [y,m,d]=iso.split("-");
-    return `${d}/${m}/${y}`;
-}
-
-function formatearHoraArgentina(valor){
-    if(!valor) return "-";
-    const texto=String(valor).trim();
-    const hm=texto.match(/(?:^|T|\s)(\d{1,2}):(\d{2})(?::\d{2})?/);
-    if(!hm) return texto;
-    if(texto.includes("T") || /Z$|[+-]\d{2}:?\d{2}$/.test(texto)){
-        const d=new Date(valor);
-        if(!Number.isNaN(d.getTime())) return new Intl.DateTimeFormat("es-AR",{timeZone:"America/Argentina/Buenos_Aires",hour:"2-digit",minute:"2-digit",hour12:false}).format(d);
-    }
-    return String(hm[1]).padStart(2,"0")+":"+hm[2];
-}
-
-function formatearFechaHoraArgentina(valor){
-    if(!valor) return "-";
-    const iso=fechaArgentinaISO(valor);
-    if(!iso) return String(valor);
-    return `${formatearFechaArgentina(valor)} ${formatearHoraArgentina(valor)}`;
-}
-
 function formatearFecha(valor){
-    return formatearFechaHoraArgentina(valor);
+    if(!valor) return "-";
+    const s=String(valor).trim();
+    const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+    const fecha = new Date(valor);
+    if(Number.isNaN(fecha.getTime())) return s;
+    return fecha.toLocaleString("es-AR",{
+        timeZone:"America/Argentina/Buenos_Aires",
+        day:"2-digit",month:"2-digit",year:"numeric",
+        hour:"2-digit",minute:"2-digit",hour12:false
+    });
 }
 
 
@@ -4940,19 +4914,55 @@ function actualizarKPIs(datos){
    ========================================================= */
 
 function fechaLocalISOArgentina(fecha){
-    return fechaArgentinaISO(fecha);
+
+    if(fecha == null || fecha === "") return "";
+
+    const texto = String(fecha).trim();
+
+    // Formato ISO del backend: 2026-09-14T00:00:00.000Z
+    const iso = texto.match(/^(\d{4}-\d{2}-\d{2})/);
+    if(iso) return iso[1];
+
+    // Formato DD/MM/YYYY
+    const latam = texto.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if(latam){
+        return `${latam[3]}-${String(latam[2]).padStart(2,"0")}-${String(latam[1]).padStart(2,"0")}`;
+    }
+
+    const d = new Date(fecha);
+    if(!Number.isNaN(d.getTime())){
+        // El sistema opera en Argentina; evitamos depender del formato visual.
+        const partes = new Intl.DateTimeFormat("en-CA", {
+            timeZone:"America/Argentina/Buenos_Aires",
+            year:"numeric", month:"2-digit", day:"2-digit"
+        }).formatToParts(d);
+        const obj = Object.fromEntries(partes.map(x=>[x.type,x.value]));
+        if(obj.year && obj.month && obj.day){
+            return `${obj.year}-${obj.month}-${obj.day}`;
+        }
+    }
+
+    return "";
+}
+
+function hoyArgentinaISO(){
+    const partes = new Intl.DateTimeFormat("en-CA", {
+        timeZone:"America/Argentina/Buenos_Aires",
+        year:"numeric", month:"2-digit", day:"2-digit"
+    }).formatToParts(new Date());
+    const obj = Object.fromEntries(partes.map(x=>[x.type,x.value]));
+    return `${obj.year}-${obj.month}-${obj.day}`;
+}
+
+function fechaArgentinaSumarDias(dias){
+    const base=hoyArgentinaISO();
+    const [y,m,d]=base.split("-").map(Number);
+    const dt=new Date(Date.UTC(y,m-1,d+Number(dias||0)));
+    return dt.toISOString().slice(0,10);
 }
 
 function servicioEsDeHoy(servicio){
-    return fechaArgentinaISO(servicio?.FECHA) === hoyArgentinaISO();
-}
-
-function servicioEsDeManana(servicio){
-    return fechaArgentinaISO(servicio?.FECHA) === sumarDiasISO(hoyArgentinaISO(),1);
-}
-
-function servicioEsDeHoyOManana(servicio){
-    return servicioEsDeHoy(servicio) || servicioEsDeManana(servicio);
+    return fechaLocalISOArgentina(servicio?.FECHA) === hoyArgentinaISO();
 }
 
 function obtenerServiciosVista(){
@@ -5047,6 +5057,69 @@ function claseEstadoServicio(estado){
 }
 
 
+function formatearFechaSimple(valor){
+    if(!valor) return "-";
+    const s=String(valor).trim();
+    const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+    const d=new Date(s);
+    if(Number.isNaN(d.getTime())) return s;
+    return new Intl.DateTimeFormat("es-AR",{
+        timeZone:"America/Argentina/Buenos_Aires",
+        day:"2-digit",month:"2-digit",year:"numeric"
+    }).format(d);
+}
+
+function formatearHoraSimpleArgentina(valor){
+    if(valor===null || valor===undefined || valor==="") return "-";
+    const s=String(valor).trim();
+    if(!s || s==="-") return "-";
+
+    // Hora HH:mm:ss / HH:mm directamente.
+    let m=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if(m) return `${String(m[1]).padStart(2,"0")}:${m[2]}`;
+
+    // Fechas de Google Sheets serializadas como 1899-12-30/31T...Z.
+    // Se convierten explícitamente a la hora argentina.
+    if(/^1899-12-(30|31)T/i.test(s)){
+        const d=new Date(s);
+        if(!Number.isNaN(d.getTime())){
+            const partes=new Intl.DateTimeFormat("en-GB",{
+                timeZone:"America/Argentina/Buenos_Aires",
+                hour:"2-digit",minute:"2-digit",hour12:false
+            }).formatToParts(d);
+            const hh=partes.find(x=>x.type==="hour")?.value;
+            const mm=partes.find(x=>x.type==="minute")?.value;
+            if(hh && mm) return `${hh}:${mm}`;
+        }
+    }
+
+    const d=new Date(s);
+    if(!Number.isNaN(d.getTime())){
+        const partes=new Intl.DateTimeFormat("en-GB",{
+            timeZone:"America/Argentina/Buenos_Aires",
+            hour:"2-digit",minute:"2-digit",hour12:false
+        }).formatToParts(d);
+        const hh=partes.find(x=>x.type==="hour")?.value;
+        const mm=partes.find(x=>x.type==="minute")?.value;
+        if(hh && mm) return `${hh}:${mm}`;
+    }
+    return s;
+}
+
+function renderAsignacionServicio(idAsignacion){
+    const id=String(idAsignacion||"").trim();
+    if(!id) return "<span>-</span>";
+    const lista=Array.isArray(estadoPanel.asignaciones)?estadoPanel.asignaciones:[];
+    const a=lista.find(x=>String(x.ID_ASIGNACION||"").trim()===id);
+    if(!a) return escaparHTML(id);
+    const chofer=obtenerPersonaAsignacionPorId(a.ID_CHOFER);
+    const vehiculo=obtenerVehiculoAsignacionPorId(a.ID_VEHICULO);
+    const nombre=chofer?.NOMBRE || a.ID_CHOFER || "Chofer sin datos";
+    const dominio=vehiculo?.DOMINIO || a.ID_VEHICULO || "Unidad sin datos";
+    return `<div class="servicio-assignment"><strong>${escaparHTML(nombre)}</strong><span>${escaparHTML(dominio)} · ${escaparHTML(id)}</span></div>`;
+}
+
 function renderizarServicios(servicios){
 
     const tbody = document.getElementById("tablaServicios");
@@ -5097,12 +5170,12 @@ function renderizarServicios(servicios){
 
         return `
             <tr>
-                <td class="servicio-date">${escaparHTML(formatearFechaArgentina(servicio.FECHA))}</td>
-                <td>${escaparHTML(servicio.HORA_PROGRAMADA || "-")}</td>
+                <td class="servicio-date">${escaparHTML(formatearFechaSimple(servicio.FECHA))}</td>
+                <td>${escaparHTML(formatearHoraSimpleArgentina(servicio.HORA_PROGRAMADA))}</td>
                 <td>${escaparHTML(servicio.TIPO_SERVICIO || "-")}</td>
                 <td><strong>${escaparHTML(servicio.NOMBRE_SERVICIO || "-")}</strong></td>
-                <td>${escaparHTML(servicio.ID_RUTA || "-")}</td>
-                <td>${escaparHTML(servicio.ID_ASIGNACION || "-")}</td>
+                <td>${escaparHTML(servicio.ID_RUTA || "-" )}</td>
+                <td>${renderAsignacionServicio(servicio.ID_ASIGNACION)}</td>
                 <td>
                     <select class="servicio-estado-select ${claseEstadoServicio(estado)}"
                             onchange="cambiarEstadoServicio('${escaparHTML(servicio.ID_SERVICIO || "")}', this.value)"
@@ -5110,8 +5183,8 @@ function renderizarServicios(servicios){
                         ${["PENDIENTE","EN CURSO","FINALIZADO","CANCELADO"].map(op=>`<option value="${op}" ${normalizar(op)===normalizar(estado)?"selected":""}>${op}</option>`).join("")}
                     </select>
                 </td>
-                <td>${escaparHTML(formatearFechaHoraArgentina(servicio.HORA_INICIO))}</td>
-                <td>${escaparHTML(formatearFechaHoraArgentina(servicio.HORA_FIN))}</td>
+                <td>${escaparHTML(formatearHoraSimpleArgentina(servicio.HORA_INICIO))}</td>
+                <td>${escaparHTML(formatearHoraSimpleArgentina(servicio.HORA_FIN))}</td>
             </tr>
         `;
 
@@ -5246,6 +5319,96 @@ async function cargarAsignacionesParaServicio(){
         }).join("");
 }
 
+
+function abrirModalPlanificacionMasiva(){
+    const modal=document.getElementById("modalPlanificacionMasiva");
+    if(!modal) return;
+    const form=document.getElementById("formPlanificacionMasiva");
+    if(form) form.reset();
+    document.getElementById("masivoDesde").value=hoyArgentinaISO();
+    document.getElementById("masivoHasta").value=fechaArgentinaSumarDias(30);
+    cargarRutasParaPlanificacionMasiva();
+    document.querySelectorAll(".masivoDia").forEach(x=>x.addEventListener("change",actualizarPreviewMasivo));
+    modal.classList.add("open");
+    actualizarPreviewMasivo();
+}
+
+function cerrarModalPlanificacionMasiva(event){
+    if(event && event.target && event.target.id!=="modalPlanificacionMasiva") return;
+    document.getElementById("modalPlanificacionMasiva")?.classList.remove("open");
+}
+
+async function cargarRutasParaPlanificacionMasiva(){
+    const resultado=await leerBackend("rutas");
+    const select=document.getElementById("masivoRuta");
+    if(!select || !resultado?.ok) return;
+    const rutas=Array.isArray(resultado.datos)?resultado.datos:[];
+    select.innerHTML='<option value="">Sin ruta asignada</option>'+rutas.map(r=>`<option value="${escaparHTML(r.ID_RUTA||"")}">${escaparHTML(r.NOMBRE_RUTA||r.ID_RUTA||"")}</option>`).join("");
+}
+
+function construirFechasPlanificacionMasiva(){
+    const desde=document.getElementById("masivoDesde")?.value;
+    const hasta=document.getElementById("masivoHasta")?.value;
+    const dias=[...document.querySelectorAll(".masivoDia:checked")].map(x=>Number(x.value));
+    if(!desde || !hasta || !dias.length || desde>hasta) return [];
+    const [y1,m1,d1]=desde.split("-").map(Number);
+    const [y2,m2,d2]=hasta.split("-").map(Number);
+    const inicio=new Date(Date.UTC(y1,m1-1,d1));
+    const fin=new Date(Date.UTC(y2,m2-1,d2));
+    const out=[];
+    for(const dt=new Date(inicio);dt<=fin;dt.setUTCDate(dt.getUTCDate()+1)){
+        if(dias.includes(dt.getUTCDay())) out.push(dt.toISOString().slice(0,10));
+    }
+    return out;
+}
+
+function actualizarPreviewMasivo(){
+    const preview=document.getElementById("masivoPreview");
+    if(!preview) return;
+    const fechas=construirFechasPlanificacionMasiva();
+    if(!fechas.length){
+        preview.innerHTML="Seleccioná un período válido y al menos un día de prestación.";
+        return;
+    }
+    preview.innerHTML=`Se generarán <strong>${fechas.length} servicios</strong>, desde <strong>${formatearFechaSimple(fechas[0])}</strong> hasta <strong>${formatearFechaSimple(fechas[fechas.length-1])}</strong>.`;
+}
+
+async function generarPlanificacionMasiva(event){
+    event.preventDefault();
+    const fechas=construirFechasPlanificacionMasiva();
+    const tipo=document.getElementById("masivoTipo")?.value.trim();
+    const nombre=document.getElementById("masivoNombre")?.value.trim();
+    const hora=document.getElementById("masivoHora")?.value;
+    const idRuta=document.getElementById("masivoRuta")?.value||"";
+    const obs=document.getElementById("masivoObservaciones")?.value.trim()||"";
+    const boton=document.getElementById("btnGenerarMasivo");
+    const mensaje=document.getElementById("masivoMensaje");
+    if(!tipo||!nombre||!hora||!fechas.length){
+        if(mensaje){mensaje.style.display="block";mensaje.style.color="#f87171";mensaje.textContent="Completá los datos obligatorios y seleccioná al menos un día.";}
+        return;
+    }
+    if(boton){boton.disabled=true;boton.textContent="Generando...";}
+    if(mensaje){mensaje.style.display="block";mensaje.style.color="#91a0b5";mensaje.textContent=`Generando ${fechas.length} servicios en el Backend Maestro...`;}
+    let ok=0, errores=[];
+    try{
+        for(const fecha of fechas){
+            const respuesta=await fetch(BACKEND_URL,{method:"POST",body:JSON.stringify({accion:"crearServicio",fecha,horaProgramada:hora,tipoServicio:tipo,nombreServicio:nombre,idRuta,idAsignacion:"",estado:"PENDIENTE",observaciones:obs})});
+            const resultado=await respuesta.json();
+            if(resultado?.ok) ok++; else errores.push(`${fecha}: ${resultado?.error||"error"}`);
+        }
+        if(mensaje){mensaje.style.color=errores.length?"#fbbf24":"#6ee7a0";mensaje.textContent=`Proceso terminado: ${ok} creados${errores.length?` · ${errores.length} con error`:""}.`+(errores.length?" Revisá la consola para el detalle.":"");}
+        console.info("PLANIFICACIÓN MASIVA",{creados:ok,errores});
+        if(errores.length) console.warn("Errores planificación masiva",errores);
+        await Promise.allSettled([cargarResumenPanel(),cargarServicios()]);
+        filtrarServicios();
+        if(!errores.length) setTimeout(cerrarModalPlanificacionMasiva,700);
+    }catch(e){
+        console.error("Error planificación masiva",e);
+        if(mensaje){mensaje.style.color="#f87171";mensaje.textContent="No se pudo completar la planificación: "+e.message;}
+    }finally{
+        if(boton){boton.disabled=false;boton.textContent="Generar servicios";}
+    }
+}
 
 function abrirModalServicio(){
 
@@ -5601,11 +5764,33 @@ function datosRutaAsignacion(asignacion){
 }
 
 function formatearFechaAsignacion(valor){
-    return formatearFechaArgentina(valor);
+    if(!valor) return "-";
+    const s = String(valor).trim();
+
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+
+    const d = new Date(s);
+    if(!Number.isNaN(d.getTime())){
+        return String(d.getDate()).padStart(2,"0") + "/" +
+            String(d.getMonth()+1).padStart(2,"0") + "/" +
+            d.getFullYear();
+    }
+
+    return s;
 }
 
 function formatearHoraAsignacion(valor){
-    return formatearHoraArgentina(valor);
+    if(!valor) return "-";
+    const s = String(valor).trim();
+
+    const m = s.match(/T(\d{2}):(\d{2})/);
+    if(m) return `${m[1]}:${m[2]}`;
+
+    const hm = s.match(/^(\d{1,2}):(\d{2})/);
+    if(hm) return `${String(hm[1]).padStart(2,"0")}:${hm[2]}`;
+
+    return s;
 }
 
 function renderizarAsignaciones(asignaciones){
@@ -5854,25 +6039,10 @@ async function cargarOpcionesAsignacion(){
 
     ]);
 
-    const serviciosCargados =
+    asignacionServiciosDisponibles =
         servicios?.ok && Array.isArray(servicios.datos)
             ? servicios.datos
             : [];
-
-    // Para una nueva asignación solo mostramos servicios operativos
-    // de HOY o de MAÑANA. Los históricos/futuros quedan para la planificación.
-    // Además, un servicio ya vinculado a una asignación no vuelve a ofrecerse.
-    asignacionServiciosDisponibles = serviciosCargados.filter(servicio => {
-        const estado=normalizar(servicio?.ESTADO||"");
-        if(!servicioEsDeHoyOManana(servicio)) return false;
-        if(["FINALIZADO","CANCELADO"].includes(estado)) return false;
-        if(String(servicio?.ID_ASIGNACION||"").trim()) return false;
-        return true;
-    }).sort((a,b)=>{
-        const fa=fechaArgentinaISO(a.FECHA), fb=fechaArgentinaISO(b.FECHA);
-        if(fa!==fb) return fa.localeCompare(fb);
-        return String(a.HORA_PROGRAMADA||"").localeCompare(String(b.HORA_PROGRAMADA||""));
-    });
 
     estadoPanel.choferes =
         choferes?.ok && Array.isArray(choferes.datos)
@@ -5905,8 +6075,16 @@ async function cargarOpcionesAsignacion(){
 
     if(selectServicio){
 
-        const lista =
-            asignacionServiciosDisponibles;
+        const hoy=hoyArgentinaISO();
+        const manana=fechaArgentinaSumarDias(1);
+        const lista = asignacionServiciosDisponibles.filter(servicio => {
+            const fecha=fechaLocalISOArgentina(servicio?.FECHA);
+            const estado=normalizar(servicio?.ESTADO||"");
+            const asignado=String(servicio?.ID_ASIGNACION||"").trim();
+            return (fecha===hoy || fecha===manana) &&
+                   !["FINALIZADO","FINALIZADOS","CANCELADO"].includes(estado) &&
+                   !asignado;
+        });
 
         selectServicio.innerHTML =
             '<option value="">Seleccionar servicio</option>' +
@@ -5922,7 +6100,7 @@ async function cargarOpcionesAsignacion(){
 
                 const fecha =
                     servicio.FECHA
-                        ? ` · ${servicio.FECHA}`
+                        ? ` · ${formatearFechaSimple(servicio.FECHA)}`
                         : "";
 
                 return `
@@ -13155,6 +13333,50 @@ function dvOrdenarCapasMapa(){
 
 
 <!-- MODAL NUEVO SERVICIO -->
+<!-- MODAL PLANIFICACIÓN / CARGA MASIVA DE SERVICIOS -->
+<div id="modalPlanificacionMasiva" class="modal-overlay" onclick="cerrarModalPlanificacionMasiva(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="width:min(820px,100%)">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title">📋 Planificación masiva de servicios</div>
+                <div class="panel-subtitle">Generá múltiples servicios por período y días de la semana</div>
+            </div>
+            <button class="modal-close" type="button" onclick="cerrarModalPlanificacionMasiva()">×</button>
+        </div>
+        <form id="formPlanificacionMasiva" onsubmit="generarPlanificacionMasiva(event)">
+            <div class="modal-body">
+                <div class="planificacion-grid">
+                    <div class="form-group"><label class="form-label">Tipo de servicio *</label><input id="masivoTipo" class="form-control" required placeholder="RECOLECCIÓN DIFERENCIADA"></div>
+                    <div class="form-group"><label class="form-label">Nombre del servicio *</label><input id="masivoNombre" class="form-control" required placeholder="Día Verde Banfield Este"></div>
+                    <div class="form-group"><label class="form-label">Ruta</label><select id="masivoRuta" class="form-control"><option value="">Sin ruta asignada</option></select></div>
+                    <div class="form-group"><label class="form-label">Hora programada *</label><input id="masivoHora" class="form-control" type="time" required></div>
+                    <div class="form-group"><label class="form-label">Desde *</label><input id="masivoDesde" class="form-control" type="date" required></div>
+                    <div class="form-group"><label class="form-label">Hasta *</label><input id="masivoHasta" class="form-control" type="date" required></div>
+                </div>
+                <div class="form-group" style="margin-top:12px">
+                    <label class="form-label">Días de prestación *</label>
+                    <div class="planificacion-days">
+                        <label class="planificacion-day"><input type="checkbox" value="1" class="masivoDia"> Lun</label>
+                        <label class="planificacion-day"><input type="checkbox" value="2" class="masivoDia"> Mar</label>
+                        <label class="planificacion-day"><input type="checkbox" value="3" class="masivoDia"> Mié</label>
+                        <label class="planificacion-day"><input type="checkbox" value="4" class="masivoDia"> Jue</label>
+                        <label class="planificacion-day"><input type="checkbox" value="5" class="masivoDia"> Vie</label>
+                        <label class="planificacion-day"><input type="checkbox" value="6" class="masivoDia"> Sáb</label>
+                        <label class="planificacion-day"><input type="checkbox" value="0" class="masivoDia"> Dom</label>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:12px"><label class="form-label">Observaciones</label><textarea id="masivoObservaciones" class="form-control" placeholder="Ej.: servicio recurrente lunes a viernes"></textarea></div>
+                <div id="masivoPreview" class="planificacion-preview">Seleccioná el período y los días para ver la cantidad de servicios que se generarán.</div>
+                <div id="masivoMensaje" style="display:none;margin-top:10px;font-size:10px;line-height:1.5"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModalPlanificacionMasiva()">Cancelar</button>
+                <button id="btnGenerarMasivo" type="submit" class="btn btn-primary">Generar servicios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="modalServicio" class="modal-overlay" onclick="cerrarModalServicio(event)">
     <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
