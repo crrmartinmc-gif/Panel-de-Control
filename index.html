@@ -10487,7 +10487,7 @@ function dvDireccionReclamo(d){
     return `${d.calle || d.direccion || d.Direccion || d.domicilio || d.Domicilio || ""} ${d.numero || ""}`.trim();
 }
 
-// TURBO 36: estado de reclamo robusto.
+// TURBO 37: estado de reclamo robusto.
 // La evidencia puede venir con nombres de campos diferentes según el endpoint.
 // Priorizamos una clave/ID compartida y, si no existe, usamos calle+número
 // normalizados. La zona solo refuerza la coincidencia cuando ambos registros
@@ -10558,8 +10558,24 @@ function dvEvidenciaCoincide(d,e){
 }
 
 function dvReclamoRealizado(d){
+    // V37: si el backend trae un estado explícito, ese estado tiene prioridad.
+    // Solo usamos evidencia como respaldo cuando el reclamo no trae estado.
+    const estadoExplicito=d?.estado ?? d?.ESTADO ?? d?.status ?? d?.STATUS ??
+        d?.estadoReclamo ?? d?.ESTADO_RECLAMO ?? d?.situacion ?? d?.SITUACION ?? "";
+    const eNorm=dvNormalizar(estadoExplicito);
+    if(eNorm){
+        if(/realiz|resuelt|complet|finaliz|atendid|levantad/.test(eNorm)) return true;
+        if(/pendient|abiert|ingres|asignad|en proceso|no realiz/.test(eNorm)) return false;
+    }
+
     const ev=Array.isArray(d?.__evidencias) && d.__evidencias.length ? d.__evidencias : (dvMapEvidencias||[]);
     return ev.some(e=>dvEvidenciaCoincide(d,e));
+}
+
+function dvReclamoTieneEstadoExplicito(d){
+    const v=d?.estado ?? d?.ESTADO ?? d?.status ?? d?.STATUS ??
+        d?.estadoReclamo ?? d?.ESTADO_RECLAMO ?? d?.situacion ?? d?.SITUACION ?? "";
+    return !!dvNormalizar(v);
 }
 
 let dvMapEvidencias=[];
@@ -10572,7 +10588,7 @@ function dvPurgarFuentesReclamosAntiguas(){
     if(!dvMap||!dvMapReady) return;
     const style=dvMap.getStyle()||{};
 
-    // V36: una sola autoridad visual para reclamos.
+    // V37: una sola autoridad visual para reclamos.
     // Eliminamos cualquier capa/fuente cuyo ID o source sugiera que dibuja
     // reclamos, incluso si proviene de una versión anterior y no empieza
     // exactamente por dv-. Esto evita que una capa histórica siga mostrando
@@ -10892,46 +10908,62 @@ function dvFiltroCoincideObjeto(o){
     return okCgm && okZona;
 }
 
-// V36: REGLA GEOGRÁFICA DEFINITIVA PARA RECLAMOS.
-// Con un filtro CGM/ZONA activo, la coordenada es la autoridad cuando
-// existe y cae dentro de un polígono. La LOCALIDAD solo puede respaldar
-// reclamos sin coordenadas o coordenadas fuera de todos los polígonos.
+// V37: la geometría manda para zonas; la localidad solo sirve como respaldo para CGM.
 function dvZonaVisiblePorFiltros(reclamo) {
     const hayFiltro = !!(dvMapFiltros.cgm || dvMapFiltros.zona);
     if (!hayFiltro) return true;
 
     const punto = dvReclamoLatLng(reclamo);
-    const zonaGeo = punto ? dvFeatureZonaPorPunto(reclamo) : null;
 
-    // ZONA: siempre manda la geometría. Nunca usar LOCALIDAD/ZONA textual.
+    // V37 - REGLAS DEFINITIVAS:
+    // 1) ZONA = verdad geográfica. Si se selecciona una zona, solo importa
+    //    el polígono que contiene la coordenada del reclamo.
+    // 2) CGM = pertenencia administrativa. Se toma LOCALIDAD/CGM del reclamo.
+    //    Esto permite conservar reclamos administrativamente asignados a un
+    //    CGM aunque su coordenada quede fuera de los polígonos cargados.
+    // 3) Si no hay localidad/CGM y sí hay coordenadas, para CGM usamos el
+    //    polígono como respaldo.
+    // 4) Nunca mezclamos CGM administrativo con ZONA geográfica.
+
+    // FILTRO POR ZONA: exclusivamente geográfico.
     if (dvMapFiltros.zona) {
+        if (!punto) return false;
+        const zonaGeo = dvFeatureZonaPorPunto(reclamo);
         if (!zonaGeo) return false;
         const nombreZona = zonaGeo.properties?.name || zonaGeo.properties?.zona || "";
-        const zonaReal = dvNormalizar(dvZonaCanonica({zona:nombreZona}));
-        return zonaReal === dvNormalizar(dvMapFiltros.zona);
+        return dvNormalizar(dvZonaCanonica({zona:nombreZona})) === dvNormalizar(dvMapFiltros.zona);
     }
 
-    // CGM: si la coordenada cae dentro de un polígono, el polígono manda.
+    // FILTRO POR CGM: administrativo primero.
     const cgmSeleccionado = dvClaveCgmCanonico(dvMapFiltros.cgm);
-    if (zonaGeo) {
-        const nombreZona = zonaGeo.properties?.name || zonaGeo.properties?.zona || "";
-        const zonaReal = dvZonaCanonica({zona:nombreZona});
-        const cgmReal = dvInferirCgmPorZona(zonaReal);
-        return cgmReal === cgmSeleccionado;
-    }
-
-    // CGM: respaldo administrativo SOLO cuando no hay polígono que
-    // determine la posición (sin coordenadas o fuera de todos los polígonos).
     const localidad = String(
         reclamo?.localidad ??
         reclamo?.LOCALIDAD ??
         reclamo?.localidadNombre ??
         reclamo?.cgm ??
         reclamo?.CGM ??
+        reclamo?.centroGestion ??
+        reclamo?.CENTRO_GESTION ??
         ""
     ).trim();
-    if (!localidad) return false;
-    return dvClaveCgmCanonico(localidad) === cgmSeleccionado;
+
+    if (localidad) {
+        const cgmAdministrativo=dvClaveCgmCanonico(localidad);
+        if(cgmAdministrativo) return cgmAdministrativo===cgmSeleccionado;
+    }
+
+    // Respaldo excepcional: si no existe dato administrativo, usamos
+    // geometría para no dejar sin clasificar un reclamo geolocalizado.
+    if (punto) {
+        const zonaGeo = dvFeatureZonaPorPunto(reclamo);
+        if (zonaGeo) {
+            const nombreZona = zonaGeo.properties?.name || zonaGeo.properties?.zona || "";
+            const zonaCanonica = dvZonaCanonica({zona:nombreZona});
+            return dvInferirCgmPorZona(zonaCanonica) === cgmSeleccionado;
+        }
+    }
+
+    return false;
 }
 
 function dvZonaGeoVisiblePorFiltros(feature){
@@ -10942,34 +10974,39 @@ function dvZonaGeoVisiblePorFiltros(feature){
 
 function dvObtenerReclamosFiltradosMapa(){
     const estado=dvNormalizar(dvMapFiltros.reclamo||"");
+    const todos=Array.isArray(dvMapReclamos)?dvMapReclamos:[];
 
-    // AUTORIDAD GEOGRÁFICA DE RECLAMOS:
-    // Si existe filtro de CGM/ZONA, un reclamo geolocalizado solo puede
-    // entrar si su coordenada cae dentro del polígono correspondiente.
-    // LOCALIDAD/ZONA textual NO participa en esta decisión.
-    return (Array.isArray(dvMapReclamos)?dvMapReclamos:[]).filter(d=>{
-        if(!dvZonaVisiblePorFiltros(d)) return false;
-
-        // Estado del reclamo.
-        if(estado){
-            const realizado=dvReclamoRealizado(d);
-            if(estado==="realizado" ? !realizado : realizado) return false;
-        }
-
-        // Los reclamos que se dibujan siempre necesitan coordenadas válidas.
-        return !!dvReclamoLatLng(d);
+    const porGeografia=todos.filter(d=>dvZonaVisiblePorFiltros(d));
+    const porEstado=porGeografia.filter(d=>{
+        if(!estado)return true;
+        const realizado=dvReclamoRealizado(d);
+        return estado==="realizado" ? realizado : !realizado;
     });
-}
+    const conCoordenadas=porEstado.filter(d=>!!dvReclamoLatLng(d));
 
-function dvDiagnosticoFiltroReclamos(){
-    const total=Array.isArray(dvMapReclamos)?dvMapReclamos.length:0;
-    const conCoordenadas=(dvMapReclamos||[]).filter(d=>!!dvReclamoLatLng(d));
-    const dentroPoligono=conCoordenadas.filter(d=>!!dvFeatureZonaPorPunto(d));
-    const fueraPoligono=conCoordenadas.filter(d=>!dvFeatureZonaPorPunto(d));
-    const visibles=dvObtenerReclamosFiltradosMapa();
-    const r={filtro:{...dvMapFiltros},total,conCoordenadas:conCoordenadas.length,dentroPoligono:dentroPoligono.length,fueraPoligono:fueraPoligono.length,visibles:visibles.length};
-    console.info("DV DIAGNOSTICO FILTRO RECLAMOS V36",r);
-    return r;
+    // Diagnóstico único: permite saber exactamente en qué etapa se reduce
+    // la colección y evita confundir CGM/ZONA/ESTADO con la capa visual.
+    const firma=[
+        dvMapFiltros.cgm||"",dvMapFiltros.zona||"",estado||"",
+        todos.length,porGeografia.length,porEstado.length,conCoordenadas.length
+    ].join("|");
+    if(window.dvUltimaFirmaDiagnosticoReclamosV37!==firma){
+        window.dvUltimaFirmaDiagnosticoReclamosV37=firma;
+        const realizadosTodos=todos.filter(d=>dvReclamoRealizado(d)).length;
+        console.info("DV FILTRO V37:",{
+            cgm:dvMapFiltros.cgm||"TODOS",
+            zona:dvMapFiltros.zona||"TODAS",
+            estado:estado||"TODOS",
+            total:todos.length,
+            porCGM_oZona:porGeografia.length,
+            porEstado:porEstado.length,
+            conCoordenadas:conCoordenadas.length,
+            realizados:realizadosTodos,
+            pendientes:todos.length-realizadosTodos
+        });
+    }
+
+    return conCoordenadas;
 }
 
 let dvRenderReclamosToken=0;
@@ -11011,14 +11048,14 @@ function dvRenderMarcadoresReclamos(){
     if(dvMap.getLayer(DV_RECLAMOS_CIRCLE_ID))dvMap.setFilter(DV_RECLAMOS_CIRCLE_ID,filtroVisible);
     if(dvMap.getLayer(DV_RECLAMOS_ICON_ID))dvMap.setFilter(DV_RECLAMOS_ICON_ID,filtroVisible);
 
-    console.info("DV CAPA RECLAMOS V36:",{
+    console.info("DV CAPA RECLAMOS V37:",{
         filtro:{...dvMapFiltros},
         visibles:reclamosVisibles.length,
         features:features.length,
         source:DV_RECLAMOS_SOURCE_ID
     });
     if(dvMapFiltros.cgm||dvMapFiltros.zona||dvMapFiltros.reclamo){
-        console.info("DV VERDAD RECLAMOS V36:",{
+        console.info("DV VERDAD RECLAMOS V37:",{
             filtroCgm:dvMapFiltros.cgm||"TODOS",
             filtroZona:dvMapFiltros.zona||"TODAS",
             estado:dvMapFiltros.reclamo||"TODOS",
@@ -11226,11 +11263,14 @@ async function cargarCapasEstaticasDiaVerde(){
             dvMapEvidencias=Array.isArray(datos.evidencias)?datos.evidencias:[];
 
             const realizadosDiagnostico=dvMapReclamos.filter(d=>dvReclamoRealizado(d)).length;
-            console.info("DV ESTADOS RECLAMOS:",{
+            const explicitosDiagnostico=dvMapReclamos.filter(d=>dvReclamoTieneEstadoExplicito(d)).length;
+            console.info("DV ESTADOS RECLAMOS V37:",{
                 total:dvMapReclamos.length,
                 evidenciasRecibidas:dvMapEvidencias.length,
+                conEstadoExplicito:explicitosDiagnostico,
                 realizados:realizadosDiagnostico,
-                pendientes:Math.max(0,dvMapReclamos.length-realizadosDiagnostico)
+                pendientes:Math.max(0,dvMapReclamos.length-realizadosDiagnostico),
+                nota:explicitosDiagnostico?"Se prioriza ESTADO del reclamo":"Se usa evidencia como respaldo"
             });
 
             dvGuardarCache("reclamos",dvMapReclamos);
@@ -11308,7 +11348,7 @@ async function cargarCapasEstaticasDiaVerde(){
             status.textContent="⚠ Día Verde conectado · error cargando capas";
         }
     }finally{
-        // TURBO 36: no repetir renderizados al terminar.
+        // TURBO 37: no repetir renderizados al terminar.
         dvMapStaticLoading=false;
         dvActualizarEstadoFiltroMapa();
     }
@@ -11715,14 +11755,7 @@ function dvAplicarFiltrosMapa(){
     // pintado que existía en versiones anteriores.
     try{dvAplicarCapasEstaticas();}catch(e){console.warn("Filtro zonas/reclamos Día Verde",e);}
 
-    const reclamosVisibles=(dvMapReclamos||[])
-        .filter(d=>dvZonaVisiblePorFiltros(d))
-        .filter(d=>{
-            if(!reclamo)return true;
-            const realizado=dvReclamoRealizado(d);
-            return reclamo==="realizado"?realizado:!realizado;
-        })
-        .filter(d=>dvReclamoLatLng(d));
+    const reclamosVisibles=dvObtenerReclamosFiltradosMapa();
 
     try{
         dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
@@ -11798,7 +11831,7 @@ function dvDistanciaKmGPS(lat1,lng1,lat2,lng2){
 }
 
 function dvFiltrarGpsMapa(){
-    // ARQUITECTURA V36:
+    // ARQUITECTURA V37:
     // El GPS del chofer es independiente del filtro geográfico de reclamos.
     // CGM/ZONA determinan únicamente ZONAS + RECLAMOS.
     // CHOFER determina únicamente GPS + RECORRIDOS.
@@ -11812,7 +11845,7 @@ function dvFiltrarGpsMapa(){
 
 
 function dvDiagnosticoSeparacionFiltros(){
-    console.info("DV ARQUITECTURA V36:", {
+    console.info("DV ARQUITECTURA V37:", {
         cgmZonaAfecta: ["zonas","reclamos"],
         choferAfecta: ["gps","recorridos"],
         estadoReclamoAfecta: ["reclamos"],
@@ -11834,7 +11867,7 @@ function dvLimpiarFiltrosMapa(){
     }
 }
 
-const DV_CACHE_PREFIX="panelDiaVerdeMapaV36";
+const DV_CACHE_PREFIX="panelDiaVerdeMapaV37";
 function dvGuardarCache(key,data){try{localStorage.setItem(DV_CACHE_PREFIX+key,JSON.stringify({ts:Date.now(),data}));}catch(e){}}
 function dvLeerCache(key){try{const x=JSON.parse(localStorage.getItem(DV_CACHE_PREFIX+key)||"null");return x&&Array.isArray(x.data)?x:null;}catch(e){return null;}}
 function dvCargarCacheInicial(){
@@ -11848,7 +11881,7 @@ function dvCargarCacheInicial(){
 }
 
 async function cargarMapaDiaVerde(){
-    // TURBO 36: ARRANQUE ÚNICO. Las actualizaciones posteriores son solo GPS.
+    // TURBO 37: ARRANQUE ÚNICO. Las actualizaciones posteriores son solo GPS.
     if(dvMapCargaEnCurso) return;
     dvMapCargaEnCurso=true;
 
@@ -11914,7 +11947,7 @@ async function cargarMapaDiaVerde(){
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
-            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 36";
+            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 37";
             badge.classList.remove("badge-red");
             badge.classList.add("badge-green");
         }
@@ -11939,7 +11972,7 @@ async function cargarMapaDiaVerde(){
 }
 
 async function actualizarGpsDiaVerde(){
-    // TURBO 36: cada 15 s solo refresca GPS. NO toca zonas ni reclamos.
+    // TURBO 37: cada 15 s solo refresca GPS. NO toca zonas ni reclamos.
     if(dvGpsCargaEnCurso || !dvMap || !dvMapReady) return;
     dvGpsCargaEnCurso=true;
 
