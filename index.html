@@ -10173,7 +10173,7 @@ let dvMapGpsHandlersBound = false;
 let dvMapStaticLoading = false;
 let dvMapStartupIniciado = false;
 let dvMapLastVisibleAt = 0;
-let dvMapReady = false;
+let dvMapReady = false; // Se activa en "load"; evita bloquear filtros por glyphs/estilo externo.
 let dvUltimaFirmaVerdadMapa = "";
 let dvMapReclamos = [];
 let dvMapReclamoMarkers = [];
@@ -10990,8 +10990,9 @@ function dvObtenerReclamosFiltradosMapa(){
 }
 
 let dvRenderReclamosToken=0;
+let dvFiltroMapaToken=0;
 function dvRenderMarcadoresReclamos(){
-    if(!dvMap||!dvMap.isStyleLoaded())return;
+    if(!dvMap||!dvMapReady)return;
 
     const token=++dvRenderReclamosToken;
 
@@ -11046,7 +11047,7 @@ function dvRenderMarcadoresReclamos(){
 }
 
 function dvAplicarCapasEstaticas(){
-    if(!dvMap||!dvMap.isStyleLoaded())return;
+    if(!dvMap||!dvMapReady)return;
 
     // ZONAS: SIEMPRE dejamos todo el GeoJSON cargado.
     // La capa base es gris/transparente para las zonas no seleccionadas.
@@ -11424,7 +11425,7 @@ function dvRenderMapa(gps,historico){
 }
 
 function dvActualizarGpsFiltradoSinDestruirCapas(gps){
-    if(!dvMap||!dvMap.isStyleLoaded())return;
+    if(!dvMap||!dvMapReady)return;
 
     // Cambio de filtro = actualizar GPS, NO reconstruir el mapa completo.
     // dvRenderMapa() limpia/recrea capas y puede alterar el orden visual.
@@ -11610,7 +11611,7 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
     dvOrdenarCapasMapa();
 }
 function dvCentrarReclamosFiltrados(){
-    if(!dvMap||!dvMap.isStyleLoaded())return;
+    if(!dvMap||!dvMapReady)return;
 
     const reclamos=dvObtenerReclamosFiltradosMapa()
         .map(d=>dvReclamoLatLng(d))
@@ -11707,6 +11708,7 @@ function dvActualizarEstadoFiltroMapa(){
 }
 
 function dvAplicarFiltrosMapa(){
+    const filtroToken=++dvFiltroMapaToken;
     const cgm=String(document.getElementById("dvFiltroCgmMapa")?.value||"").trim().toUpperCase();
     const zona=String(document.getElementById("dvFiltroZonaMapa")?.value||"").trim();
     const chofer=String(document.getElementById("dvFiltroChoferMapa")?.value||"").trim();
@@ -11717,7 +11719,7 @@ function dvAplicarFiltrosMapa(){
     const status=document.getElementById("dvMapStatusText");
     if(status)status.textContent="⏳ Aplicando filtro al mapa...";
 
-    if(!dvMap||!dvMap.isStyleLoaded()){
+    if(!dvMap||!dvMapReady){
         if(status)status.textContent="⏳ Cargando mapa...";
         return;
     }
@@ -11730,6 +11732,11 @@ function dvAplicarFiltrosMapa(){
         return;
     }
 
+    // Si el usuario cambió nuevamente CGM/ZONA mientras se procesaba
+    // el filtro anterior, esta ejecución queda obsoleta y no puede pisar
+    // visualmente la selección más nueva.
+    if(filtroToken!==dvFiltroMapaToken)return;
+
     // Un solo render de la parte estática.
     // IMPORTANTE V40: la versión anterior calculaba correctamente los
     // reclamosVisibles, pero NO ejecutaba el render de los pines al cambiar
@@ -11741,7 +11748,9 @@ function dvAplicarFiltrosMapa(){
     //   2) reconstruye la fuente GeoJSON de reclamos SOLO con los filtrados
     //   3) actualiza GPS sin tocar la capa de reclamos
     try{dvAplicarCapasEstaticas();}catch(e){console.warn("Filtro zonas/reclamos Día Verde",e);}
+    if(filtroToken!==dvFiltroMapaToken)return;
     try{dvRenderMarcadoresReclamos();}catch(e){console.warn("Render filtro pines Día Verde",e);}
+    if(filtroToken!==dvFiltroMapaToken)return;
 
     const reclamosVisibles=dvObtenerReclamosFiltradosMapa();
 
@@ -11757,7 +11766,7 @@ function dvAplicarFiltrosMapa(){
         try{dvCentrarReclamosFiltrados();}catch(e){console.warn("Centrado filtro Día Verde",e);}
     });
 
-    console.info("FILTRO RECLAMOS APLICADO:", {
+    console.info("FILTRO MAPA APLICADO SIN LATENCIA DE ESTILO:", {
         cgm:cgm||"TODOS",
         zona:zona||"TODAS",
         estado:reclamo||"TODOS",
@@ -12224,7 +12233,7 @@ function cerrarDetalleUsuario(event){
 
 
 function dvOrdenarCapasMapa(){
-    if(!dvMap||!dvMap.isStyleLoaded())return;
+    if(!dvMap||!dvMapReady)return;
     const existe=id=>!!(id&&dvMap.getLayer(id));
 
     /*
