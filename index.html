@@ -3252,6 +3252,11 @@ textarea.form-control{
             <p>Programación y control de servicios</p>
         </div>
         <div class="servicio-toolbar">
+            <select id="filtroFechaServicio" class="filter servicio-date-filter"
+                    onchange="filtrarServicios()" title="Filtrar por fecha">
+                <option value="hoy" selected>📅 Servicios de hoy</option>
+                <option value="todos">📋 Todas las fechas</option>
+            </select>
             <input id="filtroServicio" class="filter servicio-search"
                    placeholder="Buscar servicio, tipo o ruta..."
                    oninput="filtrarServicios()">
@@ -3265,8 +3270,8 @@ textarea.form-control{
     <div class="panel">
         <div class="panel-head">
             <div>
-                <div class="panel-title">Servicios registrados</div>
-                <div class="panel-subtitle">Datos de la tabla SERVICIOS</div>
+                <div class="panel-title" id="tituloServiciosVista">Servicios de hoy</div>
+                <div class="panel-subtitle" id="subtituloServiciosVista">Programación correspondiente a la jornada actual</div>
             </div>
             <span id="contadorServicios" class="servicio-count">0 servicios</span>
         </div>
@@ -4873,6 +4878,65 @@ function actualizarKPIs(datos){
    MÓDULO SERVICIOS
    ========================================================= */
 
+function fechaLocalISOArgentina(fecha){
+
+    if(fecha == null || fecha === "") return "";
+
+    const texto = String(fecha).trim();
+
+    // Formato ISO del backend: 2026-09-14T00:00:00.000Z
+    const iso = texto.match(/^(\d{4}-\d{2}-\d{2})/);
+    if(iso) return iso[1];
+
+    // Formato DD/MM/YYYY
+    const latam = texto.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    if(latam){
+        return `${latam[3]}-${String(latam[2]).padStart(2,"0")}-${String(latam[1]).padStart(2,"0")}`;
+    }
+
+    const d = new Date(fecha);
+    if(!Number.isNaN(d.getTime())){
+        // El sistema opera en Argentina; evitamos depender del formato visual.
+        const partes = new Intl.DateTimeFormat("en-CA", {
+            timeZone:"America/Argentina/Buenos_Aires",
+            year:"numeric", month:"2-digit", day:"2-digit"
+        }).formatToParts(d);
+        const obj = Object.fromEntries(partes.map(x=>[x.type,x.value]));
+        if(obj.year && obj.month && obj.day){
+            return `${obj.year}-${obj.month}-${obj.day}`;
+        }
+    }
+
+    return "";
+}
+
+function hoyArgentinaISO(){
+    const partes = new Intl.DateTimeFormat("en-CA", {
+        timeZone:"America/Argentina/Buenos_Aires",
+        year:"numeric", month:"2-digit", day:"2-digit"
+    }).formatToParts(new Date());
+    const obj = Object.fromEntries(partes.map(x=>[x.type,x.value]));
+    return `${obj.year}-${obj.month}-${obj.day}`;
+}
+
+function servicioEsDeHoy(servicio){
+    return fechaLocalISOArgentina(servicio?.FECHA) === hoyArgentinaISO();
+}
+
+function obtenerServiciosVista(){
+    const todos = Array.isArray(estadoPanel.servicios)
+        ? estadoPanel.servicios
+        : [];
+
+    const modo = String(
+        document.getElementById("filtroFechaServicio")?.value || "hoy"
+    );
+
+    return modo === "todos"
+        ? todos
+        : todos.filter(servicioEsDeHoy);
+}
+
 async function cargarServicios(){
 
     const resultado = await leerBackend("servicios");
@@ -4886,9 +4950,44 @@ async function cargarServicios(){
         : [];
 
     estadoPanel.servicios = servicios;
-    renderizarServicios(servicios);
+    filtrarServicios();
+    actualizarKPIServiciosDelDia(servicios);
 
     return servicios;
+}
+
+function actualizarKPIServiciosDelDia(servicios){
+
+    const lista = (Array.isArray(servicios) ? servicios : [])
+        .filter(servicioEsDeHoy);
+
+    let pendientes = 0;
+    let curso = 0;
+    let finalizados = 0;
+
+    lista.forEach(servicio => {
+        const e = normalizar(servicio?.ESTADO || "");
+
+        if(e === "FINALIZADO" || e === "FINALIZADOS"){
+            finalizados++;
+        }else if(e === "EN CURSO" || e === "EN_CURSO" || e === "INICIADO"){
+            curso++;
+        }else if(e !== "CANCELADO"){
+            pendientes++;
+        }
+    });
+
+    const kpiServicios = document.getElementById("kpiServicios");
+    if(kpiServicios) kpiServicios.textContent = String(lista.length);
+
+    const serviciosProgramados = document.getElementById("serviciosProgramados");
+    if(serviciosProgramados) serviciosProgramados.textContent = String(pendientes);
+
+    const serviciosCurso = document.getElementById("serviciosCurso");
+    if(serviciosCurso) serviciosCurso.textContent = String(curso);
+
+    const serviciosFinalizados = document.getElementById("serviciosFinalizados");
+    if(serviciosFinalizados) serviciosFinalizados.textContent = String(finalizados);
 }
 
 
@@ -4925,13 +5024,27 @@ function renderizarServicios(servicios){
     }
 
     const contador = document.getElementById("contadorServicios");
+    const lista = Array.isArray(servicios) ? servicios : [];
+    const modo = String(document.getElementById("filtroFechaServicio")?.value || "hoy");
+    const titulo = document.getElementById("tituloServiciosVista");
+    const subtitulo = document.getElementById("subtituloServiciosVista");
 
     if(contador){
-        contador.textContent =
-            `${Array.isArray(servicios) ? servicios.length : 0} servicios`;
+        contador.textContent = `${lista.length} ${lista.length === 1 ? "servicio" : "servicios"}`;
     }
 
-    if(!Array.isArray(servicios) || servicios.length === 0){
+    if(titulo){
+        titulo.textContent = modo === "todos" ? "Servicios registrados" : "Servicios de hoy";
+    }
+
+    if(subtitulo){
+        const hoy = hoyArgentinaISO().split("-").reverse().join("/");
+        subtitulo.textContent = modo === "todos"
+            ? "Todas las fechas disponibles en la tabla SERVICIOS"
+            : `Programación correspondiente al ${hoy}`;
+    }
+
+    if(lista.length === 0){
 
         tbody.innerHTML = `
             <tr>
@@ -4978,7 +5091,9 @@ function filtrarServicios(){
         document.getElementById("filtroServicio")?.value
     );
 
-    const filtrados = (estadoPanel.servicios || []).filter(servicio => {
+    const base = obtenerServiciosVista();
+
+    const filtrados = base.filter(servicio => {
 
         const contenido = [
             servicio.FECHA,
