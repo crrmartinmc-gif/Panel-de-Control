@@ -10487,7 +10487,7 @@ function dvDireccionReclamo(d){
     return `${d.calle || d.direccion || d.Direccion || d.domicilio || d.Domicilio || ""} ${d.numero || ""}`.trim();
 }
 
-// TURBO 38: estado de reclamo robusto.
+// TURBO 39: estado de reclamo robusto.
 // La evidencia puede venir con nombres de campos diferentes según el endpoint.
 // Priorizamos una clave/ID compartida y, si no existe, usamos calle+número
 // normalizados. La zona solo refuerza la coincidencia cuando ambos registros
@@ -10908,39 +10908,42 @@ function dvFiltroCoincideObjeto(o){
     return okCgm && okZona;
 }
 
-// V38: CGM visual = unión geográfica de sus polígonos.
+// V39: CGM visual = unión geográfica de sus polígonos.
 // La localidad/CGM administrativa NO puede hacer aparecer un pin fuera
 // de la zona geográfica cuando el reclamo ya tiene coordenadas.
 // Si no hay coordenadas, se conserva el dato administrativo para filtros
 // de datos, pero ese reclamo no puede dibujarse en el mapa.
 function dvZonaVisiblePorFiltros(reclamo) {
-    const hayFiltro = !!(dvMapFiltros.cgm || dvMapFiltros.zona);
-    if (!hayFiltro) return true;
+    /*
+     * V39 — MISMA LÓGICA QUE LA APP DÍA VERDE.
+     *
+     * En Día Verde el dato administrativo de Google Sheets es la verdad:
+     *   1) CGM = reclamo.localidad
+     *   2) ZONA = reclamo.zona
+     *   3) El polígono se usa para visualizar/centrar la zona, NO para
+     *      decidir si el reclamo pertenece o no al CGM.
+     *
+     * Esto replica coincideZona() de la app Día Verde:
+     *   - primero exige localidad == CGM seleccionado
+     *   - luego, si hay zona seleccionada, exige zona == zona seleccionada
+     *
+     * Las coordenadas solo determinan si el reclamo puede dibujarse.
+     * No se vuelve a clasificar el reclamo por punto-en-polígono.
+     */
+    const cgmFiltro=dvClaveCgmCanonico(dvMapFiltros.cgm||'');
+    const zonaFiltro=dvNormalizar(dvMapFiltros.zona||'');
 
-    const punto = dvReclamoLatLng(reclamo);
+    if(!cgmFiltro && !zonaFiltro) return true;
 
-    // ZONA: una sola zona, estrictamente por el polígono que contiene el pin.
-    if (dvMapFiltros.zona) {
-        if (!punto) return false;
-        const zonaGeo = dvFeatureZonaPorPunto(reclamo);
-        if (!zonaGeo) return false;
-        const nombreZona = zonaGeo.properties?.name || zonaGeo.properties?.zona || "";
-        return dvNormalizar(dvZonaCanonica({zona:nombreZona})) === dvNormalizar(dvMapFiltros.zona);
+    const cgmReclamo=dvCgmObjeto(reclamo);
+    if(cgmFiltro && cgmReclamo!==cgmFiltro) return false;
+
+    if(zonaFiltro){
+        const zonaReclamo=dvNormalizar(dvZonaCanonica(reclamo));
+        return zonaReclamo===zonaFiltro;
     }
 
-    // CGM: unión de TODOS los polígonos pertenecientes al CGM seleccionado.
-    // Esto es lo que hace que al elegir Temperley/Banfield/etc. desaparezcan
-    // visualmente los reclamos que están fuera de ese CGM.
-    const cgmSeleccionado = dvClaveCgmCanonico(dvMapFiltros.cgm);
-    if (!punto) return false;
-
-    const zonaGeo = dvFeatureZonaPorPunto(reclamo);
-    if (!zonaGeo) return false;
-
-    const nombreZona = zonaGeo.properties?.name || zonaGeo.properties?.zona || "";
-    const zonaCanonica = dvZonaCanonica({zona:nombreZona});
-    const cgmPorGeometria = dvInferirCgmPorZona(zonaCanonica);
-    return cgmPorGeometria === cgmSeleccionado;
+    return true;
 }
 
 function dvZonaGeoVisiblePorFiltros(feature){
@@ -10970,7 +10973,7 @@ function dvObtenerReclamosFiltradosMapa(){
     if(window.dvUltimaFirmaDiagnosticoReclamosV37!==firma){
         window.dvUltimaFirmaDiagnosticoReclamosV37=firma;
         const realizadosTodos=todos.filter(d=>dvReclamoRealizado(d)).length;
-        console.info("DV FILTRO V38:",{
+        console.info("DV FILTRO V39 — LÓGICA DÍA VERDE:",{
             cgm:dvMapFiltros.cgm||"TODOS",
             zona:dvMapFiltros.zona||"TODAS",
             estado:estado||"TODOS",
@@ -11025,14 +11028,14 @@ function dvRenderMarcadoresReclamos(){
     if(dvMap.getLayer(DV_RECLAMOS_CIRCLE_ID))dvMap.setFilter(DV_RECLAMOS_CIRCLE_ID,filtroVisible);
     if(dvMap.getLayer(DV_RECLAMOS_ICON_ID))dvMap.setFilter(DV_RECLAMOS_ICON_ID,filtroVisible);
 
-    console.info("DV CAPA RECLAMOS V38:",{
+    console.info("DV CAPA RECLAMOS V39:",{
         filtro:{...dvMapFiltros},
         visibles:reclamosVisibles.length,
         features:features.length,
         source:DV_RECLAMOS_SOURCE_ID
     });
     if(dvMapFiltros.cgm||dvMapFiltros.zona||dvMapFiltros.reclamo){
-        console.info("DV VERDAD RECLAMOS V38:",{
+        console.info("DV VERDAD RECLAMOS V39:",{
             filtroCgm:dvMapFiltros.cgm||"TODOS",
             filtroZona:dvMapFiltros.zona||"TODAS",
             estado:dvMapFiltros.reclamo||"TODOS",
@@ -11241,7 +11244,7 @@ async function cargarCapasEstaticasDiaVerde(){
 
             const realizadosDiagnostico=dvMapReclamos.filter(d=>dvReclamoRealizado(d)).length;
             const explicitosDiagnostico=dvMapReclamos.filter(d=>dvReclamoTieneEstadoExplicito(d)).length;
-            console.info("DV ESTADOS RECLAMOS V38:",{
+            console.info("DV ESTADOS RECLAMOS V39:",{
                 total:dvMapReclamos.length,
                 evidenciasRecibidas:dvMapEvidencias.length,
                 conEstadoExplicito:explicitosDiagnostico,
@@ -11325,7 +11328,7 @@ async function cargarCapasEstaticasDiaVerde(){
             status.textContent="⚠ Día Verde conectado · error cargando capas";
         }
     }finally{
-        // TURBO 38: no repetir renderizados al terminar.
+        // TURBO 39: no repetir renderizados al terminar.
         dvMapStaticLoading=false;
         dvActualizarEstadoFiltroMapa();
     }
@@ -11858,7 +11861,7 @@ function dvCargarCacheInicial(){
 }
 
 async function cargarMapaDiaVerde(){
-    // TURBO 38: ARRANQUE ÚNICO. Las actualizaciones posteriores son solo GPS.
+    // TURBO 39: ARRANQUE ÚNICO. Las actualizaciones posteriores son solo GPS.
     if(dvMapCargaEnCurso) return;
     dvMapCargaEnCurso=true;
 
@@ -11924,7 +11927,7 @@ async function cargarMapaDiaVerde(){
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
-            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 38";
+            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 39";
             badge.classList.remove("badge-red");
             badge.classList.add("badge-green");
         }
@@ -11949,7 +11952,7 @@ async function cargarMapaDiaVerde(){
 }
 
 async function actualizarGpsDiaVerde(){
-    // TURBO 38: cada 15 s solo refresca GPS. NO toca zonas ni reclamos.
+    // TURBO 39: cada 15 s solo refresca GPS. NO toca zonas ni reclamos.
     if(dvGpsCargaEnCurso || !dvMap || !dvMapReady) return;
     dvGpsCargaEnCurso=true;
 
