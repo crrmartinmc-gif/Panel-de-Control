@@ -1447,10 +1447,18 @@ textarea.form-control{
     background:rgba(148,163,184,.12);
 }
 .btn-reasignar{
-    padding:6px 9px;
-    font-size:9px;
-    border-radius:7px;
+    padding:9px 14px;
+    font-size:11px;
+    font-weight:800;
+    border-radius:9px;
     white-space:nowrap;
+    min-height:36px;
+    min-width:112px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+    cursor:pointer;
 }
 .reasignacion-estado{
     margin-top:8px;
@@ -1527,6 +1535,7 @@ textarea.form-control{
 }
 @media(max-width:760px){
     .asignacion-route-box{grid-template-columns:1fr}
+    .btn-reasignar{min-width:120px;min-height:40px;padding:10px 15px;font-size:11px}
 }
 
 
@@ -1649,10 +1658,13 @@ async function guardarReasignacion(){
         const respuesta=await fetch(BACKEND_URL,{
             method:"POST",
             body:JSON.stringify({
-                accion:"reasignarAsignacion",
+                accion:"actualizarAsignacion",
                 idAsignacion:a.ID_ASIGNACION,
-                idChofer:nuevoChofer,
-                idVehiculo:nuevoVehiculo
+                cambios:{
+                    ID_CHOFER:nuevoChofer,
+                    ID_VEHICULO:nuevoVehiculo,
+                    OBSERVACIONES:(String(a.OBSERVACIONES||"").trim() + (String(a.OBSERVACIONES||"").trim()?" | ":"") + "REASIGNACION: Chofer="+nuevoChofer+"; Vehiculo="+nuevoVehiculo)
+                }
             })
         });
         const resultado=await respuesta.json();
@@ -2665,6 +2677,47 @@ async function guardarReasignacion(){
 
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+
+<style>
+/* =========================================================
+   MAPA OPERATIVO REAL EN INICIO
+   ========================================================= */
+.dv-home-map-shell{
+    position:relative;
+    background:#0b1422;
+    border:1px solid var(--border);
+    border-radius:14px;
+    overflow:hidden;
+}
+.dv-home-map-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:10px 12px;
+    background:#0f1b2d;
+    border-bottom:1px solid var(--border);
+}
+.dv-home-map-host{
+    width:100%;
+    min-height:360px;
+}
+.dv-home-map-host .dv-map{
+    height:360px;
+    width:100%;
+    z-index:1;
+}
+.dv-home-map-open{white-space:nowrap;}
+.dv-map-page-host{width:100%;}
+.dv-map-page-host .dv-map{height:650px;width:100%;}
+@media(max-width:600px){
+    .dv-home-map-shell{border-radius:11px;}
+    .dv-home-map-toolbar{padding:8px 9px;}
+    .dv-home-map-host{min-height:300px;}
+    .dv-home-map-host .dv-map{height:300px;}
+    .dv-home-map-open{font-size:10px;padding:7px 9px;}
+}
+</style>
 </head>
 
 <body>
@@ -3002,11 +3055,11 @@ async function guardarReasignacion(){
             <div class="kpi-top">
 
                 <div class="kpi-label">
-                    VIAJES ACTIVOS
+                    SERVICIOS EN CURSO
                 </div>
 
                 <div class="kpi-icon cyan">
-                    🛰
+                    ▶
                 </div>
 
             </div>
@@ -3019,7 +3072,7 @@ async function guardarReasignacion(){
             </div>
 
             <div class="kpi-footer">
-                Seguimiento operativo
+                Servicios actualmente en ejecución
             </div>
 
         </div>
@@ -3083,47 +3136,24 @@ async function guardarReasignacion(){
             </div>
 
 
-            <div class="map">
+            <div class="dv-home-map-shell">
 
-                <div class="map-grid"></div>
-
-                <div class="map-road road1"></div>
-                <div class="map-road road2"></div>
-                <div class="map-road road3"></div>
-
-
-                <div class="vehicle live v1">
-                    🚚
-                </div>
-
-                <div class="vehicle live v2">
-                    🚛
-                </div>
-
-                <div class="vehicle warning v3">
-                    🚚
-                </div>
-
-                <div class="vehicle live v4">
-                    🚛
-                </div>
-
-
-                <div class="map-info">
-
-                    <div class="map-live">
-
-                        <span class="map-live-dot"></span>
-
-                        GPS Día Verde activo
-
+                <div class="dv-home-map-toolbar">
+                    <div class="dv-map-status">
+                        <span id="dvHomeMapLiveDot" class="dv-live-dot"></span>
+                        <span id="dvHomeMapStatusText">Conectando con Día Verde...</span>
                     </div>
 
-                    <div style="color:#718096;margin-top:5px">
-                        Las posiciones reales aparecerán
-                        al conectar el backend.
-                    </div>
+                    <button
+                        type="button"
+                        class="btn btn-secondary dv-home-map-open"
+                        onclick="mostrarPaginaPorNombre('mapa')">
+                        Ver mapa completo ↗
+                    </button>
+                </div>
 
+                <div id="dvMapHomeHost" class="dv-home-map-host">
+                    <div id="dvMap" class="dv-map"></div>
                 </div>
 
             </div>
@@ -3505,7 +3535,7 @@ async function guardarReasignacion(){
                 <button type="button" class="dv-map-filter-reset" onclick="dvLimpiarFiltrosMapa()">Limpiar filtros</button>
             </div>
 
-            <div id="dvMap" class="dv-map"></div>
+            <div id="dvMapPageHost" class="dv-map-page-host"></div>
             <div id="dvMapLegend" class="dv-legend">
                 <div class="dv-legend-title">Recorridos por nombre</div>
                 <div id="dvMapLegendItems"><div class="dv-map-empty">Esperando datos GPS...</div></div>
@@ -4866,6 +4896,59 @@ function formatearFecha(valor){
    NAVEGACIÓN
    ========================================================= */
 
+function dvMoverMapaOperativoA(destino){
+
+    const mapa = document.getElementById("dvMap");
+    const host = document.getElementById(destino);
+
+    if(!mapa || !host) return false;
+
+    if(mapa.parentElement !== host){
+        host.appendChild(mapa);
+    }
+
+    setTimeout(()=>{
+        try{
+            if(dvMap) dvMap.resize();
+        }catch(e){}
+    },80);
+
+    return true;
+}
+
+function dvActivarMapaEnInicio(){
+    dvMoverMapaOperativoA("dvMapHomeHost");
+
+    setTimeout(()=>{
+        try{
+            if(!dvMapStartupIniciado){
+                iniciarMapaDiaVerde();
+            }else if(dvMapReady){
+                dvMap.resize();
+                if(dvMapStaticLoaded) dvAplicarCapasEstaticas();
+                if(dvMapStaticLoaded) dvRenderMarcadoresReclamos();
+                if(dvMapGpsData.length) dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
+                dvActualizarEstadoFiltroMapa();
+            }
+        }catch(e){
+            console.warn("Activación Mapa Operativo en Inicio",e);
+        }
+    },120);
+}
+
+function dvActivarMapaPaginaCompleta(){
+    dvMoverMapaOperativoA("dvMapPageHost");
+
+    setTimeout(()=>{
+        try{
+            iniciarMapaDiaVerde();
+            if(dvMapReady) dvMap.resize();
+        }catch(e){
+            console.warn("Activación Mapa Operativo completo",e);
+        }
+    },80);
+}
+
 function mostrarPagina(id, boton){
 
     document
@@ -4890,7 +4973,11 @@ function mostrarPagina(id, boton){
     actualizarTitulo(id);
 
     if(id === "mapa") {
-        setTimeout(iniciarMapaDiaVerde, 50);
+        dvActivarMapaPaginaCompleta();
+    }
+
+    if(id === "inicio") {
+        dvActivarMapaEnInicio();
     }
 
     /*
@@ -5316,8 +5403,10 @@ function actualizarKPIs(datos){
         document.getElementById("kpiViajes");
 
     if(kpiViajes){
+        // En INICIO mostramos SERVICIOS EN CURSO, no viajes activos.
+        // El Backend Maestro expone este dato como servicios.curso.
         kpiViajes.textContent =
-            Number(viajes.activos || 0);
+            Number(servicios.curso ?? servicios.enCurso ?? servicios.en_curso ?? 0);
     }
 
     const kpiAlertas =
@@ -5510,6 +5599,10 @@ function actualizarKPIServiciosDelDia(servicios){
 
     const kpiServicios = document.getElementById("kpiServicios");
     if(kpiServicios) kpiServicios.textContent = String(lista.length);
+
+    // KPI principal de INICIO: servicios que están EN CURSO hoy.
+    const kpiServiciosEnCurso = document.getElementById("kpiViajes");
+    if(kpiServiciosEnCurso) kpiServiciosEnCurso.textContent = String(curso);
 
     const serviciosProgramados = document.getElementById("serviciosProgramados");
     if(serviciosProgramados) serviciosProgramados.textContent = String(pendientes);
@@ -13235,11 +13328,14 @@ document.addEventListener(
         actualizarTitulo("inicio");
 
         /*
-           Mapa Día Verde: se inicializa de forma diferida;
-           no modifica el resto de módulos del Panel.
+           Mapa Operativo REAL en INICIO.
+           Se reutiliza el mismo objeto MapLibre de la página Mapa,
+           evitando duplicar GPS, reclamos, zonas y capas.
         */
         setTimeout(()=>{
-            if(document.getElementById("dvMap")) iniciarMapaDiaVerde();
+            if(document.getElementById("dvMap")){
+                dvActivarMapaEnInicio();
+            }
         }, 250);
 
         /*
