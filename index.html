@@ -2986,6 +2986,85 @@ async function guardarReasignacion(){
 .dv-map-page-host .dv-popup-card strong{
     color:#0f172a !important;
 }
+
+
+/* =========================================================
+   V24 — MODALES CON SCROLL VERTICAL GLOBAL
+   Evita que los botones queden fuera de la pantalla.
+   Se aplica a todas las ventanas/modales del Panel.
+   ========================================================= */
+.modal-overlay{
+    overflow-y:auto;
+    overscroll-behavior:contain;
+}
+
+.modal{
+    max-height:calc(100vh - 40px);
+    min-height:0;
+}
+
+.modal > form{
+    display:flex;
+    flex-direction:column;
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+}
+
+.modal > form > .modal-body,
+.modal > .modal-body{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+}
+
+.modal-body{
+    scrollbar-width:thin;
+    scrollbar-color:#53657f #0b1524;
+}
+
+.modal-body::-webkit-scrollbar{
+    width:10px;
+}
+
+.modal-body::-webkit-scrollbar-track{
+    background:#0b1524;
+    border-left:1px solid #1b2a3e;
+}
+
+.modal-body::-webkit-scrollbar-thumb{
+    background:#53657f;
+    border-radius:10px;
+    border:2px solid #0b1524;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover{
+    background:#71839e;
+}
+
+.modal-header,
+.modal-head,
+.modal-footer,
+.modal-actions{
+    flex-shrink:0;
+}
+
+@media(max-width:600px){
+    .modal-overlay{
+        padding:10px;
+    }
+
+    .modal{
+        max-height:calc(100vh - 20px);
+        width:100%;
+    }
+
+    .modal-body{
+        padding:14px;
+    }
+}
+
 </style>
 </head>
 
@@ -3940,7 +4019,7 @@ async function guardarReasignacion(){
 
 <div id="modalReasignacion" class="modal-overlay" onclick="cerrarModalReasignacion(event)">
     <div class="modal">
-        <div class="modal-head">
+        <div class="modal-header">
             <div>
                 <div class="asignacion-form-title">🔄 Reasignar servicio</div>
                 <div class="asignacion-form-help">
@@ -3950,35 +4029,37 @@ async function guardarReasignacion(){
             <button class="modal-close" type="button" onclick="cerrarModalReasignacion()">×</button>
         </div>
 
-        <div class="form-grid">
-            <div class="form-group">
-                <label>Servicio</label>
-                <input id="reasignacionServicio" class="filter" readonly>
+        <div class="modal-body">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Servicio</label>
+                    <input id="reasignacionServicio" class="filter" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input id="reasignacionFecha" class="filter" readonly>
+                </div>
             </div>
-            <div class="form-group">
-                <label>Fecha</label>
-                <input id="reasignacionFecha" class="filter" readonly>
+
+            <div class="reasignacion-estado" id="reasignacionActual">
+                Cargando asignación...
             </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Nuevo chofer</label>
+                    <select id="reasignacionChofer" class="filter"></select>
+                </div>
+                <div class="form-group">
+                    <label>Nuevo vehículo</label>
+                    <select id="reasignacionVehiculo" class="filter"></select>
+                </div>
+            </div>
+
+            <div id="reasignacionMensaje" class="status-banner" style="display:none"></div>
         </div>
 
-        <div class="reasignacion-estado" id="reasignacionActual">
-            Cargando asignación...
-        </div>
-
-        <div class="form-grid">
-            <div class="form-group">
-                <label>Nuevo chofer</label>
-                <select id="reasignacionChofer" class="filter"></select>
-            </div>
-            <div class="form-group">
-                <label>Nuevo vehículo</label>
-                <select id="reasignacionVehiculo" class="filter"></select>
-            </div>
-        </div>
-
-        <div id="reasignacionMensaje" class="status-banner" style="display:none"></div>
-
-        <div class="modal-actions">
+        <div class="modal-footer">
             <button class="btn btn-secondary" type="button" onclick="cerrarModalReasignacion()">Cancelar</button>
             <button class="btn btn-primary" id="btnGuardarReasignacion" type="button" onclick="guardarReasignacion()">Confirmar reasignación</button>
         </div>
