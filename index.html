@@ -1445,6 +1445,86 @@ textarea.form-control{
 }
 
 
+
+/* =========================================================
+   SALIDA DE PARTIDO
+   ========================================================= */
+.salida-partido-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    padding:5px 8px;
+    border-radius:8px;
+    font-size:9px;
+    font-weight:800;
+    white-space:nowrap;
+}
+.salida-partido-badge.necesita{
+    color:#fbbf24;
+    background:rgba(245,158,11,.13);
+    border:1px solid rgba(245,158,11,.20);
+}
+.salida-partido-badge.enviado{
+    color:#6ee7a0;
+    background:rgba(34,197,94,.12);
+    border:1px solid rgba(34,197,94,.18);
+}
+.salida-partido-badge.normal{
+    color:#91a0b5;
+    background:rgba(148,163,184,.08);
+}
+.btn-salida-partido{
+    min-height:34px;
+    padding:7px 10px;
+    border-radius:8px;
+    border:1px solid rgba(245,158,11,.35);
+    background:rgba(245,158,11,.10);
+    color:#fbbf24;
+    font:800 9px Inter,Arial,sans-serif;
+    cursor:pointer;
+    white-space:nowrap;
+}
+.btn-salida-partido:hover{background:rgba(245,158,11,.18);transform:translateY(-1px);}
+.btn-salida-aviso{
+    min-height:34px;
+    padding:7px 10px;
+    border-radius:8px;
+    border:1px solid rgba(59,130,246,.35);
+    background:rgba(59,130,246,.10);
+    color:#60a5fa;
+    font:800 9px Inter,Arial,sans-serif;
+    cursor:pointer;
+    white-space:nowrap;
+}
+.btn-salida-aviso:hover{background:rgba(59,130,246,.18);transform:translateY(-1px);}
+.salida-partido-form-box{
+    margin-top:13px;
+    padding:12px;
+    border-radius:10px;
+    background:rgba(245,158,11,.06);
+    border:1px solid rgba(245,158,11,.18);
+}
+.salida-partido-check{
+    display:flex;
+    align-items:flex-start;
+    gap:9px;
+    cursor:pointer;
+}
+.salida-partido-check input{
+    margin-top:2px;
+    accent-color:#f59e0b;
+}
+.salida-partido-check strong{color:#fbbf24;font-size:11px;}
+.salida-partido-help{display:block;margin-top:3px;color:#91a0b5;font-size:9px;line-height:1.4;}
+.salida-partido-destino{
+    display:none;
+    margin-top:10px;
+}
+.salida-partido-destino.show{display:block;}
+@media(max-width:600px){
+    .btn-salida-partido,.btn-salida-aviso{min-height:38px;padding:9px 10px;}
+}
+
 /* =========================================================
    MÓDULO SERVICIOS
    ========================================================= */
@@ -5678,6 +5758,185 @@ function renderAsignacionServicio(idAsignacion){
     return `<div class="servicio-assignment"><strong>${escaparHTML(nombre)}</strong><span>${escaparHTML(dominio)} · ${escaparHTML(id)}</span></div>`;
 }
 
+
+function analizarSalidaPartidoServicio(servicio){
+    const obs=String(servicio?.OBSERVACIONES||"");
+    const marcado=/SALIDA_PARTIDO\s*:\s*SI/i.test(obs);
+    const enviado=/SALIDA_PARTIDO_AVISO_ENVIADO\s*:\s*SI/i.test(obs);
+    const m=obs.match(/SALIDA_PARTIDO_DESTINO\s*:\s*([^|]+)/i);
+    const destino=m ? String(m[1]).trim() : "";
+    return {marcado,enviado,destino};
+}
+
+function escaparRegexSalidaPartido_(texto){
+    return String(texto||"").replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+}
+
+function construirObservacionesSalidaPartido(observaciones, marcado, destino){
+    let obs=String(observaciones||"")
+        .replace(/\s*\|\s*SALIDA_PARTIDO\s*:\s*(?:SI|NO)/ig,"")
+        .replace(/\s*\|\s*SALIDA_PARTIDO_DESTINO\s*:\s*[^|]*/ig,"")
+        .trim();
+
+    if(marcado){
+        const partes=[];
+        partes.push("SALIDA_PARTIDO: SI");
+        if(String(destino||"").trim()) partes.push("SALIDA_PARTIDO_DESTINO: "+String(destino).trim());
+        obs += (obs ? " | " : "") + partes.join(" | ");
+    }
+
+    return obs;
+}
+
+function alternarDestinoSalidaPartido(){
+    const check=document.getElementById("servicioSalidaPartido");
+    const box=document.getElementById("servicioSalidaDestinoBox");
+    const input=document.getElementById("servicioSalidaDestino");
+    const activo=!!check?.checked;
+    if(box) box.classList.toggle("show",activo);
+    if(input) input.required=activo;
+}
+
+let salidaPartidoServicioActual=null;
+
+function abrirSalidaPartido(idServicio){
+    const id=String(idServicio||"").trim();
+    const servicio=(estadoPanel.servicios||[]).find(s=>String(s.ID_SERVICIO||"").trim()===id);
+    if(!servicio){ alert("No se encontró el servicio."); return; }
+
+    const info=analizarSalidaPartidoServicio(servicio);
+    salidaPartidoServicioActual=servicio;
+
+    const modal=document.getElementById("modalSalidaPartido");
+    const titulo=document.getElementById("salidaPartidoTitulo");
+    const sub=document.getElementById("salidaPartidoSubtitulo");
+    const destino=document.getElementById("salidaPartidoDestino");
+    const obs=document.getElementById("salidaPartidoObservaciones");
+    const msg=document.getElementById("salidaPartidoMensaje");
+    const btn=document.getElementById("btnGuardarSalidaPartido");
+
+    if(!modal) return;
+
+    if(titulo) titulo.textContent=info.marcado ? "Aviso de salida de partido" : "Marcar salida de partido";
+    if(sub) sub.textContent=(servicio.NOMBRE_SERVICIO||id)+" · "+(servicio.FECHA||"");
+    if(destino) destino.value=info.destino||"";
+    if(obs) obs.value="";
+    if(msg){msg.style.display="none";msg.textContent="";}
+    if(btn) btn.textContent=info.marcado ? "Enviar aviso" : "Guardar salida";
+
+    modal.classList.add("open");
+}
+
+function cerrarModalSalidaPartido(event){
+    if(event && event.target && event.target.id!=="modalSalidaPartido") return;
+    document.getElementById("modalSalidaPartido")?.classList.remove("open");
+    salidaPartidoServicioActual=null;
+}
+
+async function guardarSalidaPartido(){
+    const servicio=salidaPartidoServicioActual;
+    if(!servicio) return;
+
+    const destino=String(document.getElementById("salidaPartidoDestino")?.value||"").trim();
+    const obsExtra=String(document.getElementById("salidaPartidoObservaciones")?.value||"").trim();
+    const info=analizarSalidaPartidoServicio(servicio);
+    const msg=document.getElementById("salidaPartidoMensaje");
+    const btn=document.getElementById("btnGuardarSalidaPartido");
+
+    if(!destino){
+        if(msg){msg.style.display="block";msg.style.color="#f87171";msg.textContent="Indicá el destino de la salida.";}
+        return;
+    }
+
+    if(info.marcado && !info.enviado){
+        await enviarAvisoSalidaPartidoDesdePanel(servicio.ID_SERVICIO,destino,obsExtra);
+        return;
+    }
+
+    if(info.enviado){
+        if(msg){msg.style.display="block";msg.style.color="#fbbf24";msg.textContent="Este aviso ya fue enviado. No se puede reenviar desde aquí.";}
+        return;
+    }
+
+    if(btn){btn.disabled=true;btn.textContent="Guardando...";}
+    try{
+        const nuevoObs=construirObservacionesSalidaPartido(
+            String(servicio.OBSERVACIONES||"")+(obsExtra ? " | "+obsExtra : ""),
+            true,
+            destino
+        );
+
+        const respuesta=await fetch(BACKEND_URL,{
+            method:"POST",
+            body:JSON.stringify({
+                accion:"configurarSalidaPartido",
+                idServicio:servicio.ID_SERVICIO,
+                destino:destino,
+                observaciones:obsExtra,
+                cambios:{OBSERVACIONES:nuevoObs}
+            })
+        });
+        const resultado=await respuesta.json();
+        if(!resultado?.ok) throw new Error(resultado?.error||"No se pudo marcar la salida.");
+
+        await cargarServicios();
+        filtrarServicios();
+        cerrarModalSalidaPartido();
+    }catch(e){
+        console.error("Error marcando salida de partido:",e);
+        if(msg){msg.style.display="block";msg.style.color="#f87171";msg.textContent=e.message;}
+    }finally{
+        if(btn){btn.disabled=false;btn.textContent="Guardar salida";}
+    }
+}
+
+async function enviarAvisoSalidaPartidoDesdePanel(idServicio,destino,obsExtra){
+    const servicio=(estadoPanel.servicios||[]).find(s=>String(s.ID_SERVICIO||"").trim()===String(idServicio||"").trim());
+    if(!servicio) return;
+
+    const msg=document.getElementById("salidaPartidoMensaje");
+    const btn=document.getElementById("btnGuardarSalidaPartido");
+    if(btn){btn.disabled=true;btn.textContent="Enviando...";}
+
+    try{
+        const respuesta=await fetch(BACKEND_URL,{
+            method:"POST",
+            body:JSON.stringify({
+                accion:"enviarAvisoSalidaPartido",
+                idServicio:servicio.ID_SERVICIO,
+                destino:String(destino||"").trim(),
+                observaciones:String(obsExtra||"").trim()
+            })
+        });
+        const resultado=await respuesta.json();
+        if(!resultado?.ok) throw new Error(resultado?.error||"No se pudo enviar el aviso.");
+
+        await cargarServicios();
+        filtrarServicios();
+        cerrarModalSalidaPartido();
+        alert("Aviso de salida de partido enviado correctamente.");
+    }catch(e){
+        console.error("Error enviando aviso de salida de partido:",e);
+        if(msg){msg.style.display="block";msg.style.color="#f87171";msg.textContent=e.message;}
+    }finally{
+        if(btn){btn.disabled=false;btn.textContent="Enviar aviso";}
+    }
+}
+
+
+function renderAccionSalidaPartido(servicio){
+    const info=analizarSalidaPartidoServicio(servicio);
+    if(info.enviado){
+        return '<span class="salida-partido-badge enviado">✅ Aviso enviado</span>';
+    }
+    if(info.marcado){
+        return '<button type="button" class="btn-salida-aviso" onclick="abrirSalidaPartido(\''+
+            escaparHTML(servicio.ID_SERVICIO||'')+'\')">📧 Avisar</button>';
+    }
+    return '<button type="button" class="btn-salida-partido" onclick="abrirSalidaPartido(\''+
+        escaparHTML(servicio.ID_SERVICIO||'')+'\')">🚨 Marcar salida</button>';
+}
+
 function renderizarServicios(servicios){
 
     const tbody = document.getElementById("tablaServicios");
@@ -5711,7 +5970,7 @@ function renderizarServicios(servicios){
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="9">
+                <td colspan="10">
                     <div class="empty">
                         Sin servicios registrados en el Backend Maestro
                     </div>
@@ -5746,6 +6005,7 @@ function renderizarServicios(servicios){
                 </td>
                 <td>${escaparHTML(formatearHoraSimpleArgentina(servicio.HORA_INICIO))}</td>
                 <td>${escaparHTML(formatearHoraSimpleArgentina(servicio.HORA_FIN))}</td>
+                <td>${renderAccionSalidaPartido(servicio)}</td>
             </tr>
         `;
 
@@ -5986,6 +6246,11 @@ function abrirModalServicio(){
         form.reset();
     }
 
+    const salidaBox=document.getElementById("servicioSalidaDestinoBox");
+    const salidaDestino=document.getElementById("servicioSalidaDestino");
+    if(salidaBox) salidaBox.classList.remove("show");
+    if(salidaDestino) salidaDestino.required=false;
+
     const fecha = document.getElementById("servicioFecha");
 
     if(fecha){
@@ -6088,6 +6353,20 @@ async function guardarServicio(event){
         observaciones:
             document.getElementById("servicioObservaciones")?.value.trim()
     };
+
+    const salidaPartido=document.getElementById("servicioSalidaPartido");
+    const destinoSalida=String(document.getElementById("servicioSalidaDestino")?.value||"").trim();
+
+    if(salidaPartido?.checked && !destinoSalida){
+        mostrarMensajeServicio("Indicá el destino del servicio con salida de partido.","error");
+        return;
+    }
+
+    datos.observaciones=construirObservacionesSalidaPartido(
+        datos.observaciones,
+        !!salidaPartido?.checked,
+        destinoSalida
+    );
 
     if(!datos.fecha){
         mostrarMensajeServicio("La fecha es obligatoria.","error");
@@ -14067,6 +14346,21 @@ function dvOrdenarCapasMapa(){
                         </select>
                     </div>
                     <div class="form-group full">
+                        <div class="salida-partido-form-box">
+                            <label class="salida-partido-check">
+                                <input id="servicioSalidaPartido" type="checkbox" onchange="alternarDestinoSalidaPartido()">
+                                <span>
+                                    <strong>🚨 Servicio con salida de partido</strong>
+                                    <span class="salida-partido-help">Activá esta opción únicamente cuando la unidad deba salir del partido de Lomas de Zamora.</span>
+                                </span>
+                            </label>
+                            <div id="servicioSalidaDestinoBox" class="salida-partido-destino">
+                                <label class="form-label">Destino de salida *</label>
+                                <input id="servicioSalidaDestino" class="form-control" type="text" placeholder="Ej.: Vicente López, Capital Federal, Bernal">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group full">
                         <label class="form-label">Observaciones</label>
                         <textarea id="servicioObservaciones" class="form-control"
                                   placeholder="Observaciones del servicio"></textarea>
@@ -14083,6 +14377,39 @@ function dvOrdenarCapasMapa(){
 </div>
 
 
+
+
+<!-- ======================================================
+     MODAL SALIDA DE PARTIDO
+     ====================================================== -->
+<div id="modalSalidaPartido" class="modal-overlay" onclick="cerrarModalSalidaPartido(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <div id="salidaPartidoTitulo" class="modal-title">Marcar salida de partido</div>
+                <div id="salidaPartidoSubtitulo" class="panel-subtitle">Servicio</div>
+            </div>
+            <button class="modal-close" type="button" onclick="cerrarModalSalidaPartido()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Destino *</label>
+                <input id="salidaPartidoDestino" class="form-control" type="text"
+                       placeholder="Ej.: Vicente López, Capital Federal, Bernal">
+            </div>
+            <div class="form-group" style="margin-top:13px">
+                <label class="form-label">Observación adicional</label>
+                <textarea id="salidaPartidoObservaciones" class="form-control"
+                          placeholder="Opcional"></textarea>
+            </div>
+            <div id="salidaPartidoMensaje" style="display:none;margin-top:13px;font-size:11px;line-height:1.5"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModalSalidaPartido()">Cancelar</button>
+            <button id="btnGuardarSalidaPartido" type="button" class="btn btn-primary" onclick="guardarSalidaPartido()">Guardar salida</button>
+        </div>
+    </div>
+</div>
 
 
 <!-- ======================================================
