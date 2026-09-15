@@ -5811,18 +5811,16 @@ function abrirSalidaPartido(idServicio){
     const titulo=document.getElementById("salidaPartidoTitulo");
     const sub=document.getElementById("salidaPartidoSubtitulo");
     const destino=document.getElementById("salidaPartidoDestino");
-    const obs=document.getElementById("salidaPartidoObservaciones");
     const msg=document.getElementById("salidaPartidoMensaje");
     const btn=document.getElementById("btnGuardarSalidaPartido");
 
     if(!modal) return;
 
-    if(titulo) titulo.textContent=info.marcado ? "Aviso de salida de partido" : "Marcar salida de partido";
+    if(titulo) titulo.textContent="Aviso de salida de partido";
     if(sub) sub.textContent=(servicio.NOMBRE_SERVICIO||id)+" · "+(servicio.FECHA||"");
     if(destino) destino.value=info.destino||"";
-    if(obs) obs.value="";
     if(msg){msg.style.display="none";msg.textContent="";}
-    if(btn) btn.textContent=info.marcado ? "Enviar aviso" : "Guardar salida";
+    if(btn){btn.disabled=false;btn.textContent="Enviar";}
 
     modal.classList.add("open");
 }
@@ -5838,7 +5836,6 @@ async function guardarSalidaPartido(){
     if(!servicio) return;
 
     const destino=String(document.getElementById("salidaPartidoDestino")?.value||"").trim();
-    const obsExtra=String(document.getElementById("salidaPartidoObservaciones")?.value||"").trim();
     const info=analizarSalidaPartidoServicio(servicio);
     const msg=document.getElementById("salidaPartidoMensaje");
     const btn=document.getElementById("btnGuardarSalidaPartido");
@@ -5848,49 +5845,56 @@ async function guardarSalidaPartido(){
         return;
     }
 
-    if(info.marcado && !info.enviado){
-        await enviarAvisoSalidaPartidoDesdePanel(servicio.ID_SERVICIO,destino,obsExtra);
-        return;
-    }
-
     if(info.enviado){
-        if(msg){msg.style.display="block";msg.style.color="#fbbf24";msg.textContent="Este aviso ya fue enviado. No se puede reenviar desde aquí.";}
+        if(msg){msg.style.display="block";msg.style.color="#fbbf24";msg.textContent="Este aviso ya fue enviado y no se puede reenviar.";}
         return;
     }
 
-    if(btn){btn.disabled=true;btn.textContent="Guardando...";}
-    try{
-        const nuevoObs=construirObservacionesSalidaPartido(
-            String(servicio.OBSERVACIONES||"")+(obsExtra ? " | "+obsExtra : ""),
-            true,
-            destino
-        );
+    if(btn){btn.disabled=true;btn.textContent="Enviando...";}
+    if(msg){msg.style.display="none";msg.textContent="";}
 
-        const respuesta=await fetch(BACKEND_URL,{
+    try{
+        // Si todavía no estaba marcado, lo marcamos primero y luego enviamos
+        // el aviso en el mismo botón. El usuario carga el destino una sola vez.
+        if(!info.marcado){
+            const respuestaMarca=await fetch(BACKEND_URL,{
+                method:"POST",
+                body:JSON.stringify({
+                    accion:"configurarSalidaPartido",
+                    idServicio:servicio.ID_SERVICIO,
+                    destino:destino,
+                    observaciones:""
+                })
+            });
+            const resultadoMarca=await respuestaMarca.json();
+            if(!resultadoMarca?.ok) throw new Error(resultadoMarca?.error||"No se pudo registrar la salida de partido.");
+        }
+
+        const respuestaEnvio=await fetch(BACKEND_URL,{
             method:"POST",
             body:JSON.stringify({
-                accion:"configurarSalidaPartido",
+                accion:"enviarAvisoSalidaPartido",
                 idServicio:servicio.ID_SERVICIO,
                 destino:destino,
-                observaciones:obsExtra,
-                cambios:{OBSERVACIONES:nuevoObs}
+                observaciones:""
             })
         });
-        const resultado=await respuesta.json();
-        if(!resultado?.ok) throw new Error(resultado?.error||"No se pudo marcar la salida.");
+        const resultadoEnvio=await respuestaEnvio.json();
+        if(!resultadoEnvio?.ok) throw new Error(resultadoEnvio?.error||"No se pudo enviar el aviso.");
 
         await cargarServicios();
         filtrarServicios();
         cerrarModalSalidaPartido();
+        alert("Aviso de salida de partido enviado correctamente.");
     }catch(e){
-        console.error("Error marcando salida de partido:",e);
+        console.error("Error enviando salida de partido:",e);
         if(msg){msg.style.display="block";msg.style.color="#f87171";msg.textContent=e.message;}
     }finally{
-        if(btn){btn.disabled=false;btn.textContent="Guardar salida";}
+        if(btn){btn.disabled=false;btn.textContent="Enviar";}
     }
 }
 
-async function enviarAvisoSalidaPartidoDesdePanel(idServicio,destino,obsExtra){
+async function enviarAvisoSalidaPartidoDesdePanel(idServicio,destino){
     const servicio=(estadoPanel.servicios||[]).find(s=>String(s.ID_SERVICIO||"").trim()===String(idServicio||"").trim());
     if(!servicio) return;
 
@@ -5905,7 +5909,7 @@ async function enviarAvisoSalidaPartidoDesdePanel(idServicio,destino,obsExtra){
                 accion:"enviarAvisoSalidaPartido",
                 idServicio:servicio.ID_SERVICIO,
                 destino:String(destino||"").trim(),
-                observaciones:String(obsExtra||"").trim()
+                observaciones:""
             })
         });
         const resultado=await respuesta.json();
@@ -5919,10 +5923,9 @@ async function enviarAvisoSalidaPartidoDesdePanel(idServicio,destino,obsExtra){
         console.error("Error enviando aviso de salida de partido:",e);
         if(msg){msg.style.display="block";msg.style.color="#f87171";msg.textContent=e.message;}
     }finally{
-        if(btn){btn.disabled=false;btn.textContent="Enviar aviso";}
+        if(btn){btn.disabled=false;btn.textContent="Enviar";}
     }
 }
-
 
 function renderAccionSalidaPartido(servicio){
     const info=analizarSalidaPartidoServicio(servicio);
@@ -14386,7 +14389,7 @@ function dvOrdenarCapasMapa(){
     <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
             <div>
-                <div id="salidaPartidoTitulo" class="modal-title">Marcar salida de partido</div>
+                <div id="salidaPartidoTitulo" class="modal-title">Aviso de salida de partido</div>
                 <div id="salidaPartidoSubtitulo" class="panel-subtitle">Servicio</div>
             </div>
             <button class="modal-close" type="button" onclick="cerrarModalSalidaPartido()">×</button>
@@ -14397,16 +14400,11 @@ function dvOrdenarCapasMapa(){
                 <input id="salidaPartidoDestino" class="form-control" type="text"
                        placeholder="Ej.: Vicente López, Capital Federal, Bernal">
             </div>
-            <div class="form-group" style="margin-top:13px">
-                <label class="form-label">Observación adicional</label>
-                <textarea id="salidaPartidoObservaciones" class="form-control"
-                          placeholder="Opcional"></textarea>
-            </div>
             <div id="salidaPartidoMensaje" style="display:none;margin-top:13px;font-size:11px;line-height:1.5"></div>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="cerrarModalSalidaPartido()">Cancelar</button>
-            <button id="btnGuardarSalidaPartido" type="button" class="btn btn-primary" onclick="guardarSalidaPartido()">Guardar salida</button>
+            <button id="btnGuardarSalidaPartido" type="button" class="btn btn-primary" onclick="guardarSalidaPartido()">Enviar</button>
         </div>
     </div>
 </div>
