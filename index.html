@@ -449,6 +449,149 @@ body{
     margin-bottom:16px;
 }
 
+/* =========================================================
+   INICIO — DISTRIBUCIÓN OPERATIVA
+   MAPA IZQUIERDA | SERVICIOS + FLOTA DERECHA
+   ACTIVIDAD A TODO EL ANCHO ABAJO
+   ========================================================= */
+.inicio-operativo-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.65fr) minmax(360px,.95fr);
+    gap:16px;
+    align-items:stretch;
+    margin-bottom:16px;
+}
+.inicio-mapa-panel{
+    min-width:0;
+}
+.inicio-lateral{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    min-width:0;
+}
+.inicio-resumen-panel{
+    min-width:0;
+}
+.inicio-ver-btn{
+    min-height:34px;
+    padding:7px 12px;
+    font-size:10px;
+    white-space:nowrap;
+}
+.inicio-mini-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    padding:14px;
+}
+.inicio-mini-card{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:0;
+    padding:11px;
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:11px;
+    background:rgba(255,255,255,.025);
+}
+.inicio-mini-card:last-child{
+    grid-column:1 / -1;
+}
+.inicio-mini-label{
+    color:#dbe7f4;
+    font-size:11px;
+    font-weight:700;
+}
+.inicio-mini-value{
+    color:#f5f9ff;
+    font-size:20px;
+    line-height:1.1;
+    font-weight:800;
+    margin-top:2px;
+}
+.inicio-mini-help{
+    color:#718198;
+    font-size:9px;
+    margin-top:2px;
+}
+.inicio-flota-lista{
+    padding:8px 14px 12px;
+}
+.inicio-flota-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 0;
+    border-bottom:1px solid #1b2a3e;
+}
+.inicio-flota-item:last-child{
+    border-bottom:0;
+}
+.inicio-flota-icon{
+    width:34px;
+    height:34px;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+}
+.inicio-flota-info{
+    flex:1;
+    min-width:0;
+}
+.inicio-flota-name{
+    color:#e9f1fb;
+    font-size:11px;
+    font-weight:700;
+}
+.inicio-flota-help{
+    color:#718198;
+    font-size:9px;
+    margin-top:2px;
+}
+.inicio-actividad-panel{
+    width:100%;
+    margin-bottom:16px;
+}
+.inicio-actividad-panel .activity{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    column-gap:24px;
+}
+.inicio-actividad-panel .activity-item{
+    min-width:0;
+}
+@media(max-width:1050px){
+    .inicio-operativo-grid{
+        grid-template-columns:minmax(0,1.45fr) minmax(300px,1fr);
+    }
+}
+@media(max-width:760px){
+    .inicio-operativo-grid{
+        grid-template-columns:1fr;
+        gap:10px;
+    }
+    .inicio-lateral{
+        gap:10px;
+    }
+    .inicio-actividad-panel .activity{
+        grid-template-columns:1fr;
+    }
+    .inicio-mini-grid{
+        grid-template-columns:1fr 1fr;
+    }
+}
+@media(max-width:430px){
+    .inicio-mini-grid{
+        grid-template-columns:1fr;
+    }
+    .inicio-mini-card:last-child{
+        grid-column:auto;
+    }
+}
+
 .panel{
     background:var(--panel);
     border:1px solid var(--border);
@@ -1447,19 +1590,31 @@ textarea.form-control{
     background:rgba(148,163,184,.12);
 }
 .btn-reasignar{
-    padding:9px 14px;
-    font-size:11px;
-    font-weight:800;
-    border-radius:9px;
+    padding:10px 17px;
+    font-size:12px;
+    font-weight:900;
+    border-radius:10px;
     white-space:nowrap;
-    min-height:36px;
-    min-width:112px;
+    min-height:42px;
+    min-width:132px;
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    gap:5px;
+    gap:6px;
     cursor:pointer;
+    pointer-events:auto !important;
+    position:relative;
+    z-index:5;
+    border:1px solid rgba(96,165,250,.28);
+    box-shadow:0 4px 12px rgba(0,0,0,.18);
 }
+.btn-reasignar:hover{
+    transform:translateY(-1px);
+}
+.btn-reasignar:active{
+    transform:translateY(0);
+}
+
 .reasignacion-estado{
     margin-top:8px;
     padding:9px 11px;
@@ -1535,7 +1690,7 @@ textarea.form-control{
 }
 @media(max-width:760px){
     .asignacion-route-box{grid-template-columns:1fr}
-    .btn-reasignar{min-width:130px;min-height:42px;padding:10px 16px;font-size:12px}
+    .btn-reasignar{min-width:138px;min-height:44px;padding:11px 17px;font-size:12px}
 }
 
 
@@ -2717,6 +2872,33 @@ async function guardarReasignacion(){
     .dv-home-map-host .dv-map{height:300px;}
     .dv-home-map-open{font-size:10px;padding:7px 9px;}
 }
+
+
+<style>
+/* =========================================================
+   POPUPS DEL MAPA — TEXTO LEGIBLE TAMBIÉN EN INICIO
+   ========================================================= */
+.dv-home-map-shell .maplibregl-popup-content,
+.dv-map-page-host .maplibregl-popup-content{
+    background:#ffffff !important;
+    color:#17231c !important;
+    font-family:Inter,Arial,sans-serif !important;
+}
+.dv-home-map-shell .maplibregl-popup-content *,
+.dv-map-page-host .maplibregl-popup-content *{
+    color:#17231c !important;
+}
+.dv-home-map-shell .dv-popup-card,
+.dv-map-page-host .dv-popup-card{
+    color:#17231c !important;
+    font-family:Inter,Arial,sans-serif !important;
+    font-size:12px;
+    line-height:1.45;
+}
+.dv-home-map-shell .dv-popup-card strong,
+.dv-map-page-host .dv-popup-card strong{
+    color:#0f172a !important;
+}
 </style>
 </head>
 
@@ -3108,382 +3290,164 @@ async function guardarReasignacion(){
     </div>
 
 
-    <!-- MAP + ACTIVITY -->
+    <!-- =========================================================
+         INICIO — MAPA + RESUMEN OPERATIVO + ACTIVIDAD
+         ========================================================= -->
 
-    <div class="dashboard-grid">
+    <div class="inicio-operativo-grid">
 
-
-        <div class="panel">
-
+        <!-- MAPA GRANDE -->
+        <div class="panel inicio-mapa-panel">
             <div class="panel-header">
-
                 <div>
-
-                    <div class="panel-title">
-                        Mapa Operativo
-                    </div>
-
-                    <div class="panel-subtitle">
-                        Seguimiento de unidades Día Verde
-                    </div>
-
+                    <div class="panel-title">Mapa Operativo</div>
+                    <div class="panel-subtitle">Seguimiento de unidades y servicios · Día Verde</div>
                 </div>
-
-                <span class="status-badge badge-green">
-                    EN VIVO
-                </span>
-
+                <span class="status-badge badge-green">EN VIVO</span>
             </div>
 
-
             <div class="dv-home-map-shell">
-
                 <div class="dv-home-map-toolbar">
                     <div class="dv-map-status">
                         <span id="dvHomeMapLiveDot" class="dv-live-dot"></span>
                         <span id="dvHomeMapStatusText">Conectando con Día Verde...</span>
                     </div>
-
-                    <button
-                        type="button"
-                        class="btn btn-secondary dv-home-map-open"
-                        onclick="mostrarPaginaPorNombre('mapa')">
+                    <button type="button" class="btn btn-secondary dv-home-map-open" onclick="mostrarPaginaPorNombre('mapa')">
                         Ver mapa completo ↗
                     </button>
                 </div>
-
                 <div id="dvMapHomeHost" class="dv-home-map-host">
                     <div id="dvMap" class="dv-map"></div>
                 </div>
+            </div>
+        </div>
 
+        <!-- RESUMEN A LA DERECHA DEL MAPA -->
+        <div class="inicio-lateral">
+
+            <!-- SERVICIOS -->
+            <div class="panel inicio-resumen-panel">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">Servicios</div>
+                        <div class="panel-subtitle">Estado de la jornada</div>
+                    </div>
+                    <button class="btn btn-secondary inicio-ver-btn" onclick="mostrarPaginaPorNombre('servicios')">Ver todos</button>
+                </div>
+
+                <div class="inicio-mini-grid">
+                    <div class="inicio-mini-card">
+                        <div class="kpi-icon yellow">◷</div>
+                        <div>
+                            <div class="inicio-mini-label">Programados</div>
+                            <div class="inicio-mini-value" id="serviciosProgramados">0</div>
+                            <div class="inicio-mini-help">Servicios del día</div>
+                        </div>
+                    </div>
+                    <div class="inicio-mini-card">
+                        <div class="kpi-icon blue">▶</div>
+                        <div>
+                            <div class="inicio-mini-label">En curso</div>
+                            <div class="inicio-mini-value" id="serviciosCurso">0</div>
+                            <div class="inicio-mini-help">Servicios activos</div>
+                        </div>
+                    </div>
+                    <div class="inicio-mini-card">
+                        <div class="kpi-icon green">✓</div>
+                        <div>
+                            <div class="inicio-mini-label">Finalizados</div>
+                            <div class="inicio-mini-value" id="serviciosFinalizados">0</div>
+                            <div class="inicio-mini-help">Completados hoy</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ESTADO DE FLOTA -->
+            <div class="panel inicio-resumen-panel">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title">Estado de la flota</div>
+                        <div class="panel-subtitle">Situación operativa</div>
+                    </div>
+                    <button class="btn btn-secondary inicio-ver-btn" onclick="mostrarPaginaPorNombre('vehiculos')">Ver flota</button>
+                </div>
+
+                <div class="inicio-flota-lista">
+                    <div class="inicio-flota-item">
+                        <div class="inicio-flota-icon green">✓</div>
+                        <div class="inicio-flota-info">
+                            <div class="inicio-flota-name">Operativos</div>
+                            <div class="inicio-flota-help">Vehículos disponibles</div>
+                        </div>
+                        <span id="estadoOperativos" class="status-badge badge-green">0</span>
+                    </div>
+
+                    <div class="inicio-flota-item">
+                        <div class="inicio-flota-icon yellow">🔧</div>
+                        <div class="inicio-flota-info">
+                            <div class="inicio-flota-name">En taller</div>
+                            <div class="inicio-flota-help">Mantenimiento</div>
+                        </div>
+                        <span id="estadoTaller" class="status-badge badge-yellow">0</span>
+                    </div>
+
+                    <div class="inicio-flota-item">
+                        <div class="inicio-flota-icon red">!</div>
+                        <div class="inicio-flota-info">
+                            <div class="inicio-flota-name">Fuera de servicio</div>
+                            <div class="inicio-flota-help">No disponibles</div>
+                        </div>
+                        <span id="estadoFueraServicio" class="status-badge badge-red">0</span>
+                    </div>
+                </div>
             </div>
 
         </div>
-
-
-        <div class="panel">
-
-            <div class="panel-header">
-
-                <div>
-
-                    <div class="panel-title">
-                        Actividad reciente
-                    </div>
-
-                    <div class="panel-subtitle">
-                        Últimos eventos registrados
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <div class="panel-body">
-
-                <div class="activity">
-
-
-                    <div class="activity-item">
-
-                        <div class="activity-icon green">
-                            ✓
-                        </div>
-
-                        <div>
-
-                            <div class="activity-text">
-                                Sistema inicializado
-                            </div>
-
-                            <div class="activity-time">
-                                Panel 2.0
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="activity-item">
-
-                        <div class="activity-icon blue">
-                            🔗
-                        </div>
-
-                        <div>
-
-                            <div class="activity-text">
-                                Backend Maestro preparado
-                            </div>
-
-                            <div class="activity-time">
-                                Arquitectura nueva
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="activity-item">
-
-                        <div class="activity-icon cyan">
-                            🛰
-                        </div>
-
-                        <div>
-
-                            <div class="activity-text">
-                                GPS reservado para Día Verde
-                            </div>
-
-                            <div class="activity-time">
-                                Política de arquitectura
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="activity-item">
-
-                        <div class="activity-icon purple">
-                            ⚙
-                        </div>
-
-                        <div>
-
-                            <div class="activity-text">
-                                Sistema listo para conexión
-                            </div>
-
-                            <div class="activity-time">
-                                Backend Maestro 1.0
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                </div>
-
-            </div>
-
-        </div>
-
     </div>
 
-
-    <!-- SECOND ROW -->
-
-    <div class="dashboard-grid">
-
-
-        <div class="panel">
-
-            <div class="panel-header">
-
-                <div>
-
-                    <div class="panel-title">
-                        Estado de la flota
-                    </div>
-
-                    <div class="panel-subtitle">
-                        Situación operativa
-                    </div>
-
-                </div>
-
-                <button
-                    class="btn btn-secondary"
-                    onclick="mostrarPaginaPorNombre('vehiculos')"
-                >
-                    Ver flota
-                </button>
-
+    <!-- ACTIVIDAD RECIENTE — ABAJO DE TODO -->
+    <div class="panel inicio-actividad-panel">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title">Actividad reciente</div>
+                <div class="panel-subtitle">Últimos eventos registrados</div>
             </div>
-
-
-            <div class="panel-body">
-
-                <div class="status-row">
-
-                    <div class="status-left">
-
-                        <div class="kpi-icon green">
-                            ✓
-                        </div>
-
-                        <div>
-
-                            <div class="status-name">
-                                Operativos
-                            </div>
-
-                            <div class="status-domain">
-                                Vehículos disponibles
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <span id="estadoOperativos" class="status-badge badge-green">
-                        0
-                    </span>
-
-                </div>
-
-
-                <div class="status-row">
-
-                    <div class="status-left">
-
-                        <div class="kpi-icon yellow">
-                            🔧
-                        </div>
-
-                        <div>
-
-                            <div class="status-name">
-                                En taller
-                            </div>
-
-                            <div class="status-domain">
-                                Mantenimiento
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <span id="estadoTaller" class="status-badge badge-yellow">
-                        0
-                    </span>
-
-                </div>
-
-
-                <div class="status-row">
-
-                    <div class="status-left">
-
-                        <div class="kpi-icon red">
-                            !
-                        </div>
-
-                        <div>
-
-                            <div class="status-name">
-                                Fuera de servicio
-                            </div>
-
-                            <div class="status-domain">
-                                No disponibles
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <span id="estadoFueraServicio" class="status-badge badge-red">
-                        0
-                    </span>
-
-                </div>
-
-
-            </div>
-
+            <button class="btn btn-secondary inicio-ver-btn" onclick="mostrarPaginaPorNombre('eventos')">Ver todos</button>
         </div>
 
-
-        <div class="panel">
-
-            <div class="panel-header">
-
-                <div>
-
-                    <div class="panel-title">
-                        Servicios
+        <div class="panel-body">
+            <div class="activity">
+                <div class="activity-item">
+                    <div class="activity-icon green">✓</div>
+                    <div>
+                        <div class="activity-text">Sistema inicializado</div>
+                        <div class="activity-time">Panel 2.0</div>
                     </div>
-
-                    <div class="panel-subtitle">
-                        Estado de la jornada
-                    </div>
-
                 </div>
-
+                <div class="activity-item">
+                    <div class="activity-icon blue">🔗</div>
+                    <div>
+                        <div class="activity-text">Backend Maestro preparado</div>
+                        <div class="activity-time">Arquitectura nueva</div>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon cyan">🛰</div>
+                    <div>
+                        <div class="activity-text">GPS reservado para Día Verde</div>
+                        <div class="activity-time">Política de arquitectura</div>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon purple">⚙</div>
+                    <div>
+                        <div class="activity-text">Sistema listo para conexión</div>
+                        <div class="activity-time">Backend Maestro 1.0</div>
+                    </div>
+                </div>
             </div>
-
-
-            <div class="panel-body">
-
-                <div class="status-row">
-
-                    <div class="status-left">
-
-                        <div class="kpi-icon yellow">
-                            ◷
-                        </div>
-
-                        <div class="status-name">
-                            Programados
-                        </div>
-
-                    </div>
-
-                    <span class="status-badge badge-yellow"><span id="serviciosProgramados">0</span></span>
-
-                </div>
-
-
-                <div class="status-row">
-
-                    <div class="status-left">
-
-                        <div class="kpi-icon blue">
-                            ▶
-                        </div>
-
-                        <div class="status-name">
-                            En curso
-                        </div>
-
-                    </div>
-
-                    <span class="status-badge badge-blue"><span id="serviciosCurso">0</span></span>
-
-                </div>
-
-
-                <div class="status-row">
-
-                    <div class="status-left">
-
-                        <div class="kpi-icon green">
-                            ✓
-                        </div>
-
-                        <div class="status-name">
-                            Finalizados
-                        </div>
-
-                    </div>
-
-                    <span class="status-badge badge-green"><span id="serviciosFinalizados">0</span></span>
-
-                </div>
-
-            </div>
-
         </div>
-
     </div>
 
 </div>
@@ -6500,7 +6464,7 @@ function renderizarAsignaciones(asignaciones){
             <td>
                             ${
                                 normalizar(asignacion.ESTADO) === "ACTIVA"
-                                    ? `<button class="btn btn-primary btn-reasignar" type="button" data-reasignar-id="${escaparHTML(asignacion.ID_ASIGNACION || "")}">🔄 Reasignar</button>`
+                                    ? `<button class="btn btn-secondary btn-reasignar" type="button" data-reasignar-id="${escaparHTML(asignacion.ID_ASIGNACION || "")}">🔄 Reasignar</button>`
                                     : `<span class="asignacion-id">—</span>`
                             }
                         </td>
@@ -6509,8 +6473,6 @@ function renderizarAsignaciones(asignaciones){
     }).join("");
 }
 
-
-document.addEventListener("click",function(event){const boton=event.target.closest?.("[data-reasignar-id]");if(!boton)return;event.preventDefault();event.stopPropagation();abrirModalReasignacion(boton.getAttribute("data-reasignar-id")||"");});
 
 function filtrarAsignaciones(){
 
@@ -13322,6 +13284,27 @@ async function actualizarDatosTurboInicial(){
 /* =========================================================
    INICIO
    ========================================================= */
+
+/* =========================================================
+   REASIGNACIÓN — CLICK ROBUSTO POR DELEGACIÓN
+   Evita conflictos con tablas renderizadas dinámicamente.
+   ========================================================= */
+document.addEventListener("click", function(event){
+    const boton=event.target.closest?.("[data-reasignar-id]");
+    if(!boton) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const id=boton.getAttribute("data-reasignar-id") || "";
+    if(!id){
+        console.warn("REASIGNACIÓN: botón sin ID de asignación");
+        return;
+    }
+
+    console.info("REASIGNACIÓN: abrir modal", id);
+    abrirModalReasignacion(id);
+});
 
 document.addEventListener(
     "DOMContentLoaded",
