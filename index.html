@@ -1446,6 +1446,25 @@ textarea.form-control{
     color:#a8b3c2;
     background:rgba(148,163,184,.12);
 }
+.btn-reasignar{
+    padding:6px 9px;
+    font-size:9px;
+    border-radius:7px;
+    white-space:nowrap;
+}
+.reasignacion-estado{
+    margin-top:8px;
+    padding:9px 11px;
+    border-radius:9px;
+    background:rgba(59,130,246,.07);
+    border:1px solid rgba(59,130,246,.14);
+    color:#aebdce;
+    font-size:10px;
+}
+.reasignacion-option{
+    padding:7px 9px;
+}
+
 
 #modalAsignacion .modal{
     width:min(760px,100%);
@@ -1510,6 +1529,150 @@ textarea.form-control{
     .asignacion-route-box{grid-template-columns:1fr}
 }
 
+
+
+/* =========================================================
+   REASIGNACIÓN DE ASIGNACIONES
+   ========================================================= */
+
+let asignacionReasignacionActual = null;
+
+function disponibilidadChoferReasignacion(idActual){
+    const id=String(idActual||"").trim();
+    const activos=(estadoPanel.asignaciones||[]).filter(a =>
+        normalizar(a.ESTADO)==="ACTIVA" &&
+        String(a.ID_ASIGNACION||"").trim()!==String(asignacionReasignacionActual?.ID_ASIGNACION||"").trim()
+    );
+    const usado=activos.some(a=>String(a.ID_CHOFER||"").trim()===id);
+    return usado ? "NO DISPONIBLE — ya tiene una asignación activa" : "";
+}
+
+function disponibilidadVehiculoReasignacion(idActual){
+    const id=String(idActual||"").trim();
+    const veh=(estadoPanel.vehiculos||[]).find(v=>String(v.ID_VEHICULO||"").trim()===id);
+    if(!veh) return "NO DISPONIBLE — no encontrado";
+    const estado=normalizar(veh.ESTADO_OPERATIVO||"");
+    const activo=normalizar(veh.ACTIVO||"");
+    if(["TALLER","FUERA DE SERVICIO","FUERA_SERVICIO","BAJA","INACTIVO"].includes(estado))
+        return `NO DISPONIBLE — ${veh.ESTADO_OPERATIVO}`;
+    if(["FALSE","NO","0","INACTIVO"].includes(activo))
+        return "NO DISPONIBLE — vehículo inactivo";
+    const usados=(estadoPanel.asignaciones||[]).filter(a =>
+        normalizar(a.ESTADO)==="ACTIVA" &&
+        String(a.ID_ASIGNACION||"").trim()!==String(asignacionReasignacionActual?.ID_ASIGNACION||"").trim()
+    );
+    if(usados.some(a=>String(a.ID_VEHICULO||"").trim()===id))
+        return "NO DISPONIBLE — ya tiene una asignación activa";
+    return "";
+}
+
+function abrirModalReasignacion(idAsignacion){
+    const a=(estadoPanel.asignaciones||[]).find(x =>
+        String(x.ID_ASIGNACION||"").trim()===String(idAsignacion||"").trim()
+    );
+    if(!a) return;
+    asignacionReasignacionActual=a;
+
+    const modal=document.getElementById("modalReasignacion");
+    if(!modal) return;
+
+    const servicio=obtenerServicioAsignacionPorId(a.ID_SERVICIO);
+    const chofer=obtenerPersonaAsignacionPorId(a.ID_CHOFER);
+    const vehiculo=obtenerVehiculoAsignacionPorId(a.ID_VEHICULO);
+
+    document.getElementById("reasignacionServicio").value =
+        servicio?.NOMBRE_SERVICIO || a.ID_SERVICIO || "";
+    document.getElementById("reasignacionFecha").value =
+        formatearFechaAsignacion(a.FECHA);
+
+    document.getElementById("reasignacionActual").innerHTML =
+        `<strong>Asignación actual:</strong> ${escaparHTML(chofer?.NOMBRE || a.ID_CHOFER || "Sin chofer")} · ${escaparHTML(vehiculo?.DOMINIO || a.ID_VEHICULO || "Sin vehículo")}`;
+
+    const sc=document.getElementById("reasignacionChofer");
+    const sv=document.getElementById("reasignacionVehiculo");
+
+    sc.innerHTML='<option value="">Seleccionar chofer</option>' +
+        (estadoPanel.choferes||[]).map(c=>{
+            const id=c.ID_CHOFER||"";
+            const nombre=c.NOMBRE||id;
+            const estado=normalizar(c.ESTADO||"");
+            const bloqueado=(estado!=="ACTIVO" && id!==a.ID_CHOFER) || !!disponibilidadChoferReasignacion(id);
+            const texto=bloqueado
+                ? `${nombre} — ${estado||"NO DISPONIBLE"}`
+                : `${nombre} — DISPONIBLE`;
+            return `<option value="${escaparHTML(id)}" ${bloqueado?"disabled":""}>${escaparHTML(texto)}</option>`;
+        }).join("");
+    sc.value=a.ID_CHOFER||"";
+
+    sv.innerHTML='<option value="">Seleccionar vehículo</option>' +
+        (estadoPanel.vehiculos||[]).map(v=>{
+            const id=v.ID_VEHICULO||"";
+            const nombre=v.DOMINIO||id;
+            const motivo=disponibilidadVehiculoReasignacion(id);
+            const bloqueado=!!motivo && id!==a.ID_VEHICULO;
+            const texto=bloqueado
+                ? `${nombre} — ${motivo.replace("NO DISPONIBLE — ","")}`
+                : `${nombre} — DISPONIBLE`;
+            return `<option value="${escaparHTML(id)}" ${bloqueado?"disabled":""}>${escaparHTML(texto)}</option>`;
+        }).join("");
+    sv.value=a.ID_VEHICULO||"";
+
+    const msg=document.getElementById("reasignacionMensaje");
+    if(msg){msg.style.display="none";msg.textContent="";}
+
+    modal.classList.add("open");
+}
+
+function cerrarModalReasignacion(event){
+    if(event && event.target && event.target.id!=="modalReasignacion") return;
+    document.getElementById("modalReasignacion")?.classList.remove("open");
+    asignacionReasignacionActual=null;
+}
+
+async function guardarReasignacion(){
+    const a=asignacionReasignacionActual;
+    if(!a) return;
+
+    const nuevoChofer=document.getElementById("reasignacionChofer")?.value||"";
+    const nuevoVehiculo=document.getElementById("reasignacionVehiculo")?.value||"";
+    const boton=document.getElementById("btnGuardarReasignacion");
+    const msg=document.getElementById("reasignacionMensaje");
+
+    if(!nuevoChofer || !nuevoVehiculo){
+        if(msg){msg.style.display="block";msg.textContent="Seleccioná chofer y vehículo.";msg.style.color="#f87171";}
+        return;
+    }
+
+    if(boton){boton.disabled=true;boton.textContent="Reasignando...";}
+
+    try{
+        const respuesta=await fetch(BACKEND_URL,{
+            method:"POST",
+            body:JSON.stringify({
+                accion:"reasignarAsignacion",
+                idAsignacion:a.ID_ASIGNACION,
+                idChofer:nuevoChofer,
+                idVehiculo:nuevoVehiculo
+            })
+        });
+        const resultado=await respuesta.json();
+        if(!resultado?.ok) throw new Error(resultado?.error||"No se pudo reasignar.");
+
+        cerrarModalReasignacion();
+        await Promise.allSettled([
+            cargarAsignaciones(),
+            cargarServicios(),
+            cargarResumenPanel()
+        ]);
+        filtrarAsignaciones();
+
+    }catch(e){
+        console.error("Error reasignando asignación:",e);
+        if(msg){msg.style.display="block";msg.textContent=e.message;msg.style.color="#f87171";}
+    }finally{
+        if(boton){boton.disabled=false;boton.textContent="Confirmar reasignación";}
+    }
+}
 
 /* =========================================================
    MÓDULO RUTAS
@@ -3393,13 +3556,14 @@ textarea.form-control{
                         <th>Vehículo</th>
                         <th>Estado</th>
                         <th>Hora</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
 
                 <tbody id="tablaAsignaciones">
 
                     <tr>
-                        <td colspan="7">
+                        <td colspan="8">
                             <div class="empty">
                                 Cargando asignaciones...
                             </div>
@@ -3416,6 +3580,54 @@ textarea.form-control{
 
 </div>
 
+
+
+<div id="modalReasignacion" class="modal-overlay" onclick="cerrarModalReasignacion(event)">
+    <div class="modal">
+        <div class="modal-head">
+            <div>
+                <div class="asignacion-form-title">🔄 Reasignar servicio</div>
+                <div class="asignacion-form-help">
+                    Cambiá el chofer y/o el vehículo de la asignación sin crear otro servicio.
+                </div>
+            </div>
+            <button class="modal-close" type="button" onclick="cerrarModalReasignacion()">×</button>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Servicio</label>
+                <input id="reasignacionServicio" class="filter" readonly>
+            </div>
+            <div class="form-group">
+                <label>Fecha</label>
+                <input id="reasignacionFecha" class="filter" readonly>
+            </div>
+        </div>
+
+        <div class="reasignacion-estado" id="reasignacionActual">
+            Cargando asignación...
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Nuevo chofer</label>
+                <select id="reasignacionChofer" class="filter"></select>
+            </div>
+            <div class="form-group">
+                <label>Nuevo vehículo</label>
+                <select id="reasignacionVehiculo" class="filter"></select>
+            </div>
+        </div>
+
+        <div id="reasignacionMensaje" class="status-banner" style="display:none"></div>
+
+        <div class="modal-actions">
+            <button class="btn btn-secondary" type="button" onclick="cerrarModalReasignacion()">Cancelar</button>
+            <button class="btn btn-primary" id="btnGuardarReasignacion" type="button" onclick="guardarReasignacion()">Confirmar reasignación</button>
+        </div>
+    </div>
+</div>
 
 <div id="rutas" class="page">
 
@@ -5928,7 +6140,14 @@ function renderizarAsignaciones(asignaciones){
                 <td>
                     ${escaparHTML(formatearHoraAsignacion(asignacion.HORA_ASIGNACION))}
                 </td>
-            </tr>
+            <td>
+                            ${
+                                normalizar(asignacion.ESTADO) === "ACTIVA"
+                                    ? `<button class="btn btn-secondary btn-reasignar" type="button" onclick="abrirModalReasignacion('${escaparHTML(asignacion.ID_ASIGNACION || "")}')">🔄 Reasignar</button>`
+                                    : `<span class="asignacion-id">—</span>`
+                            }
+                        </td>
+                        </tr>
         `;
     }).join("");
 }
@@ -6039,10 +6258,17 @@ function actualizarDetalleServicioAsignacion(){
             ? ` · ${formatearHoraAsignacion(servicio.HORA_PROGRAMADA)}`
             : "";
 
+    const rutaNombre = renderNombreRutaServicio(servicio.ID_RUTA);
+    const rutaDetalle =
+        rutaNombre
+            ? ` · Ruta: ${rutaNombre}`
+            : "";
+
     detalle.innerHTML =
         `<strong>${escaparHTML(servicio.NOMBRE_SERVICIO || "Servicio")}</strong>` +
         ` · ${escaparHTML(tipo)}` +
-        ` · ${escaparHTML(fechaTexto)}${escaparHTML(hora)}`;
+        ` · ${escaparHTML(fechaTexto)}${escaparHTML(hora)}` +
+        `${escaparHTML(rutaDetalle)}`;
 }
 
 async function cargarOpcionesAsignacion(){
@@ -6050,20 +6276,14 @@ async function cargarOpcionesAsignacion(){
     const [
         servicios,
         choferes,
-        vehiculos,
-        asignaciones
+        vehiculos
     ] = await Promise.all([
 
         leerBackend("servicios"),
         leerBackend("choferes"),
-        leerBackend("vehiculos"),
-        leerBackend("asignaciones")
+        leerBackend("vehiculos")
 
     ]);
-
-    if(asignaciones?.ok && Array.isArray(asignaciones.datos)){
-        estadoPanel.asignaciones = asignaciones.datos;
-    }
 
     asignacionServiciosDisponibles =
         servicios?.ok && Array.isArray(servicios.datos)
@@ -6103,23 +6323,13 @@ async function cargarOpcionesAsignacion(){
 
         const hoy=hoyArgentinaISO();
         const manana=fechaArgentinaSumarDias(1);
-        const asignacionesActivas = new Set(
-            (Array.isArray(estadoPanel.asignaciones) ? estadoPanel.asignaciones : [])
-                .filter(a => normalizar(a?.ESTADO) === "ACTIVA")
-                .map(a => String(a?.ID_SERVICIO || "").trim())
-                .filter(Boolean)
-        );
-
         const lista = asignacionServiciosDisponibles.filter(servicio => {
             const fecha=fechaLocalISOArgentina(servicio?.FECHA);
             const estado=normalizar(servicio?.ESTADO||"");
-            const idServicio=String(servicio?.ID_SERVICIO||"").trim();
-            const asignadoEnServicio=String(servicio?.ID_ASIGNACION||"").trim();
-
+            const asignado=String(servicio?.ID_ASIGNACION||"").trim();
             return (fecha===hoy || fecha===manana) &&
-                   !["FINALIZADO","FINALIZADOS","CANCELADO","CANCELADA"].includes(estado) &&
-                   !asignadoEnServicio &&
-                   !asignacionesActivas.has(idServicio);
+                   !["FINALIZADO","FINALIZADOS","CANCELADO"].includes(estado) &&
+                   !asignado;
         });
 
         selectServicio.innerHTML =
@@ -6136,14 +6346,32 @@ async function cargarOpcionesAsignacion(){
 
                 const fecha =
                     servicio.FECHA
-                        ? ` · ${formatearFechaSimple(servicio.FECHA)}`
+                        ? formatearFechaAsignacion(servicio.FECHA)
                         : "";
+
+                const hora =
+                    servicio.HORA_PROGRAMADA
+                        ? formatearHoraAsignacion(servicio.HORA_PROGRAMADA)
+                        : "";
+
+                const nombreRuta =
+                    renderNombreRutaServicio(servicio.ID_RUTA);
+
+                const rutaTexto =
+                    nombreRuta && nombreRuta !== servicio.ID_RUTA
+                        ? nombreRuta
+                        : (servicio.ID_RUTA || "");
+
+                const partes = [
+                    nombre,
+                    fecha,
+                    hora,
+                    rutaTexto ? `Ruta: ${rutaTexto}` : ""
+                ].filter(Boolean);
 
                 return `
                     <option value="${escaparHTML(id)}">
-                        ${escaparHTML(
-                            nombre + fecha
-                        )}
+                        ${escaparHTML(partes.join(" · "))}
                     </option>
                 `;
 
@@ -6593,17 +6821,6 @@ async function guardarAsignacion(
             "ok"
         );
 
-
-        const servicioLocal = (estadoPanel.servicios || []).find(
-            s => String(s.ID_SERVICIO || "").trim() === String(datos.idServicio || "").trim()
-        );
-        if(servicioLocal){
-            servicioLocal.ID_ASIGNACION =
-                resultado?.datos?.ID_ASIGNACION ||
-                resultado?.resultado?.ID_ASIGNACION ||
-                datos.idAsignacion ||
-                "__ASIGNADO__";
-        }
 
         cerrarModalAsignacion();
 
