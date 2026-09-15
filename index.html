@@ -1884,49 +1884,122 @@ async function guardarReasignacion(){
     const a=asignacionReasignacionActual;
     if(!a) return;
 
-    const nuevoChofer=document.getElementById("reasignacionChofer")?.value||"";
-    const nuevoVehiculo=document.getElementById("reasignacionVehiculo")?.value||"";
+    const nuevoChofer=String(document.getElementById("reasignacionChofer")?.value||"").trim();
+    const nuevoVehiculo=String(document.getElementById("reasignacionVehiculo")?.value||"").trim();
     const boton=document.getElementById("btnGuardarReasignacion");
     const msg=document.getElementById("reasignacionMensaje");
 
+    const mostrarError=(texto)=>{
+        if(msg){
+            msg.style.display="block";
+            msg.textContent=String(texto||"No se pudo reasignar.");
+            msg.style.color="#f87171";
+        }
+    };
+
     if(!nuevoChofer || !nuevoVehiculo){
-        if(msg){msg.style.display="block";msg.textContent="Seleccioná chofer y vehículo.";msg.style.color="#f87171";}
+        mostrarError("Seleccioná chofer y vehículo.");
         return;
     }
 
-    if(boton){boton.disabled=true;boton.textContent="Reasignando...";}
+    const choferActual=String(a.ID_CHOFER||"").trim();
+    const vehiculoActual=String(a.ID_VEHICULO||"").trim();
+
+    if(nuevoChofer===choferActual && nuevoVehiculo===vehiculoActual){
+        mostrarError("No hay cambios para guardar.");
+        return;
+    }
+
+    if(nuevoChofer!==choferActual){
+        const motivoChofer=disponibilidadChoferReasignacion(nuevoChofer);
+        if(motivoChofer){
+            mostrarError(motivoChofer);
+            return;
+        }
+    }
+
+    if(nuevoVehiculo!==vehiculoActual){
+        const motivoVehiculo=disponibilidadVehiculoReasignacion(nuevoVehiculo);
+        if(motivoVehiculo){
+            mostrarError(motivoVehiculo);
+            return;
+        }
+    }
+
+    if(boton){
+        boton.disabled=true;
+        boton.textContent="Reasignando...";
+    }
 
     try{
+        /*
+         * POST compatible con Google Apps Script:
+         * text/plain evita un preflight CORS innecesario.
+         */
         const respuesta=await fetch(BACKEND_URL,{
             method:"POST",
+            headers:{
+                "Content-Type":"text/plain;charset=utf-8"
+            },
+            cache:"no-store",
             body:JSON.stringify({
                 accion:"actualizarAsignacion",
-                idAsignacion:a.ID_ASIGNACION,
+                idAsignacion:String(a.ID_ASIGNACION||"").trim(),
                 cambios:{
                     ID_CHOFER:nuevoChofer,
                     ID_VEHICULO:nuevoVehiculo,
-                    OBSERVACIONES:(String(a.OBSERVACIONES||"").trim() + (String(a.OBSERVACIONES||"").trim()?" | ":"") + "REASIGNACION: Chofer="+nuevoChofer+"; Vehiculo="+nuevoVehiculo)
+                    OBSERVACIONES:
+                        String(a.OBSERVACIONES||"").trim() +
+                        (String(a.OBSERVACIONES||"").trim() ? " | " : "") +
+                        "REASIGNACION: Chofer="+choferActual+" > "+nuevoChofer+
+                        "; Vehiculo="+vehiculoActual+" > "+nuevoVehiculo
                 }
             })
         });
-        const resultado=await respuesta.json();
-        if(!resultado?.ok) throw new Error(resultado?.error||"No se pudo reasignar.");
 
-        cerrarModalReasignacion();
+        if(!respuesta.ok){
+            throw new Error("Backend HTTP "+respuesta.status);
+        }
+
+        const resultado=await respuesta.json();
+
+        if(!resultado?.ok){
+            throw new Error(
+                resultado?.error ||
+                resultado?.mensaje ||
+                "El Backend Maestro rechazó la reasignación."
+            );
+        }
+
+        if(msg){
+            msg.style.display="block";
+            msg.textContent="✓ Reasignación guardada correctamente.";
+            msg.style.color="#6ee7a0";
+        }
+
         await Promise.allSettled([
             cargarAsignaciones(),
             cargarServicios(),
             cargarResumenPanel()
         ]);
+
         filtrarAsignaciones();
+
+        setTimeout(()=>{
+            cerrarModalReasignacion();
+        },350);
 
     }catch(e){
         console.error("Error reasignando asignación:",e);
-        if(msg){msg.style.display="block";msg.textContent=e.message;msg.style.color="#f87171";}
+        mostrarError(e?.message || "No se pudo reasignar la asignación.");
     }finally{
-        if(boton){boton.disabled=false;boton.textContent="Confirmar reasignación";}
+        if(boton){
+            boton.disabled=false;
+            boton.textContent="Confirmar reasignación";
+        }
     }
 }
+
 
 /* =========================================================
    MÓDULO RUTAS
