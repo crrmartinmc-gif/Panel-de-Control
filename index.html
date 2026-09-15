@@ -5289,25 +5289,23 @@ function formatearHoraSimpleArgentina(valor){
     const s=String(valor).trim();
     if(!s || s==="-") return "-";
 
-    // Hora HH:mm:ss / HH:mm directamente.
+    // Si ya llega como HH:mm o HH:mm:ss, NO se modifica.
     let m=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if(m) return `${String(m[1]).padStart(2,"0")}:${m[2]}`;
 
-    // Fechas de Google Sheets serializadas como 1899-12-30/31T...Z.
-    // Se convierten explícitamente a la hora argentina.
-    if(/^1899-12-(30|31)T/i.test(s)){
-        const d=new Date(s);
-        if(!Number.isNaN(d.getTime())){
-            const partes=new Intl.DateTimeFormat("en-GB",{
-                timeZone:"America/Argentina/Buenos_Aires",
-                hour:"2-digit",minute:"2-digit",hour12:false
-            }).formatToParts(d);
-            const hh=partes.find(x=>x.type==="hour")?.value;
-            const mm=partes.find(x=>x.type==="minute")?.value;
-            if(hh && mm) return `${hh}:${mm}`;
-        }
+    // Google Sheets puede serializar una hora como 1899-12-30/31T...Z.
+    // Ese valor representa SOLO una hora, no una fecha histórica.
+    // Por eso aplicamos manualmente UTC-3 (Argentina) y evitamos los husos
+    // horarios históricos de 1899 que pueden producir horas incorrectas.
+    const antiguo=s.match(/^1899-12-(30|31)T(\d{2}):(\d{2})(?::(\d{2}))?Z$/i);
+    if(antiguo){
+        let h=Number(antiguo[2])-3;
+        const min=antiguo[3];
+        if(h<0) h+=24;
+        return `${String(h).padStart(2,"0")}:${min}`;
     }
 
+    // Para timestamps reales usamos la zona horaria oficial de Argentina.
     const d=new Date(s);
     if(!Number.isNaN(d.getTime())){
         const partes=new Intl.DateTimeFormat("en-GB",{
@@ -6013,16 +6011,7 @@ function formatearFechaAsignacion(valor){
 }
 
 function formatearHoraAsignacion(valor){
-    if(!valor) return "-";
-    const s = String(valor).trim();
-
-    const m = s.match(/T(\d{2}):(\d{2})/);
-    if(m) return `${m[1]}:${m[2]}`;
-
-    const hm = s.match(/^(\d{1,2}):(\d{2})/);
-    if(hm) return `${String(hm[1]).padStart(2,"0")}:${hm[2]}`;
-
-    return s;
+    return formatearHoraSimpleArgentina(valor);
 }
 
 function renderizarAsignaciones(asignaciones){
@@ -11228,9 +11217,35 @@ function dvFechaPunto(p){
 
 function dvHoraTexto(valor){
     if(!valor) return "-";
-    const d=new Date(valor);
-    if(Number.isNaN(d.getTime())) return String(valor);
-    return d.toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    const s=String(valor).trim();
+    if(!s || s==="-") return "-";
+
+    // Horas simples HH:mm / HH:mm:ss.
+    const hm=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if(hm) return `${String(hm[1]).padStart(2,"0")}:${hm[2]}`;
+
+    // Timestamps de Google Sheets con fecha base 1899 representan una HORA.
+    // Se aplica Argentina UTC-3 manualmente para evitar el huso histórico de 1899.
+    const antiguo=s.match(/^1899-12-(30|31)T(\d{2}):(\d{2})(?::(\d{2}))?Z$/i);
+    if(antiguo){
+        let h=Number(antiguo[2])-3;
+        if(h<0) h+=24;
+        return `${String(h).padStart(2,"0")}:${antiguo[3]}`;
+    }
+
+    const d=new Date(s);
+    if(Number.isNaN(d.getTime())) return s;
+    const partes=new Intl.DateTimeFormat("es-AR",{
+        timeZone:"America/Argentina/Buenos_Aires",
+        day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false
+    }).formatToParts(d);
+    const dia=partes.find(x=>x.type==="day")?.value;
+    const mes=partes.find(x=>x.type==="month")?.value;
+    const hora=partes.find(x=>x.type==="hour")?.value;
+    const min=partes.find(x=>x.type==="minute")?.value;
+    const sec=partes.find(x=>x.type==="second")?.value;
+    if(hora && min) return `${dia||""}/${mes||""} ${hora}:${min}${sec ? ":"+sec : ""}`;
+    return s;
 }
 
 function dvEsHoy(valor){
