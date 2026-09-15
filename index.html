@@ -6050,14 +6050,20 @@ async function cargarOpcionesAsignacion(){
     const [
         servicios,
         choferes,
-        vehiculos
+        vehiculos,
+        asignaciones
     ] = await Promise.all([
 
         leerBackend("servicios"),
         leerBackend("choferes"),
-        leerBackend("vehiculos")
+        leerBackend("vehiculos"),
+        leerBackend("asignaciones")
 
     ]);
+
+    if(asignaciones?.ok && Array.isArray(asignaciones.datos)){
+        estadoPanel.asignaciones = asignaciones.datos;
+    }
 
     asignacionServiciosDisponibles =
         servicios?.ok && Array.isArray(servicios.datos)
@@ -6097,13 +6103,23 @@ async function cargarOpcionesAsignacion(){
 
         const hoy=hoyArgentinaISO();
         const manana=fechaArgentinaSumarDias(1);
+        const asignacionesActivas = new Set(
+            (Array.isArray(estadoPanel.asignaciones) ? estadoPanel.asignaciones : [])
+                .filter(a => normalizar(a?.ESTADO) === "ACTIVA")
+                .map(a => String(a?.ID_SERVICIO || "").trim())
+                .filter(Boolean)
+        );
+
         const lista = asignacionServiciosDisponibles.filter(servicio => {
             const fecha=fechaLocalISOArgentina(servicio?.FECHA);
             const estado=normalizar(servicio?.ESTADO||"");
-            const asignado=String(servicio?.ID_ASIGNACION||"").trim();
+            const idServicio=String(servicio?.ID_SERVICIO||"").trim();
+            const asignadoEnServicio=String(servicio?.ID_ASIGNACION||"").trim();
+
             return (fecha===hoy || fecha===manana) &&
-                   !["FINALIZADO","FINALIZADOS","CANCELADO"].includes(estado) &&
-                   !asignado;
+                   !["FINALIZADO","FINALIZADOS","CANCELADO","CANCELADA"].includes(estado) &&
+                   !asignadoEnServicio &&
+                   !asignacionesActivas.has(idServicio);
         });
 
         selectServicio.innerHTML =
@@ -6577,6 +6593,17 @@ async function guardarAsignacion(
             "ok"
         );
 
+
+        const servicioLocal = (estadoPanel.servicios || []).find(
+            s => String(s.ID_SERVICIO || "").trim() === String(datos.idServicio || "").trim()
+        );
+        if(servicioLocal){
+            servicioLocal.ID_ASIGNACION =
+                resultado?.datos?.ID_ASIGNACION ||
+                resultado?.resultado?.ID_ASIGNACION ||
+                datos.idAsignacion ||
+                "__ASIGNADO__";
+        }
 
         cerrarModalAsignacion();
 
