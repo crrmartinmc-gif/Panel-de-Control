@@ -1272,7 +1272,9 @@ tr:hover td{
 .modal{
     width:min(680px,100%);
     max-height:90vh;
-    overflow:auto;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
     background:#101d2e;
     border:1px solid var(--border);
     border-radius:18px;
@@ -1305,6 +1307,9 @@ tr:hover td{
 
 .modal-body{
     padding:20px;
+    overflow-y:auto;
+    flex:1 1 auto;
+    min-height:0;
 }
 
 .form-grid{
@@ -1361,6 +1366,8 @@ textarea.form-control{
     display:flex;
     justify-content:flex-end;
     gap:9px;
+    flex:0 0 auto;
+    background:#101d2e;
 }
 
 .vehicle-count{
@@ -2845,10 +2852,10 @@ async function guardarReasignacion(){
     .form-group.full{grid-column:auto !important;}
     .form-label{font-size:9px;}
     .form-control{height:38px;font-size:11px;}
-    .modal-overlay{padding:8px;align-items:flex-end;}
+    .modal-overlay{padding:8px 8px 82px;align-items:flex-end;}
     .modal{
         width:100% !important;
-        max-height:92vh;
+        max-height:calc(100vh - 90px);
         border-radius:16px 16px 10px 10px;
     }
     .modal-header{padding:13px 14px;}
@@ -5816,11 +5823,11 @@ function abrirSalidaPartido(idServicio){
 
     if(!modal) return;
 
-    if(titulo) titulo.textContent="Aviso de salida de partido";
+    if(titulo) titulo.textContent=info.marcado ? "Aviso de salida de partido" : "Marcar salida de partido";
     if(sub) sub.textContent=(servicio.NOMBRE_SERVICIO||id)+" · "+(servicio.FECHA||"");
     if(destino) destino.value=info.destino||"";
     if(msg){msg.style.display="none";msg.textContent="";}
-    if(btn){btn.disabled=false;btn.textContent="Enviar";}
+    if(btn) btn.textContent="ENVIAR";
 
     modal.classList.add("open");
 }
@@ -5846,31 +5853,36 @@ async function guardarSalidaPartido(){
     }
 
     if(info.enviado){
-        if(msg){msg.style.display="block";msg.style.color="#fbbf24";msg.textContent="Este aviso ya fue enviado y no se puede reenviar.";}
+        if(msg){msg.style.display="block";msg.style.color="#fbbf24";msg.textContent="Este aviso ya fue enviado.";}
         return;
     }
 
     if(btn){btn.disabled=true;btn.textContent="Enviando...";}
-    if(msg){msg.style.display="none";msg.textContent="";}
-
     try{
-        // Si todavía no estaba marcado, lo marcamos primero y luego enviamos
-        // el aviso en el mismo botón. El usuario carga el destino una sola vez.
+        // Si todavía no estaba marcada, primero la marcamos con el destino ingresado.
         if(!info.marcado){
-            const respuestaMarca=await fetch(BACKEND_URL,{
+            const nuevoObs=construirObservacionesSalidaPartido(
+                String(servicio.OBSERVACIONES||""),
+                true,
+                destino
+            );
+
+            const marcarRespuesta=await fetch(BACKEND_URL,{
                 method:"POST",
                 body:JSON.stringify({
                     accion:"configurarSalidaPartido",
                     idServicio:servicio.ID_SERVICIO,
                     destino:destino,
-                    observaciones:""
+                    observaciones:"",
+                    cambios:{OBSERVACIONES:nuevoObs}
                 })
             });
-            const resultadoMarca=await respuestaMarca.json();
-            if(!resultadoMarca?.ok) throw new Error(resultadoMarca?.error||"No se pudo registrar la salida de partido.");
+            const marcarResultado=await marcarRespuesta.json();
+            if(!marcarResultado?.ok) throw new Error(marcarResultado?.error||"No se pudo marcar la salida.");
         }
 
-        const respuestaEnvio=await fetch(BACKEND_URL,{
+        // En el mismo paso enviamos el aviso. No hay segundo botón ni segunda carga.
+        const enviarRespuesta=await fetch(BACKEND_URL,{
             method:"POST",
             body:JSON.stringify({
                 accion:"enviarAvisoSalidaPartido",
@@ -5879,8 +5891,8 @@ async function guardarSalidaPartido(){
                 observaciones:""
             })
         });
-        const resultadoEnvio=await respuestaEnvio.json();
-        if(!resultadoEnvio?.ok) throw new Error(resultadoEnvio?.error||"No se pudo enviar el aviso.");
+        const enviarResultado=await enviarRespuesta.json();
+        if(!enviarResultado?.ok) throw new Error(enviarResultado?.error||"No se pudo enviar el aviso.");
 
         await cargarServicios();
         filtrarServicios();
@@ -5890,11 +5902,11 @@ async function guardarSalidaPartido(){
         console.error("Error enviando salida de partido:",e);
         if(msg){msg.style.display="block";msg.style.color="#f87171";msg.textContent=e.message;}
     }finally{
-        if(btn){btn.disabled=false;btn.textContent="Enviar";}
+        if(btn){btn.disabled=false;btn.textContent="ENVIAR";}
     }
 }
 
-async function enviarAvisoSalidaPartidoDesdePanel(idServicio,destino){
+async function enviarAvisoSalidaPartidoDesdePanel(idServicio,destino,obsExtra){
     const servicio=(estadoPanel.servicios||[]).find(s=>String(s.ID_SERVICIO||"").trim()===String(idServicio||"").trim());
     if(!servicio) return;
 
@@ -5909,7 +5921,7 @@ async function enviarAvisoSalidaPartidoDesdePanel(idServicio,destino){
                 accion:"enviarAvisoSalidaPartido",
                 idServicio:servicio.ID_SERVICIO,
                 destino:String(destino||"").trim(),
-                observaciones:""
+                observaciones:String(obsExtra||"").trim()
             })
         });
         const resultado=await respuesta.json();
@@ -5923,9 +5935,10 @@ async function enviarAvisoSalidaPartidoDesdePanel(idServicio,destino){
         console.error("Error enviando aviso de salida de partido:",e);
         if(msg){msg.style.display="block";msg.style.color="#f87171";msg.textContent=e.message;}
     }finally{
-        if(btn){btn.disabled=false;btn.textContent="Enviar";}
+        if(btn){btn.disabled=false;btn.textContent="Enviar aviso";}
     }
 }
+
 
 function renderAccionSalidaPartido(servicio){
     const info=analizarSalidaPartidoServicio(servicio);
@@ -14389,7 +14402,7 @@ function dvOrdenarCapasMapa(){
     <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
             <div>
-                <div id="salidaPartidoTitulo" class="modal-title">Aviso de salida de partido</div>
+                <div id="salidaPartidoTitulo" class="modal-title">Marcar salida de partido</div>
                 <div id="salidaPartidoSubtitulo" class="panel-subtitle">Servicio</div>
             </div>
             <button class="modal-close" type="button" onclick="cerrarModalSalidaPartido()">×</button>
@@ -14404,7 +14417,7 @@ function dvOrdenarCapasMapa(){
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="cerrarModalSalidaPartido()">Cancelar</button>
-            <button id="btnGuardarSalidaPartido" type="button" class="btn btn-primary" onclick="guardarSalidaPartido()">Enviar</button>
+            <button id="btnGuardarSalidaPartido" type="button" class="btn btn-primary" onclick="guardarSalidaPartido()">ENVIAR</button>
         </div>
     </div>
 </div>
