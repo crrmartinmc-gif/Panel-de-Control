@@ -1535,7 +1535,7 @@ textarea.form-control{
 }
 @media(max-width:760px){
     .asignacion-route-box{grid-template-columns:1fr}
-    .btn-reasignar{min-width:120px;min-height:40px;padding:10px 15px;font-size:11px}
+    .btn-reasignar{min-width:130px;min-height:42px;padding:10px 16px;font-size:12px}
 }
 
 
@@ -6500,7 +6500,7 @@ function renderizarAsignaciones(asignaciones){
             <td>
                             ${
                                 normalizar(asignacion.ESTADO) === "ACTIVA"
-                                    ? `<button class="btn btn-secondary btn-reasignar" type="button" onclick="abrirModalReasignacion('${escaparHTML(asignacion.ID_ASIGNACION || "")}')">🔄 Reasignar</button>`
+                                    ? `<button class="btn btn-primary btn-reasignar" type="button" data-reasignar-id="${escaparHTML(asignacion.ID_ASIGNACION || "")}">🔄 Reasignar</button>`
                                     : `<span class="asignacion-id">—</span>`
                             }
                         </td>
@@ -6509,6 +6509,8 @@ function renderizarAsignaciones(asignaciones){
     }).join("");
 }
 
+
+document.addEventListener("click",function(event){const boton=event.target.closest?.("[data-reasignar-id]");if(!boton)return;event.preventDefault();event.stopPropagation();abrirModalReasignacion(boton.getAttribute("data-reasignar-id")||"");});
 
 function filtrarAsignaciones(){
 
