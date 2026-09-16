@@ -5122,6 +5122,47 @@ function normalizar(valor){
         .replace(/[\u0300-\u036f]/g,"");
 }
 
+/* =========================================================
+   VEHÍCULOS — ESTADO OPERATIVO
+   Compatibilidad con el render del módulo Vehículos.
+   ========================================================= */
+function textoEstadoVehiculo(estado){
+    const e = normalizar(estado);
+    if(!e) return "SIN ESTADO";
+
+    if(e === "DISPONIBLE" || e === "OPERATIVO" || e === "ACTIVO"){
+        return "DISPONIBLE";
+    }
+
+    if(e.includes("TALLER")){
+        return "EN TALLER";
+    }
+
+    if(e.includes("FUERA") || e.includes("BAJA") || e.includes("INACTIVO") || e.includes("RADIADO")){
+        return "FUERA DE SERVICIO";
+    }
+
+    return String(estado ?? "").trim().toUpperCase() || "SIN ESTADO";
+}
+
+function claseEstadoVehiculo(estado){
+    const e = normalizar(estado);
+
+    if(e === "DISPONIBLE" || e === "OPERATIVO" || e === "ACTIVO"){
+        return "online";
+    }
+
+    if(e.includes("TALLER")){
+        return "warning";
+    }
+
+    if(e.includes("FUERA") || e.includes("BAJA") || e.includes("INACTIVO") || e.includes("RADIADO")){
+        return "danger";
+    }
+
+    return "warning";
+}
+
 function escaparHTML(valor){
     return String(valor ?? "")
         .replace(/&/g,"&amp;")
