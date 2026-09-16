@@ -2787,6 +2787,35 @@ textarea.form-control{
     .mantenimiento-toolbar{grid-template-columns:1fr;}
 }
 
+
+/* =========================================================
+   FICHA INTEGRAL DEL VEHÍCULO
+   ========================================================= */
+.detalle-vehiculo-integral{font-size:11px;color:#dce5ef}
+.detalle-vehiculo-hero{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border:1px solid rgba(34,197,94,.18);border-radius:13px;background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(59,130,246,.06));margin-bottom:13px}
+.detalle-vehiculo-identidad{min-width:0}
+.detalle-vehiculo-dominio{font-size:21px;font-weight:900;color:#f8fbff;letter-spacing:.4px}
+.detalle-vehiculo-sub{margin-top:4px;color:#91a0b5;font-size:10px}
+.detalle-vehiculo-estado{flex-shrink:0}
+.detalle-vehiculo-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:13px}
+.detalle-vehiculo-kpi{padding:11px 12px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.025)}
+.detalle-vehiculo-kpi-label{font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:#718198;font-weight:800}
+.detalle-vehiculo-kpi-value{margin-top:5px;font-size:13px;color:#eef4fb;font-weight:800}
+.detalle-vehiculo-seccion{border:1px solid var(--border);border-radius:12px;background:#0d192a;overflow:hidden;margin-top:11px}
+.detalle-vehiculo-seccion-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border-bottom:1px solid var(--border)}
+.detalle-vehiculo-seccion-title{font-size:11px;font-weight:900;color:#eef4fb}
+.detalle-vehiculo-seccion-count{font-size:9px;color:#718198}
+.detalle-vehiculo-lista{padding:0 13px}
+.detalle-vehiculo-item{padding:11px 0;border-bottom:1px solid rgba(255,255,255,.055)}
+.detalle-vehiculo-item:last-child{border-bottom:0}
+.detalle-vehiculo-item-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.detalle-vehiculo-item-title{font-size:10px;font-weight:800;color:#eef4fb}
+.detalle-vehiculo-item-date{font-size:9px;color:#718198;white-space:nowrap}
+.detalle-vehiculo-item-desc{margin-top:5px;color:#c4d0de;font-size:10px;line-height:1.45;white-space:normal}
+.detalle-vehiculo-item-meta{margin-top:6px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.detalle-vehiculo-empty{padding:16px 4px;color:#718198;font-size:10px;text-align:center}
+.detalle-vehiculo-scroll{max-height:290px;overflow:auto}
+@media(max-width:760px){.detalle-vehiculo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.detalle-vehiculo-hero{align-items:flex-start;flex-direction:column}.detalle-vehiculo-state{align-self:flex-start}}
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
@@ -10152,6 +10181,35 @@ function escaparAtributo(valor){
     return escaparHTML(String(valor ?? "")).replace(/'/g,"&#39;");
 }
 
+function obtenerVehiculoPorId(idVehiculo){
+    const id=String(idVehiculo||"").trim();
+    if(!id) return null;
+    return (estadoPanel.vehiculos||[]).find(v=>String(v?.ID_VEHICULO||"").trim()===id) || null;
+}
+
+function registroPerteneceAVehiculo(registro,vehiculo){
+    if(!registro || !vehiculo) return false;
+    const idVehiculo=String(vehiculo?.ID_VEHICULO||"").trim();
+    const dominio=normalizar(vehiculo?.DOMINIO||"");
+    const idRegistro=String(registro?.ID_VEHICULO||"").trim();
+    const dominioRegistro=normalizar(registro?.DOMINIO||registro?.PATENTE||"");
+    return (idRegistro && idVehiculo && idRegistro===idVehiculo) || (dominio && dominioRegistro && dominio===dominioRegistro);
+}
+
+function obtenerMantenimientosVehiculo(vehiculo){
+    return (estadoPanel.mantenimiento||[]).filter(m=>registroPerteneceAVehiculo(m,vehiculo));
+}
+
+function obtenerReportesVehiculo(vehiculo){
+    return (estadoPanel.reportes||[]).filter(r=>registroPerteneceAVehiculo(r,vehiculo));
+}
+
+function etiquetaEstadoDetalle(estado,claseFn){
+    const texto=String(estado||"PENDIENTE");
+    const clase=typeof claseFn==="function" ? claseFn(texto) : "status-neutral";
+    return `<span class="table-status ${clase}">${escaparHTML(texto)}</span>`;
+}
+
 function renderizarVehiculos(vehiculos){
     const tbody=document.getElementById("tablaVehiculos");
     if(!tbody) return;
@@ -10198,27 +10256,89 @@ function renderizarVehiculos(vehiculos){
 
 function verVehiculo(idVehiculo){
     const id=String(idVehiculo||"").trim();
-    const v=(estadoPanel.vehiculos||[]).find(x=>String(x?.ID_VEHICULO||"").trim()===id);
+    const v=obtenerVehiculoPorId(id);
     if(!v) return;
 
     const service=infoServiceVehiculo(v);
-    const detalle=[
-        `<strong>${escaparHTML(v.DOMINIO || "-")}</strong> · Interno ${escaparHTML(v.INTERNO || "-")}`,
-        `${escaparHTML([v.MARCA,v.MODELO].filter(Boolean).join(" ") || "-")}`,
-        `Área: ${escaparHTML(v.AREA || "-")}`,
-        `KM actual: ${service.kmActual===null ? "-" : escaparHTML(service.kmActual.toLocaleString("es-AR"))}`,
-        `Último service: ${service.kmUltimo===null ? "-" : escaparHTML(service.kmUltimo.toLocaleString("es-AR"))}`,
-        `Próximo service: ${service.kmProximo===null ? "-" : escaparHTML(service.kmProximo.toLocaleString("es-AR"))}`,
-        `VTV: ${escaparHTML(v.VTV || v.VTV_VENCIMIENTO || v.VTV_HASTA || "No registrada")}`,
-        `Estado: ${escaparHTML(textoEstadoVehiculo(v.ESTADO_OPERATIVO))}`
-    ].join("<br>");
+    const mantenimientos=obtenerMantenimientosVehiculo(v).sort((a,b)=>new Date(b?.FECHA_ALTA||0)-new Date(a?.FECHA_ALTA||0));
+    const reportes=obtenerReportesVehiculo(v).sort((a,b)=>new Date(b?.FECHA_HORA||0)-new Date(a?.FECHA_HORA||0));
+    const estadoTexto=textoEstadoVehiculo(v.ESTADO_OPERATIVO);
+    const estadoClase=claseEstadoVehiculo(v.ESTADO_OPERATIVO);
+    const kmActual=service.kmActual===null ? "-" : service.kmActual.toLocaleString("es-AR");
+    const ultimoService=service.kmUltimo===null ? "-" : `${service.kmUltimo.toLocaleString("es-AR")} km`;
+    const proximoService=service.kmProximo===null ? "-" : `${service.kmProximo.toLocaleString("es-AR")} km`;
+    const vtv=v.VTV || v.VTV_VENCIMIENTO || v.VTV_HASTA || "No registrada";
+
+    const mantenimientoHTML=mantenimientos.length
+        ? mantenimientos.map(m=>{
+            const estado=normalizar(m.ESTADO)||"PENDIENTE";
+            return `<div class="detalle-vehiculo-item">
+                <div class="detalle-vehiculo-item-top">
+                    <div class="detalle-vehiculo-item-title">${escaparHTML(m.TIPO||"MANTENIMIENTO")}</div>
+                    <div class="detalle-vehiculo-item-date">${escaparHTML(formatearFecha(m.FECHA_ALTA))}</div>
+                </div>
+                <div class="detalle-vehiculo-item-desc">${escaparHTML(m.DESCRIPCION||m.OBSERVACIONES||"Sin descripción")}</div>
+                <div class="detalle-vehiculo-item-meta">
+                    ${etiquetaEstadoDetalle(estado,claseEstadoMantenimiento)}
+                    ${m.PRIORIDAD ? `<span class="table-status ${clasePrioridadMantenimiento(m.PRIORIDAD)}">${escaparHTML(m.PRIORIDAD)}</span>` : ""}
+                    ${m.KM!==undefined && m.KM!==null && m.KM!=="" ? `<span class="table-status status-neutral">${escaparHTML(String(m.KM))} km</span>` : ""}
+                </div>
+            </div>`;
+        }).join("")
+        : `<div class="detalle-vehiculo-empty">No hay mantenimientos ni averías registrados para esta unidad.</div>`;
+
+    const reportesHTML=reportes.length
+        ? reportes.map(r=>{
+            const estado=normalizar(r.ESTADO)||"PENDIENTE";
+            return `<div class="detalle-vehiculo-item">
+                <div class="detalle-vehiculo-item-top">
+                    <div class="detalle-vehiculo-item-title">${escaparHTML(r.TIPO_REPORTE||r.TIPO||"REPORTE")}</div>
+                    <div class="detalle-vehiculo-item-date">${escaparHTML(formatearFecha(r.FECHA_HORA))}</div>
+                </div>
+                <div class="detalle-vehiculo-item-desc">${escaparHTML(r.DESCRIPCION||r.OBSERVACIONES||"Sin descripción")}</div>
+                <div class="detalle-vehiculo-item-meta">
+                    ${etiquetaEstadoDetalle(estado,claseEstadoReporte)}
+                    ${r.PRIORIDAD ? `<span class="table-status ${clasePrioridadReporte(r.PRIORIDAD)}">${escaparHTML(r.PRIORIDAD)}</span>` : ""}
+                    ${r.ORIGEN ? `<span class="table-status status-neutral">${escaparHTML(r.ORIGEN)}</span>` : ""}
+                </div>
+            </div>`;
+        }).join("")
+        : `<div class="detalle-vehiculo-empty">No hay reportes registrados para esta unidad.</div>`;
+
+    const detalle=`<div class="detalle-vehiculo-integral">
+        <div class="detalle-vehiculo-hero">
+            <div class="detalle-vehiculo-identidad">
+                <div class="detalle-vehiculo-dominio">${escaparHTML(v.DOMINIO||"SIN DOMINIO")}</div>
+                <div class="detalle-vehiculo-sub">${v.INTERNO ? `Interno ${escaparHTML(v.INTERNO)} · ` : ""}${escaparHTML([v.MARCA,v.MODELO].filter(Boolean).join(" ")||"Vehículo")}</div>
+                <div class="detalle-vehiculo-sub">${escaparHTML(v.AREA||"Área no registrada")}</div>
+            </div>
+            <div class="detalle-vehiculo-estado"><span class="table-status ${estadoClase}">${escaparHTML(estadoTexto)}</span></div>
+        </div>
+
+        <div class="detalle-vehiculo-kpis">
+            <div class="detalle-vehiculo-kpi"><div class="detalle-vehiculo-kpi-label">KM actual</div><div class="detalle-vehiculo-kpi-value">${escaparHTML(kmActual)}</div></div>
+            <div class="detalle-vehiculo-kpi"><div class="detalle-vehiculo-kpi-label">Último service</div><div class="detalle-vehiculo-kpi-value">${escaparHTML(ultimoService)}</div></div>
+            <div class="detalle-vehiculo-kpi"><div class="detalle-vehiculo-kpi-label">Próximo service</div><div class="detalle-vehiculo-kpi-value">${escaparHTML(proximoService)}</div></div>
+            <div class="detalle-vehiculo-kpi"><div class="detalle-vehiculo-kpi-label">VTV</div><div class="detalle-vehiculo-kpi-value">${escaparHTML(vtv)}</div></div>
+        </div>
+
+        <div class="detalle-vehiculo-seccion">
+            <div class="detalle-vehiculo-seccion-head"><div class="detalle-vehiculo-seccion-title">🔧 Historial de mantenimiento</div><div class="detalle-vehiculo-seccion-count">${mantenimientos.length} registro${mantenimientos.length===1?"":"s"}</div></div>
+            <div class="detalle-vehiculo-lista detalle-vehiculo-scroll">${mantenimientoHTML}</div>
+        </div>
+
+        <div class="detalle-vehiculo-seccion">
+            <div class="detalle-vehiculo-seccion-head"><div class="detalle-vehiculo-seccion-title">📋 Reportes de la unidad</div><div class="detalle-vehiculo-seccion-count">${reportes.length} registro${reportes.length===1?"":"s"}</div></div>
+            <div class="detalle-vehiculo-lista detalle-vehiculo-scroll">${reportesHTML}</div>
+        </div>
+    </div>`;
 
     let modal=document.getElementById("modalDetalleVehiculo");
     if(!modal){
         modal=document.createElement("div");
         modal.id="modalDetalleVehiculo";
         modal.className="modal-overlay";
-        modal.innerHTML=`<div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><div><div class="modal-title">Ficha del vehículo</div><div class="panel-subtitle">Información disponible en el Panel</div></div><button class="modal-close" type="button" onclick="cerrarDetalleVehiculo()">×</button></div><div class="modal-body"><div id="detalleVehiculoContenido" style="font-size:12px;line-height:1.8"></div></div><div class="modal-footer"><button class="btn btn-secondary" type="button" onclick="cerrarDetalleVehiculo()">Cerrar</button></div></div>`;
+        modal.innerHTML=`<div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><div><div class="modal-title">Ficha integral del vehículo</div><div class="panel-subtitle">Información relacionada con la unidad</div></div><button class="modal-close" type="button" onclick="cerrarDetalleVehiculo()">×</button></div><div class="modal-body"><div id="detalleVehiculoContenido"></div></div><div class="modal-footer"><button class="btn btn-secondary" type="button" onclick="cerrarDetalleVehiculo()">Cerrar</button></div></div>`;
         modal.onclick=event=>{if(event.target===modal) cerrarDetalleVehiculo();};
         document.body.appendChild(modal);
     }
@@ -11464,10 +11584,12 @@ function renderizarMantenimiento(mantenimientos){
     tbody.innerHTML=ordenados.map(m=>{
         const estado=normalizar(m.ESTADO)||"PENDIENTE";
         const id=escaparAtributo(m.ID_MANTENIMIENTO||"");
-        const veh=escaparAtributo(m.ID_VEHICULO||"");
+        const vehiculo=obtenerVehiculoPorId(m.ID_VEHICULO);
+        const dominio=vehiculo?.DOMINIO || m.DOMINIO || m.PATENTE || "-";
+        const interno=vehiculo?.INTERNO ? ` · Int. ${vehiculo.INTERNO}` : "";
         return `<tr>
             <td>${escaparHTML(formatearFecha(m.FECHA_ALTA))}</td>
-            <td><span class="inspeccion-main">${veh||"-"}</span><span class="inspeccion-sub">${id}</span></td>
+            <td><span class="inspeccion-main">${escaparHTML(`${dominio}${interno}`)}</span><span class="inspeccion-sub">${id}</span></td>
             <td>${escaparHTML(m.TIPO||"-")}</td>
             <td style="white-space:normal;min-width:220px">${escaparHTML(m.DESCRIPCION||"-")}</td>
             <td><span class="table-status ${clasePrioridadMantenimiento(m.PRIORIDAD)}">${escaparHTML(m.PRIORIDAD||"MEDIA")}</span></td>
@@ -11482,7 +11604,7 @@ function filtrarMantenimiento(){
     const filtro=normalizar(document.getElementById("filtroMantenimiento")?.value||"");
     if(!filtro){renderizarMantenimiento(estadoPanel.mantenimiento||[]);return;}
     const filtrados=(estadoPanel.mantenimiento||[]).filter(m=>[
-        m.ID_MANTENIMIENTO,m.ID_VEHICULO,m.ID_REPORTE,m.TIPO,m.DESCRIPCION,m.PRIORIDAD,m.ESTADO,m.KM,m.OBSERVACIONES
+        m.ID_MANTENIMIENTO,m.ID_VEHICULO,m.ID_REPORTE,m.TIPO,m.DESCRIPCION,m.PRIORIDAD,m.ESTADO,m.KM,m.OBSERVACIONES,obtenerVehiculoPorId(m.ID_VEHICULO)?.DOMINIO,obtenerVehiculoPorId(m.ID_VEHICULO)?.INTERNO
     ].map(normalizar).join(" ").includes(filtro));
     renderizarMantenimiento(filtrados);
 }
@@ -11705,7 +11827,7 @@ function renderizarReportes(reportes){
                 <span class="inspeccion-sub">${escaparHTML(r.ID_REPORTE || "")}</span>
             </td>
             <td>${escaparHTML(r.ORIGEN || "-")}</td>
-            <td>${escaparHTML(r.ID_VEHICULO || "-")}</td>
+            <td>${escaparHTML((obtenerVehiculoPorId(r.ID_VEHICULO)?.DOMINIO || r.DOMINIO || r.PATENTE || r.ID_VEHICULO || "-"))}</td>
             <td>${escaparHTML(r.ID_CHOFER || "-")}</td>
             <td style="white-space:normal;min-width:220px">${escaparHTML(r.DESCRIPCION || "-")}</td>
             <td><span class="table-status ${clasePrioridadReporte(r.PRIORIDAD)}">${escaparHTML(r.PRIORIDAD || "MEDIA")}</span></td>
