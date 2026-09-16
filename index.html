@@ -4586,14 +4586,12 @@ textarea.form-control{
                         <th>Descripción</th>
                         <th>Prioridad</th>
                         <th>Estado</th>
-                        <th>Ingreso</th>
                         <th>KM</th>
-                        <th>Costo</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tablaMantenimiento">
-                    <tr><td colspan="10"><div class="empty">Cargando mantenimientos...</div></td></tr>
+                    <tr><td colspan="8"><div class="empty">Cargando mantenimientos...</div></td></tr>
                 </tbody>
             </table>
         </div>
@@ -10089,31 +10087,46 @@ async function guardarInspeccion(event){
 
 async function cargarVehiculos(){
 
-    // Vehículos + datos necesarios para KM, service y VTV.
-    // Se consultan en paralelo y se conservan en estadoPanel.
-    const [resultadoVehiculos, resultadoViajes, resultadoMantenimiento, resultadoReportes, resultadoInspecciones] =
-        await Promise.all([
-            leerBackend("vehiculos"),
-            leerBackend("viajes"),
-            leerBackend("mantenimiento"),
-            leerBackend("reportes"),
-            leerBackend("inspecciones")
-        ]);
+    // Cargamos cada fuente de datos por separado.
+    // Si falla VIAJES, MANTENIMIENTO, REPORTES o INSPECCIONES,
+    // la tabla de vehículos igual debe mostrarse.
+    const resultados = await Promise.allSettled([
+        leerBackend("vehiculos"),
+        leerBackend("viajes"),
+        leerBackend("mantenimiento"),
+        leerBackend("reportes"),
+        leerBackend("inspecciones")
+    ]);
 
-    if(resultadoVehiculos?.ok && Array.isArray(resultadoVehiculos.datos)){
-        estadoPanel.vehiculos = resultadoVehiculos.datos;
+    const [resultadoVehiculos, resultadoViajes, resultadoMantenimiento, resultadoReportes, resultadoInspecciones] = resultados;
+
+    const extraer = (resultado) =>
+        resultado?.status === "fulfilled" ? resultado.value : null;
+
+    const rv = extraer(resultadoVehiculos);
+    const rviajes = extraer(resultadoViajes);
+    const rmant = extraer(resultadoMantenimiento);
+    const rrep = extraer(resultadoReportes);
+    const rins = extraer(resultadoInspecciones);
+
+    if(rv?.ok && Array.isArray(rv.datos)){
+        estadoPanel.vehiculos = rv.datos;
     }
-    if(resultadoViajes?.ok && Array.isArray(resultadoViajes.datos)){
-        estadoPanel.viajes = resultadoViajes.datos;
+
+    if(rviajes?.ok && Array.isArray(rviajes.datos)){
+        estadoPanel.viajes = rviajes.datos;
     }
-    if(resultadoMantenimiento?.ok && Array.isArray(resultadoMantenimiento.datos)){
-        estadoPanel.mantenimiento = resultadoMantenimiento.datos;
+
+    if(rmant?.ok && Array.isArray(rmant.datos)){
+        estadoPanel.mantenimiento = rmant.datos;
     }
-    if(resultadoReportes?.ok && Array.isArray(resultadoReportes.datos)){
-        estadoPanel.reportes = resultadoReportes.datos;
+
+    if(rrep?.ok && Array.isArray(rrep.datos)){
+        estadoPanel.reportes = rrep.datos;
     }
-    if(resultadoInspecciones?.ok && Array.isArray(resultadoInspecciones.datos)){
-        estadoPanel.inspecciones = resultadoInspecciones.datos;
+
+    if(rins?.ok && Array.isArray(rins.datos)){
+        estadoPanel.inspecciones = rins.datos;
     }
 
     const vehiculos = Array.isArray(estadoPanel.vehiculos)
@@ -10122,6 +10135,15 @@ async function cargarVehiculos(){
 
     actualizarFiltroAreas(vehiculos);
     renderizarVehiculos(vehiculos);
+
+    // Dejamos constancia en consola si alguna fuente auxiliar falló,
+    // sin impedir que el módulo Vehículos funcione.
+    resultados.forEach((resultado,index) => {
+        if(resultado?.status === "rejected"){
+            console.warn("No se pudo cargar fuente auxiliar de Vehículos:", index, resultado.reason);
+        }
+    });
+
     return vehiculos;
 }
 
@@ -11628,7 +11650,7 @@ function renderizarMantenimiento(mantenimientos){
     const contador = document.getElementById("contadorMantenimiento");
     if(contador) contador.textContent = `${mantenimientos.length} mantenimientos`;
     if(!mantenimientos.length){
-        tbody.innerHTML = `<tr><td colspan="10"><div class="empty">Sin mantenimientos registrados</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty">Sin mantenimientos registrados</div></td></tr>`;
         return;
     }
     const ordenados = [...mantenimientos].sort((a,b) => {
@@ -11652,9 +11674,7 @@ function renderizarMantenimiento(mantenimientos){
                     ${opcionesEstado.map(op=>`<option value="${op}" ${normalizar(op)===estado?"selected":""}>${op}</option>`).join("")}
                 </select>
             </td>
-            <td>${escaparHTML(formatearFecha(m.FECHA_INGRESO_TALLER))}</td>
             <td>${escaparHTML(textoKm(m.KM))}</td>
-            <td>${m.COSTO !== undefined && m.COSTO !== "" ? escaparHTML(m.COSTO) : "-"}</td>
             <td><button type="button" class="btn-vehiculo-detalle" onclick="avisarTallerMantenimiento('${id}')" title="Avisar al taller">✉ Taller</button></td>
         </tr>`;
     }).join("");
@@ -11770,6 +11790,9 @@ async function abrirModalMantenimiento(){
     const estado = document.getElementById("mantenimientoEstado");
     if(estado) estado.value = "PENDIENTE";
 
+    const boton = document.getElementById("btnGuardarMantenimiento");
+    if(boton) boton.textContent = "Guardar mantenimiento";
+
     const mensaje = document.getElementById("mantenimientoMensaje");
     if(mensaje){
         mensaje.style.display = "none";
@@ -11793,6 +11816,8 @@ async function abrirModalAveria(){
     if(tipo) tipo.value = "AVERIA";
     if(prioridad) prioridad.value = "ALTA";
     if(estado) estado.value = "PENDIENTE";
+    const boton = document.getElementById("btnGuardarMantenimiento");
+    if(boton) boton.textContent = "Registrar avería";
 }
 
 function cerrarModalMantenimiento(event){
@@ -11825,16 +11850,11 @@ async function guardarMantenimiento(event){
     const datos = {
         fechaAlta: document.getElementById("mantenimientoFechaAlta")?.value,
         idVehiculo: document.getElementById("mantenimientoVehiculo")?.value,
-        idReporte: document.getElementById("mantenimientoReporte")?.value,
         tipo: document.getElementById("mantenimientoTipo")?.value,
         descripcion: document.getElementById("mantenimientoDescripcion")?.value.trim(),
         prioridad: document.getElementById("mantenimientoPrioridad")?.value,
         estado: document.getElementById("mantenimientoEstado")?.value,
-        fechaIngresoTaller: document.getElementById("mantenimientoIngreso")?.value,
-        fechaSalidaTaller: document.getElementById("mantenimientoSalida")?.value,
         km: document.getElementById("mantenimientoKM")?.value,
-        responsable: document.getElementById("mantenimientoResponsable")?.value.trim(),
-        costo: document.getElementById("mantenimientoCosto")?.value,
         observaciones: document.getElementById("mantenimientoObservaciones")?.value.trim()
     };
 
@@ -15663,7 +15683,7 @@ function dvOrdenarCapasMapa(){
         <div class="modal-header">
             <div>
                 <div id="mantenimientoModalTitulo" class="modal-title">Nuevo mantenimiento</div>
-                <div id="mantenimientoModalSubtitulo" class="panel-subtitle">Registro de intervención de taller</div>
+                <div id="mantenimientoModalSubtitulo" class="panel-subtitle">Registro de novedad para informar al taller</div>
             </div>
             <button class="modal-close" type="button" onclick="cerrarModalMantenimiento()">×</button>
         </div>
@@ -15681,13 +15701,6 @@ function dvOrdenarCapasMapa(){
                         <label class="form-label">Vehículo *</label>
                         <select id="mantenimientoVehiculo" class="form-control" required>
                             <option value="">Cargando vehículos...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Reporte asociado</label>
-                        <select id="mantenimientoReporte" class="form-control">
-                            <option value="">Sin reporte asociado</option>
                         </select>
                     </div>
 
@@ -15730,28 +15743,8 @@ function dvOrdenarCapasMapa(){
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Ingreso a taller</label>
-                        <input id="mantenimientoIngreso" class="form-control" type="datetime-local">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Salida de taller</label>
-                        <input id="mantenimientoSalida" class="form-control" type="datetime-local">
-                    </div>
-
-                    <div class="form-group">
                         <label class="form-label">KM</label>
                         <input id="mantenimientoKM" class="form-control" type="number" min="0" step="1" placeholder="Kilometraje">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Responsable</label>
-                        <input id="mantenimientoResponsable" class="form-control" placeholder="Responsable del trabajo">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Costo</label>
-                        <input id="mantenimientoCosto" class="form-control" type="number" min="0" step="0.01" placeholder="0.00">
                     </div>
 
                     <div class="form-group full">
