@@ -4541,6 +4541,9 @@ textarea.form-control{
                     onclick="cargarMantenimiento()">↻ Actualizar</button>
 
             <button class="btn btn-primary" type="button"
+                    onclick="abrirModalAveria()">⚠ + Nueva avería</button>
+
+            <button class="btn btn-primary" type="button"
                     onclick="abrirModalMantenimiento()">+ Nuevo mantenimiento</button>
         </div>
     </div>
@@ -4584,11 +4587,13 @@ textarea.form-control{
                         <th>Prioridad</th>
                         <th>Estado</th>
                         <th>Ingreso</th>
+                        <th>KM</th>
                         <th>Costo</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tablaMantenimiento">
-                    <tr><td colspan="8"><div class="empty">Cargando mantenimientos...</div></td></tr>
+                    <tr><td colspan="10"><div class="empty">Cargando mantenimientos...</div></td></tr>
                 </tbody>
             </table>
         </div>
@@ -5120,47 +5125,6 @@ function normalizar(valor){
         .toUpperCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g,"");
-}
-
-/* =========================================================
-   VEHÍCULOS — ESTADO OPERATIVO
-   Compatibilidad con el render del módulo Vehículos.
-   ========================================================= */
-function textoEstadoVehiculo(estado){
-    const e = normalizar(estado);
-    if(!e) return "SIN ESTADO";
-
-    if(e === "DISPONIBLE" || e === "OPERATIVO" || e === "ACTIVO"){
-        return "DISPONIBLE";
-    }
-
-    if(e.includes("TALLER")){
-        return "EN TALLER";
-    }
-
-    if(e.includes("FUERA") || e.includes("BAJA") || e.includes("INACTIVO") || e.includes("RADIADO")){
-        return "FUERA DE SERVICIO";
-    }
-
-    return String(estado ?? "").trim().toUpperCase() || "SIN ESTADO";
-}
-
-function claseEstadoVehiculo(estado){
-    const e = normalizar(estado);
-
-    if(e === "DISPONIBLE" || e === "OPERATIVO" || e === "ACTIVO"){
-        return "online";
-    }
-
-    if(e.includes("TALLER")){
-        return "warning";
-    }
-
-    if(e.includes("FUERA") || e.includes("BAJA") || e.includes("INACTIVO") || e.includes("RADIADO")){
-        return "danger";
-    }
-
-    return "warning";
 }
 
 function escaparHTML(valor){
@@ -10355,7 +10319,7 @@ function renderizarVehiculos(vehiculos){
                 </td>
                 <td><span class="table-status ${vtvClase}">${escaparHTML(vtvTexto)}</span></td>
                 <td><span class="table-status ${clase}">${escaparHTML(estado)}</span></td>
-                <td><button class="btn-vehiculo-detalle" data-id="${escaparHTML(id)}" onclick="abrirDetalleVehiculo(this.dataset.id)">🔎 Ver</button></td>
+                <td><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn-vehiculo-detalle" data-id="${escaparHTML(id)}" onclick="abrirDetalleVehiculo(this.dataset.id)">🔎 Ver</button>${service.ultimo && (service.estado === "VENCIDO" || service.estado === "PRÓXIMO") ? `<button class="btn-vehiculo-detalle" data-id="${escaparHTML(id)}" onclick="avisarTallerService(this.dataset.id)" title="Avisar al taller por service">✉ Taller</button>` : ""}</div></td>
             </tr>`;
     }).join("");
 }
@@ -11659,40 +11623,41 @@ function actualizarKPIsMantenimiento(mantenimientos){
 }
 
 function renderizarMantenimiento(mantenimientos){
-
     const tbody = document.getElementById("tablaMantenimiento");
     if(!tbody) return;
-
     const contador = document.getElementById("contadorMantenimiento");
     if(contador) contador.textContent = `${mantenimientos.length} mantenimientos`;
-
     if(!mantenimientos.length){
-        tbody.innerHTML = `
-            <tr><td colspan="8"><div class="empty">Sin mantenimientos registrados</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10"><div class="empty">Sin mantenimientos registrados</div></td></tr>`;
         return;
     }
-
     const ordenados = [...mantenimientos].sort((a,b) => {
         const fa = new Date(a.FECHA_ALTA || 0).getTime() || 0;
         const fb = new Date(b.FECHA_ALTA || 0).getTime() || 0;
         return fb-fa;
     });
-
-    tbody.innerHTML = ordenados.map(m => `
+    tbody.innerHTML = ordenados.map(m => {
+        const id = String(m.ID_MANTENIMIENTO || "").replace(/'/g,"\\'");
+        const estado = normalizar(m.ESTADO || "PENDIENTE");
+        const opcionesEstado = ["PENDIENTE","AUTORIZADO","EN TALLER","EN REPARACION","FINALIZADO","CANCELADO"];
+        return `
         <tr>
             <td>${escaparHTML(formatearFecha(m.FECHA_ALTA))}</td>
-            <td>
-                <span class="inspeccion-main">${escaparHTML(m.ID_VEHICULO || "-")}</span>
-                <span class="inspeccion-sub">${escaparHTML(m.ID_MANTENIMIENTO || "")}</span>
-            </td>
+            <td><span class="inspeccion-main">${escaparHTML(m.ID_VEHICULO || "-")}</span><span class="inspeccion-sub">${escaparHTML(m.ID_MANTENIMIENTO || "")}</span></td>
             <td>${escaparHTML(m.TIPO || "-")}</td>
             <td style="white-space:normal;min-width:220px">${escaparHTML(m.DESCRIPCION || "-")}</td>
             <td><span class="table-status ${clasePrioridadMantenimiento(m.PRIORIDAD)}">${escaparHTML(m.PRIORIDAD || "MEDIA")}</span></td>
-            <td><span class="table-status ${claseEstadoMantenimiento(m.ESTADO)}">${escaparHTML(m.ESTADO || "PENDIENTE")}</span></td>
+            <td>
+                <select class="servicio-estado-select ${claseEstadoMantenimiento(m.ESTADO)}" onchange="cambiarEstadoMantenimiento('${id}', this.value)" title="Cambiar estado del mantenimiento">
+                    ${opcionesEstado.map(op=>`<option value="${op}" ${normalizar(op)===estado?"selected":""}>${op}</option>`).join("")}
+                </select>
+            </td>
             <td>${escaparHTML(formatearFecha(m.FECHA_INGRESO_TALLER))}</td>
+            <td>${escaparHTML(textoKm(m.KM))}</td>
             <td>${m.COSTO !== undefined && m.COSTO !== "" ? escaparHTML(m.COSTO) : "-"}</td>
-        </tr>
-    `).join("");
+            <td><button type="button" class="btn-vehiculo-detalle" onclick="avisarTallerMantenimiento('${id}')" title="Avisar al taller">✉ Taller</button></td>
+        </tr>`;
+    }).join("");
 }
 
 function filtrarMantenimiento(){
@@ -11783,6 +11748,11 @@ async function abrirModalMantenimiento(){
     const modal = document.getElementById("modalMantenimiento");
     if(!modal) return;
 
+    const titulo = document.getElementById("mantenimientoModalTitulo");
+    const subtitulo = document.getElementById("mantenimientoModalSubtitulo");
+    if(titulo) titulo.textContent = "Nuevo mantenimiento";
+    if(subtitulo) subtitulo.textContent = "Registro de intervención de taller";
+
     const form = document.getElementById("formMantenimiento");
     if(form) form.reset();
 
@@ -11808,6 +11778,21 @@ async function abrirModalMantenimiento(){
 
     await prepararFormularioMantenimiento();
     modal.classList.add("open");
+}
+
+
+async function abrirModalAveria(){
+    await abrirModalMantenimiento();
+    const titulo = document.getElementById("mantenimientoModalTitulo");
+    const subtitulo = document.getElementById("mantenimientoModalSubtitulo");
+    const tipo = document.getElementById("mantenimientoTipo");
+    const prioridad = document.getElementById("mantenimientoPrioridad");
+    const estado = document.getElementById("mantenimientoEstado");
+    if(titulo) titulo.textContent = "Nueva avería";
+    if(subtitulo) subtitulo.textContent = "Registro de rotura o falla de una unidad";
+    if(tipo) tipo.value = "AVERIA";
+    if(prioridad) prioridad.value = "ALTA";
+    if(estado) estado.value = "PENDIENTE";
 }
 
 function cerrarModalMantenimiento(event){
@@ -11894,6 +11879,56 @@ async function guardarMantenimiento(event){
     },700);
 }
 
+
+
+async function cambiarEstadoMantenimiento(idMantenimiento, nuevoEstado){
+    const id = String(idMantenimiento || "").trim();
+    const estado = normalizar(nuevoEstado);
+    const permitidos = ["PENDIENTE","AUTORIZADO","EN TALLER","EN REPARACION","FINALIZADO","CANCELADO"];
+    if(!id || !permitidos.includes(estado)){ alert("Estado de mantenimiento inválido."); await cargarMantenimiento(); return; }
+    try{
+        const resultado = await llamarBackend("actualizarMantenimiento", {idMantenimiento:id, cambios:{ESTADO:estado}});
+        if(!resultado?.ok) throw new Error(resultado?.error || "No se pudo actualizar el estado.");
+        const item=(estadoPanel.mantenimiento||[]).find(m=>String(m.ID_MANTENIMIENTO||"").trim()===id);
+        if(item) item.ESTADO=estado;
+        renderizarMantenimiento(estadoPanel.mantenimiento||[]);
+        actualizarKPIsMantenimiento(estadoPanel.mantenimiento||[]);
+    }catch(error){ alert("No se pudo actualizar el estado: "+error.message); await cargarMantenimiento(); }
+}
+
+async function avisarTallerMantenimiento(idMantenimiento){
+    const id=String(idMantenimiento||"").trim();
+    const mantenimiento=(estadoPanel.mantenimiento||[]).find(m=>String(m.ID_MANTENIMIENTO||"").trim()===id);
+    if(!mantenimiento){alert("No se encontró el mantenimiento seleccionado.");return;}
+    const vehiculo=(estadoPanel.vehiculos||[]).find(v=>vehiculoIdNormalizado(v.ID_VEHICULO)===vehiculoIdNormalizado(mantenimiento.ID_VEHICULO));
+    const dominio=vehiculo?.DOMINIO||mantenimiento.ID_VEHICULO||"Sin dominio";
+    if(!confirm(`¿Enviar aviso al taller por ${dominio}?\n\n${mantenimiento.TIPO||"MANTENIMIENTO"}: ${mantenimiento.DESCRIPCION||"Sin descripción"}`)) return;
+    const resultado=await llamarBackend("enviarAvisoTaller",{
+        tipo:"MANTENIMIENTO", idMantenimiento:id, idVehiculo:mantenimiento.ID_VEHICULO,
+        motivo:mantenimiento.DESCRIPCION||"Mantenimiento / avería", prioridad:mantenimiento.PRIORIDAD||"MEDIA",
+        estado:mantenimiento.ESTADO||"PENDIENTE", km:mantenimiento.KM||"", tipoMantenimiento:mantenimiento.TIPO||"MANTENIMIENTO"
+    });
+    if(!resultado?.ok){alert(resultado?.error||"No se pudo enviar el aviso al taller.");return;}
+    alert("Aviso enviado correctamente al taller.");
+    await cargarMantenimiento();
+}
+
+async function avisarTallerService(idVehiculo){
+    const id=String(idVehiculo||"").trim();
+    const vehiculo=(estadoPanel.vehiculos||[]).find(v=>vehiculoIdNormalizado(v.ID_VEHICULO)===vehiculoIdNormalizado(id));
+    if(!vehiculo){alert("No se encontró el vehículo.");return;}
+    const service=resumenServiceVehiculo(id);
+    if(service.faltan!==null && service.faltan>0){
+        if(!confirm(`El service todavía no llegó al límite.\nFaltan ${textoFaltanService(service.faltan)}.\n\n¿Igualmente querés avisar al taller?`)) return;
+    }else if(!confirm(`¿Enviar aviso al taller por service de ${vehiculo.DOMINIO||id}?\n\n${service.estado==="VENCIDO"?"SERVICE VENCIDO":"SERVICE ALCANZADO"}`)) return;
+    const resultado=await llamarBackend("enviarAvisoTaller",{
+        tipo:"SERVICE", idVehiculo:id, motivo:service.estado==="VENCIDO"?"Service vencido":"Service alcanzado / próximo",
+        kmActual:service.kmActual, kmUltimoService:service.ultimo?.KM||"", fechaUltimoService:service.ultimo?.FECHA_ALTA||"",
+        kmProximoService:service.proximo, kmFaltan:service.faltan, dominio:vehiculo.DOMINIO||"", interno:vehiculo.INTERNO||""
+    });
+    if(!resultado?.ok){alert(resultado?.error||"No se pudo enviar el aviso al taller.");return;}
+    alert("Aviso de service enviado correctamente al taller.");
+}
 
 /* =========================================================
    REPORTES
@@ -15627,8 +15662,8 @@ function dvOrdenarCapasMapa(){
     <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
             <div>
-                <div class="modal-title">Nuevo mantenimiento</div>
-                <div class="panel-subtitle">Registro de intervención de taller</div>
+                <div id="mantenimientoModalTitulo" class="modal-title">Nuevo mantenimiento</div>
+                <div id="mantenimientoModalSubtitulo" class="panel-subtitle">Registro de intervención de taller</div>
             </div>
             <button class="modal-close" type="button" onclick="cerrarModalMantenimiento()">×</button>
         </div>
@@ -15660,6 +15695,7 @@ function dvOrdenarCapasMapa(){
                         <label class="form-label">Tipo *</label>
                         <select id="mantenimientoTipo" class="form-control" required>
                             <option value="">Seleccionar...</option>
+                            <option value="AVERIA">AVERÍA</option>
                             <option value="MECANICA">MECÁNICA</option>
                             <option value="ELECTRICA">ELÉCTRICA</option>
                             <option value="NEUMATICOS">NEUMÁTICOS</option>
