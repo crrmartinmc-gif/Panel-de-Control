@@ -1537,6 +1537,18 @@ textarea.form-control{
    ========================================================= */
 .servicio-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .servicio-search{width:250px}
+
+.servicio-date-filter{
+    min-width:170px;
+    cursor:pointer;
+}
+
+@media(max-width:900px){
+    .servicio-toolbar{
+        flex-wrap:wrap;
+    }
+}
+
 .servicio-count{font-size:10px;color:var(--muted)}
 .servicio-table-wrap{overflow-x:auto}
 .servicio-table{width:100%;border-collapse:collapse}
@@ -1594,18 +1606,6 @@ textarea.form-control{
 .asignacion-search{
     width:270px;
 }
-
-.asignacion-date-filter{
-    min-width:170px;
-    cursor:pointer;
-}
-
-@media(max-width:900px){
-    .asignacion-toolbar{
-        flex-wrap:wrap;
-    }
-}
-
 
 .asignacion-count{
     font-size:10px;
@@ -3745,8 +3745,11 @@ textarea.form-control{
         </div>
         <div class="servicio-toolbar">
             <select id="filtroFechaServicio" class="filter servicio-date-filter"
-                    onchange="filtrarServicios()" title="Filtrar por fecha">
+                    onchange="filtrarServicios()" title="Filtrar servicios por fecha">
                 <option value="hoy" selected>📅 Servicios de hoy</option>
+                <option value="ayer">📅 Servicios de ayer</option>
+                <option value="7">📅 Últimos 7 días</option>
+                <option value="30">📅 Últimos 30 días</option>
                 <option value="todos">📋 Todas las fechas</option>
             </select>
             <input id="filtroServicio" class="filter servicio-search"
@@ -3813,18 +3816,6 @@ textarea.form-control{
                 class="filter asignacion-search"
                 placeholder="Buscar chofer, vehículo o servicio..."
                 oninput="filtrarAsignaciones()">
-
-            <select
-                id="filtroAsignacionDias"
-                class="filter asignacion-date-filter"
-                onchange="filtrarAsignaciones()"
-                title="Filtrar asignaciones por fecha">
-                <option value="TODAS">Todas las fechas</option>
-                <option value="HOY">Hoy</option>
-                <option value="AYER">Ayer</option>
-                <option value="7">Últimos 7 días</option>
-                <option value="30">Últimos 30 días</option>
-            </select>
 
             <button
                 class="btn btn-primary"
@@ -5710,6 +5701,7 @@ function servicioEsDeHoy(servicio){
 }
 
 function obtenerServiciosVista(){
+
     const todos = Array.isArray(estadoPanel.servicios)
         ? estadoPanel.servicios
         : [];
@@ -5718,9 +5710,60 @@ function obtenerServiciosVista(){
         document.getElementById("filtroFechaServicio")?.value || "hoy"
     );
 
-    return modo === "todos"
-        ? todos
-        : todos.filter(servicioEsDeHoy);
+    if(modo === "todos"){
+        return todos;
+    }
+
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+
+    let fechaDesde = new Date(hoy);
+    let fechaHasta = new Date(hoy);
+
+    if(modo === "ayer"){
+
+        fechaDesde.setDate(
+            fechaDesde.getDate() - 1
+        );
+
+        fechaHasta = new Date(fechaDesde);
+
+    }else if(/^\d+$/.test(modo)){
+
+        const dias = Number(modo);
+
+        fechaDesde.setDate(
+            fechaDesde.getDate() - (dias - 1)
+        );
+    }
+
+    return todos.filter(servicio => {
+
+        const fecha = fechaLocalISOArgentina(
+            servicio?.FECHA
+        );
+
+        if(!fecha){
+            return false;
+        }
+
+        const partes = fecha.split("-");
+        if(partes.length !== 3){
+            return false;
+        }
+
+        const fechaServicio = new Date(
+            Number(partes[0]),
+            Number(partes[1]) - 1,
+            Number(partes[2])
+        );
+        fechaServicio.setHours(0,0,0,0);
+
+        return (
+            fechaServicio >= fechaDesde &&
+            fechaServicio <= fechaHasta
+        );
+    });
 }
 
 async function cargarServicios(){
@@ -6071,14 +6114,28 @@ function renderizarServicios(servicios){
     }
 
     if(titulo){
-        titulo.textContent = modo === "todos" ? "Servicios registrados" : "Servicios de hoy";
+        const titulos = {
+            hoy: "Servicios de hoy",
+            ayer: "Servicios de ayer",
+            "7": "Servicios — últimos 7 días",
+            "30": "Servicios — últimos 30 días",
+            todos: "Servicios registrados"
+        };
+        titulo.textContent = titulos[modo] || "Servicios";
     }
 
     if(subtitulo){
         const hoy = hoyArgentinaISO().split("-").reverse().join("/");
-        subtitulo.textContent = modo === "todos"
-            ? "Todas las fechas disponibles en la tabla SERVICIOS"
-            : `Programación correspondiente al ${hoy}`;
+        const subtitulos = {
+            hoy: `Programación correspondiente al ${hoy}`,
+            ayer: "Programación correspondiente al día anterior",
+            "7": "Servicios correspondientes a los últimos 7 días",
+            "30": "Servicios correspondientes a los últimos 30 días",
+            todos: "Todas las fechas disponibles en la tabla SERVICIOS"
+        };
+        subtitulo.textContent =
+            subtitulos[modo] ||
+            `Programación correspondiente al ${hoy}`;
     }
 
     if(lista.length === 0){
@@ -6898,49 +6955,6 @@ function renderizarAsignaciones(asignaciones){
 }
 
 
-function fechaAsignacionNormalizada(valor){
-
-    if(!valor){
-        return null;
-    }
-
-    const s = String(valor).trim();
-
-    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-
-    if(m){
-        const fecha = new Date(
-            Number(m[3]),
-            Number(m[2]) - 1,
-            Number(m[1])
-        );
-        fecha.setHours(0,0,0,0);
-        return fecha;
-    }
-
-    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-
-    if(m){
-        const fecha = new Date(
-            Number(m[1]),
-            Number(m[2]) - 1,
-            Number(m[3])
-        );
-        fecha.setHours(0,0,0,0);
-        return fecha;
-    }
-
-    const fecha = new Date(s);
-
-    if(!Number.isNaN(fecha.getTime())){
-        fecha.setHours(0,0,0,0);
-        return fecha;
-    }
-
-    return null;
-}
-
-
 function filtrarAsignaciones(){
 
     const texto =
@@ -6950,51 +6964,22 @@ function filtrarAsignaciones(){
             )?.value
         );
 
-    const filtroDias =
-        document.getElementById(
-            "filtroAsignacionDias"
-        )?.value || "TODAS";
-
-    const hoy = new Date();
-    hoy.setHours(0,0,0,0);
-
-    let fechaDesde = null;
-    let fechaHasta = null;
-
-    if(filtroDias === "HOY"){
-
-        fechaDesde = new Date(hoy);
-        fechaHasta = new Date(hoy);
-
-    }else if(filtroDias === "AYER"){
-
-        fechaDesde = new Date(hoy);
-        fechaDesde.setDate(fechaDesde.getDate() - 1);
-        fechaHasta = new Date(fechaDesde);
-
-    }else if(/^\d+$/.test(filtroDias)){
-
-        const dias = Number(filtroDias);
-
-        fechaDesde = new Date(hoy);
-        fechaDesde.setDate(
-            fechaDesde.getDate() - (dias - 1)
-        );
-
-        fechaHasta = new Date(hoy);
-    }
-
     const filtradas =
         (
             estadoPanel.asignaciones ||
             []
         ).filter(asignacion => {
 
+            const servicio = obtenerServicioAsignacionPorId(asignacion.ID_SERVICIO);
+            const chofer = obtenerPersonaAsignacionPorId(asignacion.ID_CHOFER);
+            const vehiculo = obtenerVehiculoAsignacionPorId(asignacion.ID_VEHICULO);
+
             const contenido = [
                 asignacion.FECHA,
-                asignacion.ID_SERVICIO,
-                asignacion.ID_CHOFER,
-                asignacion.ID_VEHICULO,
+                servicio?.NOMBRE_SERVICIO,
+                servicio?.TIPO_SERVICIO,
+                chofer?.NOMBRE,
+                vehiculo?.DOMINIO,
                 asignacion.TURNO,
                 asignacion.ESTADO,
                 asignacion.HORA_ASIGNACION,
@@ -7003,30 +6988,8 @@ function filtrarAsignaciones(){
             .map(normalizar)
             .join(" ");
 
-            if(
-                texto &&
-                !contenido.includes(texto)
-            ){
-                return false;
-            }
-
-            if(!fechaDesde){
-                return true;
-            }
-
-            const fechaAsignacion =
-                fechaAsignacionNormalizada(
-                    asignacion.FECHA
-                );
-
-            if(!fechaAsignacion){
-                return false;
-            }
-
-            return (
-                fechaAsignacion >= fechaDesde &&
-                fechaAsignacion <= fechaHasta
-            );
+            return !texto ||
+                contenido.includes(texto);
         });
 
     renderizarAsignaciones(
