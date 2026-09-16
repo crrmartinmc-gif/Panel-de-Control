@@ -72,15 +72,47 @@ body{
 
 .sidebar{
     width:255px;
+    height:100vh;
     min-height:100vh;
     background:#091321;
     border-right:1px solid var(--border);
-    padding:20px 14px;
+    padding:20px 14px 14px;
     position:fixed;
     left:0;
     top:0;
     bottom:0;
     z-index:50;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+}
+
+.sidebar-scroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding-right:3px;
+    padding-bottom:12px;
+    scrollbar-width:thin;
+    scrollbar-color:#263b57 transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar{
+    width:6px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track{
+    background:transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb{
+    background:#263b57;
+    border-radius:10px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover{
+    background:#345171;
 }
 
 .brand{
@@ -168,10 +200,15 @@ body{
 }
 
 .sidebar-bottom{
-    position:absolute;
-    left:14px;
-    right:14px;
-    bottom:18px;
+    position:relative;
+    left:auto;
+    right:auto;
+    bottom:auto;
+    flex:0 0 auto;
+    margin-top:8px;
+    padding-top:8px;
+    background:#091321;
+    z-index:60;
 }
 
 .connection-box{
@@ -1152,7 +1189,8 @@ tr:hover td{
 
     .sidebar{
         width:70px;
-        padding:15px 8px;
+        height:100vh;
+        padding:15px 8px 10px;
     }
 
     .brand-title,
@@ -1550,6 +1588,7 @@ textarea.form-control{
 .status-curso{color:#60a5fa;background:rgba(59,130,246,.12)}
 .status-finalizado{color:#6ee7a0;background:rgba(34,197,94,.12)}
 .status-cancelado{color:#f87171;background:rgba(239,68,68,.12)}
+.status-incumplido{color:#fb923c;background:rgba(249,115,22,.12)}
 .servicio-estado-select{
     min-width:118px;
     padding:6px 8px;
@@ -1565,6 +1604,7 @@ textarea.form-control{
 .servicio-estado-select.status-curso{color:#6ee7a0;}
 .servicio-estado-select.status-finalizado{color:#60a5fa;}
 .servicio-estado-select.status-cancelado{color:#f87171;}
+.servicio-estado-select.status-incumplido{color:#fb923c;}
 
 .status-neutral{color:#a8b3c2;background:rgba(148,163,184,.12)}
 #modalServicio .modal{width:min(720px,100%)}
@@ -3008,6 +3048,8 @@ textarea.form-control{
     </div>
 
 
+    <div class="sidebar-scroll">
+
     <div class="menu-label">
         Principal
     </div>
@@ -3123,6 +3165,8 @@ textarea.form-control{
 
     </nav>
 
+
+    </div>
 
     <div class="sidebar-bottom">
 
@@ -5917,6 +5961,10 @@ function claseEstadoServicio(estado){
         return "status-cancelado";
     }
 
+    if(e === "INCUMPLIDO"){
+        return "status-incumplido";
+    }
+
     return "status-neutral";
 }
 
@@ -6278,7 +6326,7 @@ function renderizarServicios(servicios){
                     <select class="servicio-estado-select ${claseEstadoServicio(estado)}"
                             onchange="cambiarEstadoServicio('${escaparHTML(servicio.ID_SERVICIO || "")}', this.value)"
                             title="Cambiar estado del servicio">
-                        ${["PENDIENTE","EN CURSO","FINALIZADO","CANCELADO"].map(op=>`<option value="${op}" ${normalizar(op)===normalizar(estado)?"selected":""}>${op}</option>`).join("")}
+                        ${["PENDIENTE","EN CURSO","FINALIZADO","CANCELADO","INCUMPLIDO"].map(op=>`<option value="${op}" ${normalizar(op)===normalizar(estado)?"selected":""}>${op}</option>`).join("")}
                     </select>
                 </td>
                 <td>${escaparHTML(formatearHoraSimpleArgentina(servicio.HORA_INICIO))}</td>
@@ -6294,7 +6342,7 @@ function renderizarServicios(servicios){
 async function cambiarEstadoServicio(idServicio, nuevoEstado){
     const id=String(idServicio||"").trim();
     const estado=normalizar(nuevoEstado);
-    if(!id || !["PENDIENTE","EN CURSO","FINALIZADO","CANCELADO"].includes(estado)){
+    if(!id || !["PENDIENTE","EN CURSO","FINALIZADO","CANCELADO","INCUMPLIDO"].includes(estado)){
         alert("Estado de servicio inválido.");
         await cargarServicios();
         return;
