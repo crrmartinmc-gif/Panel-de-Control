@@ -1595,39 +1595,6 @@ textarea.form-control{
     width:270px;
 }
 
-.asignacion-date-filter,
-.servicio-date-filter{
-    min-width:150px;
-    font-weight:700;
-}
-
-.asignacion-chofer-cell{
-    min-width:165px;
-}
-
-.asignacion-chofer-name{
-    display:block;
-    color:#f5f9ff;
-    font-size:11px;
-    font-weight:800;
-    line-height:1.25;
-}
-
-.asignacion-chofer-domain{
-    display:block;
-    margin-top:4px;
-    color:#8fb4d9;
-    font-size:11px;
-    font-weight:800;
-    letter-spacing:.35px;
-    line-height:1.2;
-}
-
-.asignacion-vehiculo-id{
-    font-size:9px;
-    color:#718198;
-}
-
 .asignacion-count{
     font-size:10px;
     color:var(--muted);
@@ -3767,9 +3734,7 @@ textarea.form-control{
         <div class="servicio-toolbar">
             <select id="filtroFechaServicio" class="filter servicio-date-filter"
                     onchange="filtrarServicios()" title="Filtrar por fecha">
-                <option value="ayer">📅 Servicios de ayer</option>
-                <option value="hoy" selected>📅 Servicios del día en curso</option>
-                <option value="manana">📅 Servicios de mañana</option>
+                <option value="hoy" selected>📅 Servicios de hoy</option>
                 <option value="todos">📋 Todas las fechas</option>
             </select>
             <input id="filtroServicio" class="filter servicio-search"
@@ -3830,14 +3795,6 @@ textarea.form-control{
         </div>
 
         <div class="asignacion-toolbar">
-
-            <select id="filtroFechaAsignacion" class="filter asignacion-date-filter"
-                    onchange="filtrarAsignaciones()" title="Filtrar asignaciones por fecha">
-                <option value="ayer">📅 Ayer</option>
-                <option value="hoy" selected>📅 Día en curso</option>
-                <option value="manana">📅 Mañana</option>
-                <option value="todos">📋 Todas las fechas</option>
-            </select>
 
             <input
                 id="filtroAsignacion"
@@ -5352,7 +5309,6 @@ let estadoPanel = {
     eventos:[],
     choferes:[],
     reportes:[],
-    indices:{choferes:new Map(),vehiculos:new Map(),servicios:new Map()},
     mantenimiento:[],
     asignaciones:[],
     ultimaActualizacion:null
@@ -5725,28 +5681,8 @@ function fechaArgentinaSumarDias(dias){
     return dt.toISOString().slice(0,10);
 }
 
-function fechaVistaISO(modo){
-    const base = hoyArgentinaISO();
-    if(modo === "ayer") return fechaArgentinaSumarDias(-1);
-    if(modo === "manana") return fechaArgentinaSumarDias(1);
-    return base;
-}
-
 function servicioEsDeHoy(servicio){
     return fechaLocalISOArgentina(servicio?.FECHA) === hoyArgentinaISO();
-}
-
-function servicioEsDeAyer(servicio){
-    return fechaLocalISOArgentina(servicio?.FECHA) === fechaArgentinaSumarDias(-1);
-}
-
-function servicioEsDeManana(servicio){
-    return fechaLocalISOArgentina(servicio?.FECHA) === fechaArgentinaSumarDias(1);
-}
-
-function elementoEsDeFechaVista(item, campoFecha, modo){
-    if(modo === "todos") return true;
-    return fechaLocalISOArgentina(item?.[campoFecha]) === fechaVistaISO(modo);
 }
 
 function obtenerServiciosVista(){
@@ -5758,9 +5694,9 @@ function obtenerServiciosVista(){
         document.getElementById("filtroFechaServicio")?.value || "hoy"
     );
 
-    return todos.filter(servicio =>
-        elementoEsDeFechaVista(servicio, "FECHA", modo)
-    );
+    return modo === "todos"
+        ? todos
+        : todos.filter(servicioEsDeHoy);
 }
 
 async function cargarServicios(){
@@ -5776,9 +5712,6 @@ async function cargarServicios(){
         : [];
 
     estadoPanel.servicios = servicios;
-    estadoPanel.indices.servicios = new Map(servicios.map(x => [
-        String(x.ID_SERVICIO || "").trim(), x
-    ]).filter(([id]) => id));
     filtrarServicios();
     actualizarKPIServiciosDelDia(servicios);
 
@@ -6006,97 +5939,81 @@ async function guardarSalidaPartido(){
     const btn=document.getElementById("btnGuardarSalidaPartido");
 
     if(!destino){
-        if(msg){msg.style.display="block";msg.style.color="#f87171";msg.textContent="Indicá el destino de la salida.";}
+        if(msg){
+            msg.style.display="block";
+            msg.style.color="#f87171";
+            msg.textContent="Indicá el destino de la salida.";
+        }
         return;
     }
 
     if(info.enviado){
-        if(msg){msg.style.display="block";msg.style.color="#fbbf24";msg.textContent="Este aviso ya fue enviado.";}
+        if(msg){
+            msg.style.display="block";
+            msg.style.color="#fbbf24";
+            msg.textContent="Este aviso ya fue enviado.";
+        }
         return;
     }
 
-    if(btn){btn.disabled=true;btn.textContent="Enviando...";}
+    if(btn){
+        btn.disabled=true;
+        btn.textContent="Enviando...";
+    }
+
     try{
-        // Si todavía no estaba marcada, primero la marcamos con el destino ingresado.
-        if(!info.marcado){
-            const nuevoObs=construirObservacionesSalidaPartido(
-                String(servicio.OBSERVACIONES||""),
-                true,
-                destino
-            );
-
-            const marcarRespuesta=await fetch(BACKEND_URL,{
-                method:"POST",
-                body:JSON.stringify({
-                    accion:"configurarSalidaPartido",
-                    idServicio:servicio.ID_SERVICIO,
-                    destino:destino,
-                    observaciones:"",
-                    cambios:{OBSERVACIONES:nuevoObs}
-                })
-            });
-            const marcarResultado=await marcarRespuesta.json();
-            if(!marcarResultado?.ok) throw new Error(marcarResultado?.error||"No se pudo marcar la salida.");
-        }
-
-        // En el mismo paso enviamos el aviso. No hay segundo botón ni segunda carga.
-        const enviarRespuesta=await fetch(BACKEND_URL,{
+        // UN SOLO ENVÍO AL BACKEND:
+        // marca la salida + manda el correo + intenta push al chofer.
+        const respuesta=await fetch(BACKEND_URL,{
             method:"POST",
             body:JSON.stringify({
-                accion:"enviarAvisoSalidaPartido",
+                accion:"procesarSalidaPartido",
                 idServicio:servicio.ID_SERVICIO,
                 destino:destino,
                 observaciones:""
             })
         });
-        const enviarResultado=await enviarRespuesta.json();
-        if(!enviarResultado?.ok) throw new Error(enviarResultado?.error||"No se pudo enviar el aviso.");
 
-        await cargarServicios();
-        filtrarServicios();
-        cerrarModalSalidaPartido();
-        alert("Aviso de salida de partido enviado correctamente.");
-    }catch(e){
-        console.error("Error enviando salida de partido:",e);
-        if(msg){msg.style.display="block";msg.style.color="#f87171";msg.textContent=e.message;}
-    }finally{
-        if(btn){btn.disabled=false;btn.textContent="ENVIAR";}
-    }
-}
+        if(!respuesta.ok){
+            throw new Error("HTTP "+respuesta.status);
+        }
 
-async function enviarAvisoSalidaPartidoDesdePanel(idServicio,destino,obsExtra){
-    const servicio=(estadoPanel.servicios||[]).find(s=>String(s.ID_SERVICIO||"").trim()===String(idServicio||"").trim());
-    if(!servicio) return;
-
-    const msg=document.getElementById("salidaPartidoMensaje");
-    const btn=document.getElementById("btnGuardarSalidaPartido");
-    if(btn){btn.disabled=true;btn.textContent="Enviando...";}
-
-    try{
-        const respuesta=await fetch(BACKEND_URL,{
-            method:"POST",
-            body:JSON.stringify({
-                accion:"enviarAvisoSalidaPartido",
-                idServicio:servicio.ID_SERVICIO,
-                destino:String(destino||"").trim(),
-                observaciones:String(obsExtra||"").trim()
-            })
-        });
         const resultado=await respuesta.json();
-        if(!resultado?.ok) throw new Error(resultado?.error||"No se pudo enviar el aviso.");
+
+        if(!resultado?.ok){
+            throw new Error(
+                resultado?.error ||
+                "No se pudo procesar la salida de partido."
+            );
+        }
 
         await cargarServicios();
         filtrarServicios();
         cerrarModalSalidaPartido();
-        alert("Aviso de salida de partido enviado correctamente.");
+
+        alert(
+            "Salida de partido registrada y aviso enviado correctamente."
+            + (resultado.emailEnviado ? "\nCorreo: enviado." : "")
+            + (resultado.pushEnviados != null
+                ? "\nPush al chofer: "+resultado.pushEnviados+" dispositivo(s)."
+                : "")
+        );
+
     }catch(e){
-        console.error("Error enviando aviso de salida de partido:",e);
-        if(msg){msg.style.display="block";msg.style.color="#f87171";msg.textContent=e.message;}
+        console.error("Error procesando salida de partido:",e);
+
+        if(msg){
+            msg.style.display="block";
+            msg.style.color="#f87171";
+            msg.textContent=e.message;
+        }
     }finally{
-        if(btn){btn.disabled=false;btn.textContent="Enviar aviso";}
+        if(btn){
+            btn.disabled=false;
+            btn.textContent="ENVIAR";
+        }
     }
 }
-
 
 function renderAccionSalidaPartido(servicio){
     const info=analizarSalidaPartidoServicio(servicio);
@@ -6129,23 +6046,15 @@ function renderizarServicios(servicios){
         contador.textContent = `${lista.length} ${lista.length === 1 ? "servicio" : "servicios"}`;
     }
 
-    const fechaVista = fechaVistaISO(modo).split("-").reverse().join("/");
-    const etiquetaVista = modo === "ayer"
-        ? "Servicios de ayer"
-        : modo === "manana"
-            ? "Servicios de mañana"
-            : modo === "todos"
-                ? "Servicios registrados"
-                : "Servicios del día en curso";
-
     if(titulo){
-        titulo.textContent = etiquetaVista;
+        titulo.textContent = modo === "todos" ? "Servicios registrados" : "Servicios de hoy";
     }
 
     if(subtitulo){
+        const hoy = hoyArgentinaISO().split("-").reverse().join("/");
         subtitulo.textContent = modo === "todos"
             ? "Todas las fechas disponibles en la tabla SERVICIOS"
-            : `Programación correspondiente al ${fechaVista}`;
+            : `Programación correspondiente al ${hoy}`;
     }
 
     if(lista.length === 0){
@@ -6580,22 +6489,7 @@ async function guardarServicio(event){
         observaciones:
             document.getElementById("servicioObservaciones")?.value.trim()
     };
-
-    const salidaPartido=document.getElementById("servicioSalidaPartido");
-    const destinoSalida=String(document.getElementById("servicioSalidaDestino")?.value||"").trim();
-
-    if(salidaPartido?.checked && !destinoSalida){
-        mostrarMensajeServicio("Indicá el destino del servicio con salida de partido.","error");
-        return;
-    }
-
-    datos.observaciones=construirObservacionesSalidaPartido(
-        datos.observaciones,
-        !!salidaPartido?.checked,
-        destinoSalida
-    );
-
-    if(!datos.fecha){
+if(!datos.fecha){
         mostrarMensajeServicio("La fecha es obligatoria.","error");
         return;
     }
@@ -6727,7 +6621,9 @@ async function cargarAsignaciones(){
     estadoPanel.asignaciones =
         asignaciones;
 
-    filtrarAsignaciones();
+    renderizarAsignaciones(
+        asignaciones
+    );
 
     return asignaciones;
 }
@@ -6769,18 +6665,30 @@ function claseEstadoAsignacion(estado){
 
 
 function obtenerServicioAsignacionPorId(id){
-    const key = String(id || "").trim();
-    return estadoPanel.indices?.servicios?.get(key) || null;
+    const lista = Array.isArray(estadoPanel.servicios)
+        ? estadoPanel.servicios
+        : [];
+    return lista.find(s =>
+        String(s.ID_SERVICIO || "").trim() === String(id || "").trim()
+    ) || null;
 }
 
 function obtenerPersonaAsignacionPorId(id){
-    const key = String(id || "").trim();
-    return estadoPanel.indices?.choferes?.get(key) || null;
+    const lista = Array.isArray(estadoPanel.choferes)
+        ? estadoPanel.choferes
+        : [];
+    return lista.find(c =>
+        String(c.ID_CHOFER || "").trim() === String(id || "").trim()
+    ) || null;
 }
 
 function obtenerVehiculoAsignacionPorId(id){
-    const key = String(id || "").trim();
-    return estadoPanel.indices?.vehiculos?.get(key) || null;
+    const lista = Array.isArray(estadoPanel.vehiculos)
+        ? estadoPanel.vehiculos
+        : [];
+    return lista.find(v =>
+        String(v.ID_VEHICULO || "").trim() === String(id || "").trim()
+    ) || null;
 }
 
 function datosRutaAsignacion(asignacion){
@@ -6851,26 +6759,6 @@ function renderizarAsignaciones(asignaciones){
     if(contador){
         contador.textContent =
             `${Array.isArray(asignaciones) ? asignaciones.length : 0} asignaciones`;
-    }
-
-    const modoFecha = String(
-        document.getElementById("filtroFechaAsignacion")?.value || "hoy"
-    );
-    const tituloAsignaciones = document.querySelector("#asignaciones .panel-title");
-    const subtituloAsignaciones = document.querySelector("#asignaciones .panel-subtitle");
-    if(tituloAsignaciones){
-        tituloAsignaciones.textContent = modoFecha === "ayer"
-            ? "Asignaciones de ayer"
-            : modoFecha === "manana"
-                ? "Asignaciones de mañana"
-                : modoFecha === "todos"
-                    ? "Asignaciones registradas"
-                    : "Asignaciones del día en curso";
-    }
-    if(subtituloAsignaciones){
-        subtituloAsignaciones.textContent = modoFecha === "todos"
-            ? "Vínculos operativos entre servicios, choferes y vehículos · todas las fechas"
-            : `Vínculos operativos correspondientes al ${fechaVistaISO(modoFecha).split("-").reverse().join("/")}`;
     }
 
     if(!Array.isArray(asignaciones) || asignaciones.length === 0){
@@ -6956,13 +6844,12 @@ function renderizarAsignaciones(asignaciones){
                     ` : ""}
                 </td>
 
-                <td class="asignacion-chofer-cell">
-                    <span class="asignacion-chofer-name">${escaparHTML(chofer)}</span>
-                    <span class="asignacion-chofer-domain">${escaparHTML(vehiculo)}</span>
+                <td>
+                    ${escaparHTML(chofer)}
                 </td>
 
                 <td>
-                    <span class="asignacion-vehiculo-id">${escaparHTML(vehiculo)}</span>
+                    ${escaparHTML(vehiculo)}
                 </td>
 
                 <td>
@@ -6996,16 +6883,11 @@ function filtrarAsignaciones(){
             )?.value
         );
 
-    const modoFecha = String(
-        document.getElementById("filtroFechaAsignacion")?.value || "hoy"
-    );
-
     const filtradas =
-        (estadoPanel.asignaciones || []).filter(asignacion => {
-
-            if(!elementoEsDeFechaVista(asignacion, "FECHA", modoFecha)){
-                return false;
-            }
+        (
+            estadoPanel.asignaciones ||
+            []
+        ).filter(asignacion => {
 
             const servicio = obtenerServicioAsignacionPorId(asignacion.ID_SERVICIO);
             const chofer = obtenerPersonaAsignacionPorId(asignacion.ID_CHOFER);
@@ -7025,11 +6907,15 @@ function filtrarAsignaciones(){
             .map(normalizar)
             .join(" ");
 
-            return !texto || contenido.includes(texto);
+            return !texto ||
+                contenido.includes(texto);
         });
 
-    renderizarAsignaciones(filtradas);
+    renderizarAsignaciones(
+        filtradas
+    );
 }
+
 
 let asignacionServiciosDisponibles = [];
 
@@ -9875,9 +9761,6 @@ async function cargarVehiculos(){
             : [];
 
     estadoPanel.vehiculos = vehiculos;
-    estadoPanel.indices.vehiculos = new Map(vehiculos.map(v => [
-        String(v.ID_VEHICULO || "").trim(), v
-    ]).filter(([id]) => id));
 
     actualizarFiltroAreas(vehiculos);
 
@@ -10837,9 +10720,6 @@ async function cargarChoferes(){
             : [];
 
     estadoPanel.choferes = choferes;
-    estadoPanel.indices.choferes = new Map(choferes.map(c => [
-        String(c.ID_CHOFER || "").trim(), c
-    ]).filter(([id]) => id));
 
     renderizarChoferes(choferes);
 
@@ -14586,22 +14466,7 @@ function dvOrdenarCapasMapa(){
                             <option value="CANCELADO">CANCELADO</option>
                         </select>
                     </div>
-                    <div class="form-group full">
-                        <div class="salida-partido-form-box">
-                            <label class="salida-partido-check">
-                                <input id="servicioSalidaPartido" type="checkbox" onchange="alternarDestinoSalidaPartido()">
-                                <span>
-                                    <strong>🚨 Servicio con salida de partido</strong>
-                                    <span class="salida-partido-help">Activá esta opción únicamente cuando la unidad deba salir del partido de Lomas de Zamora.</span>
-                                </span>
-                            </label>
-                            <div id="servicioSalidaDestinoBox" class="salida-partido-destino">
-                                <label class="form-label">Destino de salida *</label>
-                                <input id="servicioSalidaDestino" class="form-control" type="text" placeholder="Ej.: Vicente López, Capital Federal, Bernal">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group full">
+<div class="form-group full">
                         <label class="form-label">Observaciones</label>
                         <textarea id="servicioObservaciones" class="form-control"
                                   placeholder="Observaciones del servicio"></textarea>
