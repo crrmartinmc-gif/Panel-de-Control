@@ -1537,18 +1537,6 @@ textarea.form-control{
    ========================================================= */
 .servicio-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .servicio-search{width:250px}
-
-.servicio-date-filter{
-    min-width:170px;
-    cursor:pointer;
-}
-
-@media(max-width:900px){
-    .servicio-toolbar{
-        flex-wrap:wrap;
-    }
-}
-
 .servicio-count{font-size:10px;color:var(--muted)}
 .servicio-table-wrap{overflow-x:auto}
 .servicio-table{width:100%;border-collapse:collapse}
@@ -1606,6 +1594,24 @@ textarea.form-control{
 .asignacion-search{
     width:270px;
 }
+
+.asignacion-date-filter{
+    min-width:170px;
+    cursor:pointer;
+}
+
+.servicio-date-filter{
+    min-width:170px;
+    cursor:pointer;
+}
+
+@media(max-width:900px){
+    .asignacion-toolbar,
+    .servicio-toolbar{
+        flex-wrap:wrap;
+    }
+}
+
 
 .asignacion-count{
     font-size:10px;
@@ -3817,6 +3823,18 @@ textarea.form-control{
                 placeholder="Buscar chofer, vehículo o servicio..."
                 oninput="filtrarAsignaciones()">
 
+            <select
+                id="filtroAsignacionDias"
+                class="filter asignacion-date-filter"
+                onchange="filtrarAsignaciones()"
+                title="Filtrar asignaciones por fecha">
+                <option value="TODAS">Todas las fechas</option>
+                <option value="HOY" selected>📅 Hoy</option>
+                <option value="AYER">📅 Ayer</option>
+                <option value="7">📅 Últimos 7 días</option>
+                <option value="30">📅 Últimos 30 días</option>
+            </select>
+
             <button
                 class="btn btn-primary"
                 type="button"
@@ -5911,16 +5929,47 @@ function renderNombreRutaServicio(idRuta){
 }
 
 function renderAsignacionServicio(idAsignacion){
-    const id=String(idAsignacion||"").trim();
-    if(!id) return "<span>-</span>";
-    const lista=Array.isArray(estadoPanel.asignaciones)?estadoPanel.asignaciones:[];
-    const a=lista.find(x=>String(x.ID_ASIGNACION||"").trim()===id);
-    if(!a) return escaparHTML(id);
-    const chofer=obtenerPersonaAsignacionPorId(a.ID_CHOFER);
-    const vehiculo=obtenerVehiculoAsignacionPorId(a.ID_VEHICULO);
-    const nombre=chofer?.NOMBRE || a.ID_CHOFER || "Chofer sin datos";
-    const dominio=vehiculo?.DOMINIO || a.ID_VEHICULO || "Unidad sin datos";
-    return `<div class="servicio-assignment"><strong>${escaparHTML(nombre)}</strong><span>${escaparHTML(dominio)} · ${escaparHTML(id)}</span></div>`;
+
+    const id = String(idAsignacion || "").trim();
+
+    if(!id){
+        return "<span>-</span>";
+    }
+
+    const lista =
+        Array.isArray(estadoPanel.asignaciones)
+            ? estadoPanel.asignaciones
+            : [];
+
+    const a =
+        lista.find(x =>
+            String(x.ID_ASIGNACION || "").trim() === id
+        );
+
+    if(!a){
+        return `<div class="servicio-assignment"><strong>Cargando asignación...</strong></div>`;
+    }
+
+    const chofer =
+        obtenerPersonaAsignacionPorId(a.ID_CHOFER);
+
+    const vehiculo =
+        obtenerVehiculoAsignacionPorId(a.ID_VEHICULO);
+
+    const nombre =
+        chofer?.NOMBRE ||
+        "Cargando chofer...";
+
+    const dominio =
+        vehiculo?.DOMINIO ||
+        "Cargando unidad...";
+
+    return `
+        <div class="servicio-assignment">
+            <strong>${escaparHTML(nombre)}</strong>
+            <span>${escaparHTML(dominio)}</span>
+        </div>
+    `;
 }
 
 
@@ -6955,6 +7004,49 @@ function renderizarAsignaciones(asignaciones){
 }
 
 
+function fechaAsignacionNormalizada(valor){
+
+    if(!valor){
+        return null;
+    }
+
+    const s = String(valor).trim();
+
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+
+    if(m){
+        const fecha = new Date(
+            Number(m[3]),
+            Number(m[2]) - 1,
+            Number(m[1])
+        );
+        fecha.setHours(0,0,0,0);
+        return fecha;
+    }
+
+    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+
+    if(m){
+        const fecha = new Date(
+            Number(m[1]),
+            Number(m[2]) - 1,
+            Number(m[3])
+        );
+        fecha.setHours(0,0,0,0);
+        return fecha;
+    }
+
+    const fecha = new Date(s);
+
+    if(!Number.isNaN(fecha.getTime())){
+        fecha.setHours(0,0,0,0);
+        return fecha;
+    }
+
+    return null;
+}
+
+
 function filtrarAsignaciones(){
 
     const texto =
@@ -6964,22 +7056,53 @@ function filtrarAsignaciones(){
             )?.value
         );
 
+    const filtroDias =
+        document.getElementById(
+            "filtroAsignacionDias"
+        )?.value || "HOY";
+
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+
+    let fechaDesde = null;
+    let fechaHasta = null;
+
+    if(filtroDias === "HOY"){
+
+        fechaDesde = new Date(hoy);
+        fechaHasta = new Date(hoy);
+
+    }else if(filtroDias === "AYER"){
+
+        fechaDesde = new Date(hoy);
+        fechaDesde.setDate(
+            fechaDesde.getDate() - 1
+        );
+        fechaHasta = new Date(fechaDesde);
+
+    }else if(/^\d+$/.test(filtroDias)){
+
+        const dias = Number(filtroDias);
+
+        fechaDesde = new Date(hoy);
+        fechaDesde.setDate(
+            fechaDesde.getDate() - (dias - 1)
+        );
+
+        fechaHasta = new Date(hoy);
+    }
+
     const filtradas =
         (
             estadoPanel.asignaciones ||
             []
         ).filter(asignacion => {
 
-            const servicio = obtenerServicioAsignacionPorId(asignacion.ID_SERVICIO);
-            const chofer = obtenerPersonaAsignacionPorId(asignacion.ID_CHOFER);
-            const vehiculo = obtenerVehiculoAsignacionPorId(asignacion.ID_VEHICULO);
-
             const contenido = [
                 asignacion.FECHA,
-                servicio?.NOMBRE_SERVICIO,
-                servicio?.TIPO_SERVICIO,
-                chofer?.NOMBRE,
-                vehiculo?.DOMINIO,
+                asignacion.ID_SERVICIO,
+                asignacion.ID_CHOFER,
+                asignacion.ID_VEHICULO,
                 asignacion.TURNO,
                 asignacion.ESTADO,
                 asignacion.HORA_ASIGNACION,
@@ -6988,8 +7111,30 @@ function filtrarAsignaciones(){
             .map(normalizar)
             .join(" ");
 
-            return !texto ||
-                contenido.includes(texto);
+            if(
+                texto &&
+                !contenido.includes(texto)
+            ){
+                return false;
+            }
+
+            if(!fechaDesde){
+                return true;
+            }
+
+            const fechaAsignacion =
+                fechaAsignacionNormalizada(
+                    asignacion.FECHA
+                );
+
+            if(!fechaAsignacion){
+                return false;
+            }
+
+            return (
+                fechaAsignacion >= fechaDesde &&
+                fechaAsignacion <= fechaHasta
+            );
         });
 
     renderizarAsignaciones(
@@ -10803,6 +10948,15 @@ async function cargarChoferes(){
     estadoPanel.choferes = choferes;
 
     renderizarChoferes(choferes);
+
+    // Si Servicios ya se cargó, lo refrescamos inmediatamente
+    // para reemplazar "Cargando chofer..." por el nombre real.
+    if(
+        Array.isArray(estadoPanel.servicios) &&
+        estadoPanel.servicios.length
+    ){
+        filtrarServicios();
+    }
 
     return choferes;
 }
