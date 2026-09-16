@@ -1387,6 +1387,92 @@ textarea.form-control{
 
 
 /* =========================================================
+   VEHÍCULOS — SERVICE / KM / DETALLE
+   ========================================================= */
+.vehiculo-metricas{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(120px,1fr));
+    gap:9px;
+    margin-top:10px;
+}
+.vehiculo-metrica{
+    padding:10px 11px;
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:10px;
+    background:rgba(255,255,255,.025);
+}
+.vehiculo-metrica-label{
+    color:#718198;
+    font-size:8px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+}
+.vehiculo-metrica-value{
+    margin-top:4px;
+    color:#eef4fb;
+    font-size:13px;
+    font-weight:800;
+}
+.vehiculo-service-ok{color:#6ee7a0!important}
+.vehiculo-service-warning{color:#fbbf24!important}
+.vehiculo-service-danger{color:#f87171!important}
+.btn-vehiculo-detalle{
+    min-height:32px;
+    padding:7px 10px;
+    border-radius:8px;
+    border:1px solid rgba(59,130,246,.30);
+    background:rgba(59,130,246,.10);
+    color:#60a5fa;
+    font:800 9px Inter,Arial,sans-serif;
+    cursor:pointer;
+    white-space:nowrap;
+}
+.btn-vehiculo-detalle:hover{background:rgba(59,130,246,.18);transform:translateY(-1px)}
+#modalDetalleVehiculo .modal{width:min(920px,100%)}
+.detalle-vehiculo-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px 16px;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background:rgba(255,255,255,.025);
+}
+.detalle-vehiculo-domain{font-size:20px;font-weight:900;color:#f4f7fb}
+.detalle-vehiculo-sub{font-size:10px;color:#718198;margin-top:4px}
+.detalle-grid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
+    margin-top:12px;
+}
+.detalle-card{
+    border:1px solid var(--border);
+    border-radius:11px;
+    padding:12px;
+    background:#0c1727;
+    min-width:0;
+}
+.detalle-card.full{grid-column:1/-1}
+.detalle-card-title{font-size:10px;font-weight:800;color:#eef4fb;margin-bottom:8px}
+.detalle-card-help{font-size:9px;color:#718198;margin-top:3px}
+.detalle-kpi{font-size:18px;font-weight:900;color:#f4f7fb}
+.detalle-list{display:flex;flex-direction:column;gap:7px;max-height:220px;overflow:auto}
+.detalle-list-item{padding:8px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);font-size:9px;line-height:1.45}
+.detalle-list-item strong{color:#eef4fb}
+.detalle-muted{color:#718198}
+@media(max-width:850px){
+    .vehiculo-metricas{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .detalle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+    .vehiculo-metricas{grid-template-columns:1fr 1fr}
+    .detalle-grid{grid-template-columns:1fr}
+    .detalle-card.full{grid-column:auto}
+}
+
+/* =========================================================
    MÓDULO CHOFERES
    ========================================================= */
 
@@ -3623,10 +3709,12 @@ textarea.form-control{
                         <th>Dominio</th>
                         <th>Interno</th>
                         <th>Marca / Modelo</th>
-                        <th>Tipo</th>
                         <th>Área</th>
+                        <th>KM actual</th>
+                        <th>Service</th>
+                        <th>VTV</th>
                         <th>Estado</th>
-                        <th>GPS</th>
+                        <th>Acciones</th>
 
                     </tr>
 
@@ -3636,7 +3724,7 @@ textarea.form-control{
 
                     <tr>
 
-                        <td colspan="7">
+                        <td colspan="9">
 
                             <div class="empty">
                                 Sin datos cargados
@@ -5345,6 +5433,8 @@ let estadoPanel = {
     choferes:[],
     reportes:[],
     mantenimiento:[],
+    viajes:[],
+    inspecciones:[],
     asignaciones:[],
     ultimaActualizacion:null
 };
@@ -9994,184 +10084,291 @@ async function guardarInspeccion(event){
 
 async function cargarVehiculos(){
 
-    const resultado =
-        await leerBackend("vehiculos");
+    // Vehículos + datos necesarios para KM, service y VTV.
+    // Se consultan en paralelo y se conservan en estadoPanel.
+    const [resultadoVehiculos, resultadoViajes, resultadoMantenimiento, resultadoReportes, resultadoInspecciones] =
+        await Promise.all([
+            leerBackend("vehiculos"),
+            leerBackend("viajes"),
+            leerBackend("mantenimiento"),
+            leerBackend("reportes"),
+            leerBackend("inspecciones")
+        ]);
 
-    if(!resultado?.ok){
-        return [];
+    if(resultadoVehiculos?.ok && Array.isArray(resultadoVehiculos.datos)){
+        estadoPanel.vehiculos = resultadoVehiculos.datos;
+    }
+    if(resultadoViajes?.ok && Array.isArray(resultadoViajes.datos)){
+        estadoPanel.viajes = resultadoViajes.datos;
+    }
+    if(resultadoMantenimiento?.ok && Array.isArray(resultadoMantenimiento.datos)){
+        estadoPanel.mantenimiento = resultadoMantenimiento.datos;
+    }
+    if(resultadoReportes?.ok && Array.isArray(resultadoReportes.datos)){
+        estadoPanel.reportes = resultadoReportes.datos;
+    }
+    if(resultadoInspecciones?.ok && Array.isArray(resultadoInspecciones.datos)){
+        estadoPanel.inspecciones = resultadoInspecciones.datos;
     }
 
-    const vehiculos =
-        Array.isArray(resultado.datos)
-            ? resultado.datos
-            : [];
-
-    estadoPanel.vehiculos = vehiculos;
+    const vehiculos = Array.isArray(estadoPanel.vehiculos)
+        ? estadoPanel.vehiculos
+        : [];
 
     actualizarFiltroAreas(vehiculos);
-
     renderizarVehiculos(vehiculos);
-
     return vehiculos;
 }
 
-
-function claseEstadoVehiculo(estado){
-
-    const e = normalizar(estado);
-
-    if(e === "DISPONIBLE" ||
-       e === "OPERATIVO"){
-
-        return "online";
-    }
-
-    if(e === "EN TALLER"){
-        return "warning";
-    }
-
-    return "danger";
+function numeroKilometros(valor){
+    if(valor === null || valor === undefined || valor === "") return null;
+    if(typeof valor === "number" && Number.isFinite(valor)) return valor;
+    const limpio = String(valor).trim().replace(/\s/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
+    const n = Number(limpio);
+    return Number.isFinite(n) ? n : null;
 }
 
-
-function textoEstadoVehiculo(estado){
-
-    const e = normalizar(estado);
-
-    if(e === "DISPONIBLE"){
-        return "DISPONIBLE";
-    }
-
-    if(e === "EN TALLER"){
-        return "EN TALLER";
-    }
-
-    if(e === "OPERATIVO"){
-        return "OPERATIVO";
-    }
-
-    if(!e){
-        return "SIN ESTADO";
-    }
-
-    return e;
+function fechaTimestamp(valor){
+    if(valor === null || valor === undefined || valor === "") return 0;
+    const t = new Date(valor).getTime();
+    return Number.isFinite(t) ? t : 0;
 }
 
+function vehiculoIdNormalizado(valor){
+    return normalizar(valor || "");
+}
+
+function datosMantenimientoVehiculo(idVehiculo){
+    const id = vehiculoIdNormalizado(idVehiculo);
+    return (estadoPanel.mantenimiento || [])
+        .filter(m => vehiculoIdNormalizado(m.ID_VEHICULO) === id)
+        .sort((a,b) => fechaTimestamp(b.FECHA_ALTA || b.FECHA_INGRESO_TALLER) - fechaTimestamp(a.FECHA_ALTA || a.FECHA_INGRESO_TALLER));
+}
+
+function datosViajesVehiculo(idVehiculo){
+    const id = vehiculoIdNormalizado(idVehiculo);
+    return (estadoPanel.viajes || [])
+        .filter(v => vehiculoIdNormalizado(v.ID_VEHICULO) === id)
+        .sort((a,b) => {
+            const fa = fechaTimestamp((a.FECHA || "") + " " + (a.HORA_FIN || a.HORA_INICIO || ""));
+            const fb = fechaTimestamp((b.FECHA || "") + " " + (b.HORA_FIN || b.HORA_INICIO || ""));
+            return fb-fa;
+        });
+}
+
+function datosReportesVehiculo(idVehiculo){
+    const id = vehiculoIdNormalizado(idVehiculo);
+    return (estadoPanel.reportes || [])
+        .filter(r => vehiculoIdNormalizado(r.ID_VEHICULO) === id)
+        .sort((a,b) => fechaTimestamp(b.FECHA_HORA) - fechaTimestamp(a.FECHA_HORA));
+}
+
+function datosInspeccionesVehiculo(idVehiculo){
+    const id = vehiculoIdNormalizado(idVehiculo);
+    return (estadoPanel.inspecciones || [])
+        .filter(i => vehiculoIdNormalizado(i.ID_VEHICULO) === id)
+        .sort((a,b) => fechaTimestamp(b.FECHA_HORA || b.FECHA) - fechaTimestamp(a.FECHA_HORA || a.FECHA));
+}
+
+function obtenerKmActualVehiculo(idVehiculo){
+    const viajes = datosViajesVehiculo(idVehiculo);
+    for(const viaje of viajes){
+        const km = numeroKilometros(viaje.KM_FINAL);
+        if(km !== null) return {km, viaje};
+    }
+
+    // Compatibilidad con posibles campos de kilometraje existentes en VEHICULOS.
+    const vehiculo = (estadoPanel.vehiculos || []).find(v => vehiculoIdNormalizado(v.ID_VEHICULO) === vehiculoIdNormalizado(idVehiculo));
+    if(vehiculo){
+        for(const campo of ["KM_ACTUAL","KILOMETRAJE","KM"]){
+            const km = numeroKilometros(vehiculo[campo]);
+            if(km !== null) return {km, viaje:null};
+        }
+    }
+    return {km:null, viaje:null};
+}
+
+function obtenerUltimoServiceVehiculo(idVehiculo){
+    const mantenimientos = datosMantenimientoVehiculo(idVehiculo)
+        .filter(m => numeroKilometros(m.KM) !== null);
+    return mantenimientos.length ? mantenimientos[0] : null;
+}
+
+function obtenerVtvVehiculo(idVehiculo){
+    const reportes = datosReportesVehiculo(idVehiculo);
+    const vtv = reportes.filter(r => normalizar(r.TIPO_REPORTE || r.TIPO || "").includes("VTV"));
+    if(!vtv.length) return null;
+    return vtv[0];
+}
+
+function resumenServiceVehiculo(idVehiculo){
+    const ultimo = obtenerUltimoServiceVehiculo(idVehiculo);
+    const kmActualObj = obtenerKmActualVehiculo(idVehiculo);
+    const kmActual = kmActualObj.km;
+
+    if(!ultimo){
+        return {ultimo:null, kmActual, proximo:null, faltan:null, estado:"SIN DATOS"};
+    }
+
+    const kmService = numeroKilometros(ultimo.KM);
+    const proximo = kmService !== null ? kmService + 10000 : null;
+    const faltan = (proximo !== null && kmActual !== null) ? proximo - kmActual : null;
+    let estado = "PENDIENTE";
+    if(faltan !== null){
+        if(faltan < 0) estado = "VENCIDO";
+        else if(faltan <= 1000) estado = "PRÓXIMO";
+        else estado = "OK";
+    }
+    return {ultimo, kmActual, proximo, faltan, estado};
+}
+
+function claseServiceResumen(estado){
+    if(estado === "OK") return "vehiculo-service-ok";
+    if(estado === "PRÓXIMO") return "vehiculo-service-warning";
+    if(estado === "VENCIDO") return "vehiculo-service-danger";
+    return "";
+}
+
+function textoKm(valor){
+    const n = numeroKilometros(valor);
+    return n === null ? "—" : Math.round(n).toLocaleString("es-AR") + " km";
+}
+
+function textoFaltanService(valor){
+    const n = numeroKilometros(valor);
+    if(n === null) return "—";
+    if(n < 0) return "Vencido +" + Math.abs(Math.round(n)).toLocaleString("es-AR") + " km";
+    return Math.round(n).toLocaleString("es-AR") + " km";
+}
+
+function claseVtvReporte(vtv){
+    if(!vtv) return "";
+    const texto = normalizar([vtv.ESTADO, vtv.DESCRIPCION, vtv.OBSERVACIONES].join(" "));
+    if(texto.includes("VENCIDA") || texto.includes("VENCIDO") || texto.includes("RECHAZ")) return "vehiculo-service-danger";
+    if(texto.includes("VIGENTE") || texto.includes("APROB")) return "vehiculo-service-ok";
+    return "vehiculo-service-warning";
+}
+
+function textoVtv(vtv){
+    if(!vtv) return "SIN REGISTRO";
+    const e = String(vtv.ESTADO || "").trim();
+    if(e) return e.toUpperCase();
+    const bolsa = normalizar([vtv.DESCRIPCION,vtv.OBSERVACIONES].join(" "));
+    if(bolsa.includes("VENCID")) return "VENCIDA";
+    if(bolsa.includes("VIGENTE")) return "VIGENTE";
+    return "REGISTRADA";
+}
 
 function renderizarVehiculos(vehiculos){
 
-    const tbody =
-        document.getElementById("tablaVehiculos");
+    const tbody = document.getElementById("tablaVehiculos");
+    if(!tbody) return;
 
-    if(!tbody){
-        return;
-    }
+    actualizarFiltroAreas(estadoPanel.vehiculos || []);
 
-    actualizarFiltroAreas(
-        estadoPanel.vehiculos || []
-    );
-
-    const contador =
-        document.getElementById("contadorVehiculos");
-
+    const contador = document.getElementById("contadorVehiculos");
     if(contador){
-        contador.textContent =
-            `${Array.isArray(vehiculos) ? vehiculos.length : 0} vehículos`;
+        contador.textContent = `${Array.isArray(vehiculos) ? vehiculos.length : 0} vehículos`;
     }
 
     if(!Array.isArray(vehiculos) || vehiculos.length === 0){
-
         tbody.innerHTML = `
             <tr>
-                <td colspan="7">
-                    <div class="empty">
-                        Sin vehículos que coincidan con el filtro
-                    </div>
+                <td colspan="9">
+                    <div class="empty">Sin vehículos que coincidan con el filtro</div>
                 </td>
-            </tr>
-        `;
-
+            </tr>`;
         return;
     }
 
-    tbody.innerHTML =
-        vehiculos.map(vehiculo => {
+    tbody.innerHTML = vehiculos.map(vehiculo => {
+        const estado = textoEstadoVehiculo(vehiculo.ESTADO_OPERATIVO);
+        const clase = claseEstadoVehiculo(vehiculo.ESTADO_OPERATIVO);
+        const marcaModelo = [vehiculo.MARCA,vehiculo.MODELO].filter(Boolean).join(" ");
+        const service = resumenServiceVehiculo(vehiculo.ID_VEHICULO);
+        const vtv = obtenerVtvVehiculo(vehiculo.ID_VEHICULO);
+        const serviceTexto = service.ultimo
+            ? (service.estado === "VENCIDO"
+                ? "VENCIDO"
+                : service.estado === "PRÓXIMO"
+                    ? "PRÓXIMO"
+                    : textoKm(service.proximo))
+            : "SIN DATOS";
+        const serviceClase = claseServiceResumen(service.estado);
+        const vtvTexto = textoVtv(vtv);
+        const vtvClase = claseVtvReporte(vtv);
+        const id = vehiculo.ID_VEHICULO || "";
 
-            const estado =
-                textoEstadoVehiculo(
-                    vehiculo.ESTADO_OPERATIVO
-                );
-
-            const clase =
-                claseEstadoVehiculo(
-                    vehiculo.ESTADO_OPERATIVO
-                );
-
-            const gps =
-                vehiculo.GPS_ID
-                    ? "🛰 ACTIVO"
-                    : "—";
-
-            const marcaModelo =
-                [
-                    vehiculo.MARCA,
-                    vehiculo.MODELO
-                ]
-                .filter(Boolean)
-                .join(" ");
-
-            return `
-                <tr>
-
-                    <td>
-                        <strong>
-                            ${escaparHTML(
-                                vehiculo.DOMINIO || "-"
-                            )}
-                        </strong>
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            vehiculo.INTERNO || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            marcaModelo || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            vehiculo.TIPO || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        ${escaparHTML(
-                            vehiculo.AREA || "-"
-                        )}
-                    </td>
-
-                    <td>
-                        <span class="table-status ${clase}">
-                            ${escaparHTML(estado)}
-                        </span>
-                    </td>
-
-                    <td>
-                        ${escaparHTML(gps)}
-                    </td>
-
-                </tr>
-            `;
-
-        }).join("");
+        return `
+            <tr>
+                <td><strong>${escaparHTML(vehiculo.DOMINIO || "-")}</strong></td>
+                <td>${escaparHTML(vehiculo.INTERNO || "-")}</td>
+                <td>${escaparHTML(marcaModelo || "-")}</td>
+                <td>${escaparHTML(vehiculo.AREA || "-")}</td>
+                <td>${escaparHTML(textoKm(service.kmActual))}</td>
+                <td>
+                    <div class="vehiculo-service-cell">
+                        <strong class="${serviceClase}">${escaparHTML(serviceTexto)}</strong>
+                        <span class="detalle-muted" style="display:block;margin-top:3px;font-size:8px">${service.ultimo ? "Faltan: " + textoFaltanService(service.faltan) : "Sin mantenimiento con KM"}</span>
+                    </div>
+                </td>
+                <td><span class="table-status ${vtvClase}">${escaparHTML(vtvTexto)}</span></td>
+                <td><span class="table-status ${clase}">${escaparHTML(estado)}</span></td>
+                <td><button class="btn-vehiculo-detalle" data-id="${escaparHTML(id)}" onclick="abrirDetalleVehiculo(this.dataset.id)">🔎 Ver</button></td>
+            </tr>`;
+    }).join("");
 }
 
+function abrirDetalleVehiculo(idVehiculo){
+    const vehiculo = (estadoPanel.vehiculos || []).find(v => vehiculoIdNormalizado(v.ID_VEHICULO) === vehiculoIdNormalizado(idVehiculo));
+    const modal = document.getElementById("modalDetalleVehiculo");
+    const body = document.getElementById("detalleVehiculoBody");
+    if(!vehiculo || !modal || !body) return;
 
+    const service = resumenServiceVehiculo(vehiculo.ID_VEHICULO);
+    const vtv = obtenerVtvVehiculo(vehiculo.ID_VEHICULO);
+    const viajes = datosViajesVehiculo(vehiculo.ID_VEHICULO);
+    const mantenimientos = datosMantenimientoVehiculo(vehiculo.ID_VEHICULO);
+    const reportes = datosReportesVehiculo(vehiculo.ID_VEHICULO);
+    const inspecciones = datosInspeccionesVehiculo(vehiculo.ID_VEHICULO);
+    const kmActual = service.kmActual;
+    const serviceClase = claseServiceResumen(service.estado);
+    const marcaModelo = [vehiculo.MARCA,vehiculo.MODELO].filter(Boolean).join(" ");
+
+    const lista = (items, render, empty="Sin registros") => items.length ? items.slice(0,12).map(render).join("") : `<div class="detalle-muted">${empty}</div>`;
+
+    body.innerHTML = `
+        <div class="detalle-vehiculo-head">
+            <div>
+                <div class="detalle-vehiculo-domain">${escaparHTML(vehiculo.DOMINIO || "SIN DOMINIO")}</div>
+                <div class="detalle-vehiculo-sub">${escaparHTML([marcaModelo,vehiculo.INTERNO ? "Interno " + vehiculo.INTERNO : "",vehiculo.AREA || ""].filter(Boolean).join(" · "))}</div>
+            </div>
+            <span class="table-status ${claseEstadoVehiculo(vehiculo.ESTADO_OPERATIVO)}">${escaparHTML(textoEstadoVehiculo(vehiculo.ESTADO_OPERATIVO))}</span>
+        </div>
+
+        <div class="detalle-grid">
+            <div class="detalle-card"><div class="detalle-card-title">📏 KM actual</div><div class="detalle-kpi">${escaparHTML(textoKm(kmActual))}</div><div class="detalle-card-help">Último KM final registrado en viajes</div></div>
+            <div class="detalle-card"><div class="detalle-card-title">🔧 Último service</div><div class="detalle-kpi">${escaparHTML(service.ultimo ? textoKm(service.ultimo.KM) : "—")}</div><div class="detalle-card-help">${escaparHTML(service.ultimo ? formatearFecha(service.ultimo.FECHA_ALTA) : "Sin registro")}</div></div>
+            <div class="detalle-card"><div class="detalle-card-title">🛠 Próximo service</div><div class="detalle-kpi ${serviceClase}">${escaparHTML(service.proximo !== null ? textoKm(service.proximo) : "—")}</div><div class="detalle-card-help ${serviceClase}">${escaparHTML(service.estado)}</div></div>
+            <div class="detalle-card"><div class="detalle-card-title">⚠️ Falta</div><div class="detalle-kpi ${serviceClase}">${escaparHTML(textoFaltanService(service.faltan))}</div><div class="detalle-card-help">Intervalo configurado: 10.000 km</div></div>
+
+            <div class="detalle-card"><div class="detalle-card-title">🚗 Datos de unidad</div><div class="detalle-card-help">Tipo</div><strong>${escaparHTML(vehiculo.TIPO || "—")}</strong><div class="detalle-card-help">GPS ID</div><strong>${escaparHTML(vehiculo.GPS_ID || "—")}</strong></div>
+            <div class="detalle-card"><div class="detalle-card-title">📋 VTV</div><div class="detalle-kpi ${claseVtvReporte(vtv)}">${escaparHTML(textoVtv(vtv))}</div><div class="detalle-card-help">${escaparHTML(vtv ? formatearFecha(vtv.FECHA_HORA) : "Sin reporte VTV")}</div></div>
+            <div class="detalle-card"><div class="detalle-card-title">📝 Reportes</div><div class="detalle-kpi">${reportes.length}</div><div class="detalle-card-help">Incidentes y novedades</div></div>
+            <div class="detalle-card"><div class="detalle-card-title">🔍 Inspecciones</div><div class="detalle-kpi">${inspecciones.length}</div><div class="detalle-card-help">Controles registrados</div></div>
+
+            <div class="detalle-card full"><div class="detalle-card-title">🔧 Historial de mantenimiento</div><div class="detalle-list">${lista(mantenimientos,m=>`<div class="detalle-list-item"><strong>${escaparHTML(formatearFecha(m.FECHA_ALTA))}</strong> · ${escaparHTML(m.TIPO || "MANTENIMIENTO")} · ${escaparHTML(textoKm(m.KM))}<br><span class="detalle-muted">${escaparHTML(m.DESCRIPCION || "Sin descripción")} · Estado: ${escaparHTML(m.ESTADO || "—")}</span></div>`)}</div></div>
+            <div class="detalle-card full"><div class="detalle-card-title">🚙 Últimos viajes</div><div class="detalle-list">${lista(viajes,v=>`<div class="detalle-list-item"><strong>${escaparHTML(formatearFecha(v.FECHA))}</strong> · ${escaparHTML(v.ESTADO || "—")}<br><span class="detalle-muted">KM inicial: ${escaparHTML(textoKm(v.KM_INICIAL))} · KM final: ${escaparHTML(textoKm(v.KM_FINAL))} · Recorrido: ${escaparHTML(textoKm(v.KM_RECORRIDO))}</span></div>`)}</div></div>
+            <div class="detalle-card full"><div class="detalle-card-title">📝 Últimos reportes</div><div class="detalle-list">${lista(reportes,r=>`<div class="detalle-list-item"><strong>${escaparHTML(formatearFecha(r.FECHA_HORA))}</strong> · ${escaparHTML(r.TIPO_REPORTE || "REPORTE")} · ${escaparHTML(r.ESTADO || "—")}<br><span class="detalle-muted">${escaparHTML(r.DESCRIPCION || "Sin descripción")}</span></div>`)}</div></div>
+        </div>`;
+
+    modal.classList.add("open");
+}
+
+function cerrarDetalleVehiculo(event){
+    if(event && event.target && event.target.id !== "modalDetalleVehiculo") return;
+    document.getElementById("modalDetalleVehiculo")?.classList.remove("open");
+}
 
 
 
@@ -14474,6 +14671,27 @@ function dvOrdenarCapasMapa(){
 
 </div>
 
+
+<!-- ======================================================
+     MODAL DETALLE VEHÍCULO
+     ====================================================== -->
+<div id="modalDetalleVehiculo" class="modal-overlay" onclick="cerrarDetalleVehiculo(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <div class="modal-title">Detalle del vehículo</div>
+                <div class="panel-subtitle">Kilometraje, service, VTV e historial de la unidad</div>
+            </div>
+            <button class="modal-close" onclick="cerrarDetalleVehiculo()">×</button>
+        </div>
+        <div class="modal-body" id="detalleVehiculoBody">
+            <div class="empty">Seleccioná un vehículo.</div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="cerrarDetalleVehiculo()">Cerrar</button>
+        </div>
+    </div>
+</div>
 
 <!-- ======================================================
      MODAL NUEVO CHOFER
