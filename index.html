@@ -3753,6 +3753,7 @@ textarea.form-control{
             <select id="filtroFechaServicio" class="filter servicio-date-filter"
                     onchange="filtrarServicios()" title="Filtrar servicios por fecha">
                 <option value="hoy" selected>📅 Servicios de hoy</option>
+                <option value="manana">📅 Servicios de mañana</option>
                 <option value="ayer">📅 Servicios de ayer</option>
                 <option value="7">📅 Últimos 7 días</option>
                 <option value="30">📅 Últimos 30 días</option>
@@ -3830,6 +3831,7 @@ textarea.form-control{
                 title="Filtrar asignaciones por fecha">
                 <option value="TODAS">Todas las fechas</option>
                 <option value="HOY" selected>📅 Hoy</option>
+                <option value="MANANA">📅 Mañana</option>
                 <option value="AYER">📅 Ayer</option>
                 <option value="7">📅 Últimos 7 días</option>
                 <option value="30">📅 Últimos 30 días</option>
@@ -5738,7 +5740,15 @@ function obtenerServiciosVista(){
     let fechaDesde = new Date(hoy);
     let fechaHasta = new Date(hoy);
 
-    if(modo === "ayer"){
+    if(modo === "manana"){
+
+        fechaDesde.setDate(
+            fechaDesde.getDate() + 1
+        );
+
+        fechaHasta = new Date(fechaDesde);
+
+    }else if(modo === "ayer"){
 
         fechaDesde.setDate(
             fechaDesde.getDate() - 1
@@ -6165,6 +6175,7 @@ function renderizarServicios(servicios){
     if(titulo){
         const titulos = {
             hoy: "Servicios de hoy",
+            manana: "Servicios de mañana",
             ayer: "Servicios de ayer",
             "7": "Servicios — últimos 7 días",
             "30": "Servicios — últimos 30 días",
@@ -6177,6 +6188,7 @@ function renderizarServicios(servicios){
         const hoy = hoyArgentinaISO().split("-").reverse().join("/");
         const subtitulos = {
             hoy: `Programación correspondiente al ${hoy}`,
+            manana: "Programación correspondiente al día siguiente",
             ayer: "Programación correspondiente al día anterior",
             "7": "Servicios correspondientes a los últimos 7 días",
             "30": "Servicios correspondientes a los últimos 30 días",
@@ -7071,6 +7083,14 @@ function filtrarAsignaciones(){
 
         fechaDesde = new Date(hoy);
         fechaHasta = new Date(hoy);
+
+    }else if(filtroDias === "MANANA"){
+
+        fechaDesde = new Date(hoy);
+        fechaDesde.setDate(
+            fechaDesde.getDate() + 1
+        );
+        fechaHasta = new Date(fechaDesde);
 
     }else if(filtroDias === "AYER"){
 
