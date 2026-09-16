@@ -10288,6 +10288,14 @@ function obtenerTextoVTVVehiculo(vehiculo){
     return "Registrada";
 }
 
+function claseVTVVehiculo(texto){
+    const t=normalizar(texto||"");
+    if(t.includes("VIGENTE") || t.includes("APROBADA") || t.includes("APTO")) return "online";
+    if(t.includes("VENCIDA") || t.includes("RECHAZADA") || t.includes("NO APTO")) return "danger";
+    if(t.includes("PENDIENTE") || t.includes("PRÓXIMA") || t.includes("PROXIMA") || t.includes("OBSERVADA")) return "warning";
+    return "status-neutral";
+}
+
 function etiquetaEstadoDetalle(estado,claseFn){
     const texto=String(estado||"PENDIENTE");
     const clase=typeof claseFn==="function" ? claseFn(texto) : "status-neutral";
@@ -10316,7 +10324,8 @@ function renderizarVehiculos(vehiculos){
         const gps=v.GPS_ID ? "🛰 ACTIVO" : "—";
         const kmActual=obtenerKMActualVehiculo(v);
         const service=infoServiceVehiculo(v);
-        const vtv=v.VTV || v.VTV_VENCIMIENTO || v.VTV_HASTA || "-";
+        const vtv=obtenerTextoVTVVehiculo(v);
+        const vtvClase=claseVTVVehiculo(vtv);
         const serviceTexto=service.kmProximo===null ? "-" : `${service.kmProximo.toLocaleString("es-AR")} km`;
         const serviceClase=service.estado==="VENCIDO" ? "danger" : service.estado==="PRÓXIMO" ? "warning" : "online";
         const serviceBtn=service.kmFaltan !== null && service.kmFaltan <= 1000
@@ -10330,7 +10339,7 @@ function renderizarVehiculos(vehiculos){
             <td>${escaparHTML(v.AREA || "-")}</td>
             <td>${kmActual===null ? "-" : escaparHTML(kmActual.toLocaleString("es-AR"))}</td>
             <td><span class="table-status ${serviceClase}">${escaparHTML(serviceTexto)}${service.estado==="VENCIDO" ? " · VENCIDO" : service.estado==="PRÓXIMO" ? " · PRÓXIMO" : ""}</span></td>
-            <td>${escaparHTML(vtv)}</td>
+            <td><span class="table-status ${vtvClase}">${escaparHTML(vtv)}</span></td>
             <td><span class="table-status ${clase}">${escaparHTML(estado)}</span></td>
             <td>${escaparHTML(gps)}</td>
             <td><div class="vehiculo-acciones"><button class="btn btn-secondary btn-vehiculo-accion" type="button" onclick="verVehiculo('${escaparAtributo(v.ID_VEHICULO)}')">Ver</button>${serviceBtn}</div></td>
@@ -11849,6 +11858,14 @@ async function cargarReportes(){
     estadoPanel.reportes = reportes;
     actualizarKPIsReportes(reportes);
     renderizarReportes(reportes);
+
+    // La lista de Vehículos también usa los registros de VTV que llegan
+    // desde Reportes. Al terminar de cargar Reportes, refrescamos la tabla
+    // para que la columna VTV se actualice aunque ambas cargas hayan terminado
+    // en distinto orden.
+    if(Array.isArray(estadoPanel.vehiculos) && typeof renderizarVehiculos === "function") {
+        renderizarVehiculos(estadoPanel.vehiculos);
+    }
 
     return reportes;
 }
