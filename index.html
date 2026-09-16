@@ -1595,6 +1595,39 @@ textarea.form-control{
     width:270px;
 }
 
+.asignacion-date-filter,
+.servicio-date-filter{
+    min-width:150px;
+    font-weight:700;
+}
+
+.asignacion-chofer-cell{
+    min-width:165px;
+}
+
+.asignacion-chofer-name{
+    display:block;
+    color:#f5f9ff;
+    font-size:11px;
+    font-weight:800;
+    line-height:1.25;
+}
+
+.asignacion-chofer-domain{
+    display:block;
+    margin-top:4px;
+    color:#8fb4d9;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.35px;
+    line-height:1.2;
+}
+
+.asignacion-vehiculo-id{
+    font-size:9px;
+    color:#718198;
+}
+
 .asignacion-count{
     font-size:10px;
     color:var(--muted);
@@ -3734,7 +3767,9 @@ textarea.form-control{
         <div class="servicio-toolbar">
             <select id="filtroFechaServicio" class="filter servicio-date-filter"
                     onchange="filtrarServicios()" title="Filtrar por fecha">
-                <option value="hoy" selected>📅 Servicios de hoy</option>
+                <option value="ayer">📅 Servicios de ayer</option>
+                <option value="hoy" selected>📅 Servicios del día en curso</option>
+                <option value="manana">📅 Servicios de mañana</option>
                 <option value="todos">📋 Todas las fechas</option>
             </select>
             <input id="filtroServicio" class="filter servicio-search"
@@ -3795,6 +3830,14 @@ textarea.form-control{
         </div>
 
         <div class="asignacion-toolbar">
+
+            <select id="filtroFechaAsignacion" class="filter asignacion-date-filter"
+                    onchange="filtrarAsignaciones()" title="Filtrar asignaciones por fecha">
+                <option value="ayer">📅 Ayer</option>
+                <option value="hoy" selected>📅 Día en curso</option>
+                <option value="manana">📅 Mañana</option>
+                <option value="todos">📋 Todas las fechas</option>
+            </select>
 
             <input
                 id="filtroAsignacion"
@@ -5309,6 +5352,7 @@ let estadoPanel = {
     eventos:[],
     choferes:[],
     reportes:[],
+    indices:{choferes:new Map(),vehiculos:new Map(),servicios:new Map()},
     mantenimiento:[],
     asignaciones:[],
     ultimaActualizacion:null
@@ -5681,8 +5725,28 @@ function fechaArgentinaSumarDias(dias){
     return dt.toISOString().slice(0,10);
 }
 
+function fechaVistaISO(modo){
+    const base = hoyArgentinaISO();
+    if(modo === "ayer") return fechaArgentinaSumarDias(-1);
+    if(modo === "manana") return fechaArgentinaSumarDias(1);
+    return base;
+}
+
 function servicioEsDeHoy(servicio){
     return fechaLocalISOArgentina(servicio?.FECHA) === hoyArgentinaISO();
+}
+
+function servicioEsDeAyer(servicio){
+    return fechaLocalISOArgentina(servicio?.FECHA) === fechaArgentinaSumarDias(-1);
+}
+
+function servicioEsDeManana(servicio){
+    return fechaLocalISOArgentina(servicio?.FECHA) === fechaArgentinaSumarDias(1);
+}
+
+function elementoEsDeFechaVista(item, campoFecha, modo){
+    if(modo === "todos") return true;
+    return fechaLocalISOArgentina(item?.[campoFecha]) === fechaVistaISO(modo);
 }
 
 function obtenerServiciosVista(){
@@ -5694,9 +5758,9 @@ function obtenerServiciosVista(){
         document.getElementById("filtroFechaServicio")?.value || "hoy"
     );
 
-    return modo === "todos"
-        ? todos
-        : todos.filter(servicioEsDeHoy);
+    return todos.filter(servicio =>
+        elementoEsDeFechaVista(servicio, "FECHA", modo)
+    );
 }
 
 async function cargarServicios(){
@@ -5712,6 +5776,9 @@ async function cargarServicios(){
         : [];
 
     estadoPanel.servicios = servicios;
+    estadoPanel.indices.servicios = new Map(servicios.map(x => [
+        String(x.ID_SERVICIO || "").trim(), x
+    ]).filter(([id]) => id));
     filtrarServicios();
     actualizarKPIServiciosDelDia(servicios);
 
@@ -6062,15 +6129,23 @@ function renderizarServicios(servicios){
         contador.textContent = `${lista.length} ${lista.length === 1 ? "servicio" : "servicios"}`;
     }
 
+    const fechaVista = fechaVistaISO(modo).split("-").reverse().join("/");
+    const etiquetaVista = modo === "ayer"
+        ? "Servicios de ayer"
+        : modo === "manana"
+            ? "Servicios de mañana"
+            : modo === "todos"
+                ? "Servicios registrados"
+                : "Servicios del día en curso";
+
     if(titulo){
-        titulo.textContent = modo === "todos" ? "Servicios registrados" : "Servicios de hoy";
+        titulo.textContent = etiquetaVista;
     }
 
     if(subtitulo){
-        const hoy = hoyArgentinaISO().split("-").reverse().join("/");
         subtitulo.textContent = modo === "todos"
             ? "Todas las fechas disponibles en la tabla SERVICIOS"
-            : `Programación correspondiente al ${hoy}`;
+            : `Programación correspondiente al ${fechaVista}`;
     }
 
     if(lista.length === 0){
@@ -6652,9 +6727,7 @@ async function cargarAsignaciones(){
     estadoPanel.asignaciones =
         asignaciones;
 
-    renderizarAsignaciones(
-        asignaciones
-    );
+    filtrarAsignaciones();
 
     return asignaciones;
 }
@@ -6696,30 +6769,18 @@ function claseEstadoAsignacion(estado){
 
 
 function obtenerServicioAsignacionPorId(id){
-    const lista = Array.isArray(estadoPanel.servicios)
-        ? estadoPanel.servicios
-        : [];
-    return lista.find(s =>
-        String(s.ID_SERVICIO || "").trim() === String(id || "").trim()
-    ) || null;
+    const key = String(id || "").trim();
+    return estadoPanel.indices?.servicios?.get(key) || null;
 }
 
 function obtenerPersonaAsignacionPorId(id){
-    const lista = Array.isArray(estadoPanel.choferes)
-        ? estadoPanel.choferes
-        : [];
-    return lista.find(c =>
-        String(c.ID_CHOFER || "").trim() === String(id || "").trim()
-    ) || null;
+    const key = String(id || "").trim();
+    return estadoPanel.indices?.choferes?.get(key) || null;
 }
 
 function obtenerVehiculoAsignacionPorId(id){
-    const lista = Array.isArray(estadoPanel.vehiculos)
-        ? estadoPanel.vehiculos
-        : [];
-    return lista.find(v =>
-        String(v.ID_VEHICULO || "").trim() === String(id || "").trim()
-    ) || null;
+    const key = String(id || "").trim();
+    return estadoPanel.indices?.vehiculos?.get(key) || null;
 }
 
 function datosRutaAsignacion(asignacion){
@@ -6790,6 +6851,26 @@ function renderizarAsignaciones(asignaciones){
     if(contador){
         contador.textContent =
             `${Array.isArray(asignaciones) ? asignaciones.length : 0} asignaciones`;
+    }
+
+    const modoFecha = String(
+        document.getElementById("filtroFechaAsignacion")?.value || "hoy"
+    );
+    const tituloAsignaciones = document.querySelector("#asignaciones .panel-title");
+    const subtituloAsignaciones = document.querySelector("#asignaciones .panel-subtitle");
+    if(tituloAsignaciones){
+        tituloAsignaciones.textContent = modoFecha === "ayer"
+            ? "Asignaciones de ayer"
+            : modoFecha === "manana"
+                ? "Asignaciones de mañana"
+                : modoFecha === "todos"
+                    ? "Asignaciones registradas"
+                    : "Asignaciones del día en curso";
+    }
+    if(subtituloAsignaciones){
+        subtituloAsignaciones.textContent = modoFecha === "todos"
+            ? "Vínculos operativos entre servicios, choferes y vehículos · todas las fechas"
+            : `Vínculos operativos correspondientes al ${fechaVistaISO(modoFecha).split("-").reverse().join("/")}`;
     }
 
     if(!Array.isArray(asignaciones) || asignaciones.length === 0){
@@ -6875,12 +6956,13 @@ function renderizarAsignaciones(asignaciones){
                     ` : ""}
                 </td>
 
-                <td>
-                    ${escaparHTML(chofer)}
+                <td class="asignacion-chofer-cell">
+                    <span class="asignacion-chofer-name">${escaparHTML(chofer)}</span>
+                    <span class="asignacion-chofer-domain">${escaparHTML(vehiculo)}</span>
                 </td>
 
                 <td>
-                    ${escaparHTML(vehiculo)}
+                    <span class="asignacion-vehiculo-id">${escaparHTML(vehiculo)}</span>
                 </td>
 
                 <td>
@@ -6914,11 +6996,16 @@ function filtrarAsignaciones(){
             )?.value
         );
 
+    const modoFecha = String(
+        document.getElementById("filtroFechaAsignacion")?.value || "hoy"
+    );
+
     const filtradas =
-        (
-            estadoPanel.asignaciones ||
-            []
-        ).filter(asignacion => {
+        (estadoPanel.asignaciones || []).filter(asignacion => {
+
+            if(!elementoEsDeFechaVista(asignacion, "FECHA", modoFecha)){
+                return false;
+            }
 
             const servicio = obtenerServicioAsignacionPorId(asignacion.ID_SERVICIO);
             const chofer = obtenerPersonaAsignacionPorId(asignacion.ID_CHOFER);
@@ -6938,15 +7025,11 @@ function filtrarAsignaciones(){
             .map(normalizar)
             .join(" ");
 
-            return !texto ||
-                contenido.includes(texto);
+            return !texto || contenido.includes(texto);
         });
 
-    renderizarAsignaciones(
-        filtradas
-    );
+    renderizarAsignaciones(filtradas);
 }
-
 
 let asignacionServiciosDisponibles = [];
 
@@ -9792,6 +9875,9 @@ async function cargarVehiculos(){
             : [];
 
     estadoPanel.vehiculos = vehiculos;
+    estadoPanel.indices.vehiculos = new Map(vehiculos.map(v => [
+        String(v.ID_VEHICULO || "").trim(), v
+    ]).filter(([id]) => id));
 
     actualizarFiltroAreas(vehiculos);
 
@@ -10751,6 +10837,9 @@ async function cargarChoferes(){
             : [];
 
     estadoPanel.choferes = choferes;
+    estadoPanel.indices.choferes = new Map(choferes.map(c => [
+        String(c.ID_CHOFER || "").trim(), c
+    ]).filter(([id]) => id));
 
     renderizarChoferes(choferes);
 
