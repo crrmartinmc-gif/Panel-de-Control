@@ -10248,8 +10248,44 @@ function obtenerMantenimientosVehiculo(vehiculo){
     return (estadoPanel.mantenimiento||[]).filter(m=>registroPerteneceAVehiculo(m,vehiculo));
 }
 
+function esReporteVTV(registro){
+    if(!registro) return false;
+    const tipo=normalizar(registro.TIPO_REPORTE||registro.TIPO||"");
+    const descripcion=normalizar(registro.DESCRIPCION||registro.OBSERVACIONES||"");
+    const resultado=normalizar(registro.RESULTADO||"");
+    const texto=normalizar([tipo,descripcion,resultado].join(" "));
+
+    // Los registros de VTV pueden llegar como CONTROL_VEHICULO,
+    // o simplemente como una descripción que identifica la VTV.
+    // En la ficha integral deben quedar separados de los reportes comunes.
+    return texto.includes("VTV");
+}
+
+function obtenerReporteVTVVehiculo(vehiculo){
+    return (estadoPanel.reportes||[])
+        .filter(r=>registroPerteneceAVehiculo(r,vehiculo) && esReporteVTV(r))
+        .sort((a,b)=>new Date(b?.FECHA_HORA||0)-new Date(a?.FECHA_HORA||0))[0] || null;
+}
+
 function obtenerReportesVehiculo(vehiculo){
-    return (estadoPanel.reportes||[]).filter(r=>registroPerteneceAVehiculo(r,vehiculo));
+    return (estadoPanel.reportes||[]).filter(r=>registroPerteneceAVehiculo(r,vehiculo) && !esReporteVTV(r));
+}
+
+function obtenerTextoVTVVehiculo(vehiculo){
+    const datoDirecto=vehiculo?.VTV || vehiculo?.VTV_VENCIMIENTO || vehiculo?.VTV_HASTA;
+    if(datoDirecto) return String(datoDirecto);
+
+    const reporte=obtenerReporteVTVVehiculo(vehiculo);
+    if(!reporte) return "No registrada";
+
+    const descripcion=String(reporte.DESCRIPCION||reporte.OBSERVACIONES||"").trim();
+    const matchEstado=descripcion.match(/VTV\s*\|?\s*ESTADO\s*:\s*([^|;\n]+)/i);
+    if(matchEstado && matchEstado[1]) return matchEstado[1].trim();
+
+    const matchVTV=descripcion.match(/VTV\s*[:\-]?\s*([^|;\n]+)/i);
+    if(matchVTV && matchVTV[1]) return matchVTV[1].trim();
+
+    return "Registrada";
 }
 
 function etiquetaEstadoDetalle(estado,claseFn){
@@ -10310,12 +10346,13 @@ function verVehiculo(idVehiculo){
     const service=infoServiceVehiculo(v);
     const mantenimientos=obtenerMantenimientosVehiculo(v).sort((a,b)=>new Date(b?.FECHA_ALTA||0)-new Date(a?.FECHA_ALTA||0));
     const reportes=obtenerReportesVehiculo(v).sort((a,b)=>new Date(b?.FECHA_HORA||0)-new Date(a?.FECHA_HORA||0));
+    const reporteVTV=obtenerReporteVTVVehiculo(v);
     const estadoTexto=textoEstadoVehiculo(v.ESTADO_OPERATIVO);
     const estadoClase=claseEstadoVehiculo(v.ESTADO_OPERATIVO);
     const kmActual=service.kmActual===null ? "-" : service.kmActual.toLocaleString("es-AR");
     const ultimoService=service.kmUltimo===null ? "-" : `${service.kmUltimo.toLocaleString("es-AR")} km`;
     const proximoService=service.kmProximo===null ? "-" : `${service.kmProximo.toLocaleString("es-AR")} km`;
-    const vtv=v.VTV || v.VTV_VENCIMIENTO || v.VTV_HASTA || "No registrada";
+    const vtv=obtenerTextoVTVVehiculo(v);
 
     const mantenimientoHTML=mantenimientos.length
         ? mantenimientos.map(m=>{
@@ -10373,6 +10410,22 @@ function verVehiculo(idVehiculo){
         <div class="detalle-vehiculo-seccion">
             <div class="detalle-vehiculo-seccion-head"><div class="detalle-vehiculo-seccion-title">🔧 Historial de mantenimiento</div><div class="detalle-vehiculo-seccion-count">${mantenimientos.length} registro${mantenimientos.length===1?"":"s"}</div></div>
             <div class="detalle-vehiculo-lista detalle-vehiculo-scroll">${mantenimientoHTML}</div>
+        </div>
+
+        <div class="detalle-vehiculo-seccion detalle-vehiculo-vtv-seccion">
+            <div class="detalle-vehiculo-seccion-head"><div class="detalle-vehiculo-seccion-title">📄 VTV de la unidad</div><div class="detalle-vehiculo-seccion-count">${reporteVTV ? "1 registro" : "Sin registro"}</div></div>
+            <div class="detalle-vehiculo-lista">
+                ${reporteVTV ? `<div class="detalle-vehiculo-item">
+                    <div class="detalle-vehiculo-item-top">
+                        <div class="detalle-vehiculo-item-title">CONTROL DE VEHÍCULO · VTV</div>
+                        <div class="detalle-vehiculo-item-date">${escaparHTML(formatearFecha(reporteVTV.FECHA_HORA))}</div>
+                    </div>
+                    <div class="detalle-vehiculo-item-desc">${escaparHTML(reporteVTV.DESCRIPCION||reporteVTV.OBSERVACIONES||"VTV registrada")}</div>
+                    <div class="detalle-vehiculo-item-meta">
+                        <span class="table-status online">${escaparHTML(vtv)}</span>
+                    </div>
+                </div>` : `<div class="detalle-vehiculo-empty">No hay información de VTV registrada para esta unidad.</div>`}
+            </div>
         </div>
 
         <div class="detalle-vehiculo-seccion">
