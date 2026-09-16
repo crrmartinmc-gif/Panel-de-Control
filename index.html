@@ -1387,92 +1387,6 @@ textarea.form-control{
 
 
 /* =========================================================
-   VEHÍCULOS — SERVICE / KM / DETALLE
-   ========================================================= */
-.vehiculo-metricas{
-    display:grid;
-    grid-template-columns:repeat(4,minmax(120px,1fr));
-    gap:9px;
-    margin-top:10px;
-}
-.vehiculo-metrica{
-    padding:10px 11px;
-    border:1px solid rgba(255,255,255,.07);
-    border-radius:10px;
-    background:rgba(255,255,255,.025);
-}
-.vehiculo-metrica-label{
-    color:#718198;
-    font-size:8px;
-    text-transform:uppercase;
-    letter-spacing:.5px;
-}
-.vehiculo-metrica-value{
-    margin-top:4px;
-    color:#eef4fb;
-    font-size:13px;
-    font-weight:800;
-}
-.vehiculo-service-ok{color:#6ee7a0!important}
-.vehiculo-service-warning{color:#fbbf24!important}
-.vehiculo-service-danger{color:#f87171!important}
-.btn-vehiculo-detalle{
-    min-height:32px;
-    padding:7px 10px;
-    border-radius:8px;
-    border:1px solid rgba(59,130,246,.30);
-    background:rgba(59,130,246,.10);
-    color:#60a5fa;
-    font:800 9px Inter,Arial,sans-serif;
-    cursor:pointer;
-    white-space:nowrap;
-}
-.btn-vehiculo-detalle:hover{background:rgba(59,130,246,.18);transform:translateY(-1px)}
-#modalDetalleVehiculo .modal{width:min(920px,100%)}
-.detalle-vehiculo-head{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    padding:14px 16px;
-    border:1px solid var(--border);
-    border-radius:12px;
-    background:rgba(255,255,255,.025);
-}
-.detalle-vehiculo-domain{font-size:20px;font-weight:900;color:#f4f7fb}
-.detalle-vehiculo-sub{font-size:10px;color:#718198;margin-top:4px}
-.detalle-grid{
-    display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:10px;
-    margin-top:12px;
-}
-.detalle-card{
-    border:1px solid var(--border);
-    border-radius:11px;
-    padding:12px;
-    background:#0c1727;
-    min-width:0;
-}
-.detalle-card.full{grid-column:1/-1}
-.detalle-card-title{font-size:10px;font-weight:800;color:#eef4fb;margin-bottom:8px}
-.detalle-card-help{font-size:9px;color:#718198;margin-top:3px}
-.detalle-kpi{font-size:18px;font-weight:900;color:#f4f7fb}
-.detalle-list{display:flex;flex-direction:column;gap:7px;max-height:220px;overflow:auto}
-.detalle-list-item{padding:8px 9px;border-radius:8px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);font-size:9px;line-height:1.45}
-.detalle-list-item strong{color:#eef4fb}
-.detalle-muted{color:#718198}
-@media(max-width:850px){
-    .vehiculo-metricas{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .detalle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-}
-@media(max-width:600px){
-    .vehiculo-metricas{grid-template-columns:1fr 1fr}
-    .detalle-grid{grid-template-columns:1fr}
-    .detalle-card.full{grid-column:auto}
-}
-
-/* =========================================================
    MÓDULO CHOFERES
    ========================================================= */
 
@@ -3023,6 +2937,16 @@ textarea.form-control{
     }
 }
 
+
+/* =========================================================
+   VEHÍCULOS + MANTENIMIENTO — CAPA SEGURA
+   ========================================================= */
+.vehiculo-acciones,.mantenimiento-acciones{display:flex;gap:5px;align-items:center;flex-wrap:wrap;min-width:120px}
+.btn-vehiculo-accion{padding:6px 8px;font-size:9px;white-space:nowrap}
+.mantenimiento-estado-select{min-width:118px;padding:6px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:#111c2d;color:#e8eef6;font-size:9px;font-weight:700;outline:none}
+.mantenimiento-estado-select.inspeccion-aprobada{color:#6ee7a0}
+.mantenimiento-estado-select.inspeccion-observada{color:#fbbf24}
+.mantenimiento-estado-select.inspeccion-rechazada{color:#f87171}
 </style>
 </head>
 
@@ -3714,6 +3638,7 @@ textarea.form-control{
                         <th>Service</th>
                         <th>VTV</th>
                         <th>Estado</th>
+                        <th>GPS</th>
                         <th>Acciones</th>
 
                     </tr>
@@ -3724,7 +3649,7 @@ textarea.form-control{
 
                     <tr>
 
-                        <td colspan="9">
+                        <td colspan="7">
 
                             <div class="empty">
                                 Sin datos cargados
@@ -3840,12 +3765,12 @@ textarea.form-control{
         <div class="servicio-toolbar">
             <select id="filtroFechaServicio" class="filter servicio-date-filter"
                     onchange="filtrarServicios()" title="Filtrar servicios por fecha">
-                <option value="hoy" selected>📅 Servicios de hoy</option>
+                <option value="hoy">📅 Servicios de hoy</option>
+                 <option value="todos" selected>📋 Todas las fechas</option>
                 <option value="manana">📅 Servicios de mañana</option>
                 <option value="ayer">📅 Servicios de ayer</option>
                 <option value="7">📅 Últimos 7 días</option>
                 <option value="30">📅 Últimos 30 días</option>
-                <option value="todos">📋 Todas las fechas</option>
             </select>
             <input id="filtroServicio" class="filter servicio-search"
                    placeholder="Buscar servicio, tipo o ruta..."
@@ -4534,17 +4459,17 @@ textarea.form-control{
 
         <div style="display:flex;gap:8px;align-items:center">
             <input id="filtroMantenimiento" class="filter"
-                   placeholder="Buscar vehículo, tipo, responsable..."
+                   placeholder="Buscar vehículo, avería, service..."
                    oninput="filtrarMantenimiento()">
 
             <button class="btn btn-secondary" type="button"
                     onclick="cargarMantenimiento()">↻ Actualizar</button>
 
-            <button class="btn btn-primary" type="button"
-                    onclick="abrirModalAveria()">⚠ + Nueva avería</button>
+            <button class="btn btn-secondary" type="button"
+                    onclick="abrirModalMantenimiento('AVERIA')">+ Nueva avería</button>
 
             <button class="btn btn-primary" type="button"
-                    onclick="abrirModalMantenimiento()">+ Nuevo mantenimiento</button>
+                    onclick="abrirModalMantenimiento('SERVICE')">+ Nuevo mantenimiento</button>
         </div>
     </div>
 
@@ -5436,8 +5361,6 @@ let estadoPanel = {
     choferes:[],
     reportes:[],
     mantenimiento:[],
-    viajes:[],
-    inspecciones:[],
     asignaciones:[],
     ultimaActualizacion:null
 };
@@ -6401,6 +6324,16 @@ function convertirHoraOrdenServicio(valor){
 }
 
 function filtrarServicios(){
+    const modoVista = String(document.getElementById("filtroFechaServicio")?.value || "todos");
+    const tituloVista = document.getElementById("tituloServiciosVista");
+    const subtituloVista = document.getElementById("subtituloServiciosVista");
+    if(tituloVista){
+        tituloVista.textContent = modoVista === "todos" ? "Todas las fechas" : modoVista === "hoy" ? "Servicios de hoy" : modoVista === "manana" ? "Servicios de mañana" : modoVista === "ayer" ? "Servicios de ayer" : "Servicios recientes";
+    }
+    if(subtituloVista){
+        subtituloVista.textContent = modoVista === "todos" ? "Programación registrada en el Backend Maestro" : "Programación correspondiente al filtro seleccionado";
+    }
+
 
     const texto = normalizar(
         document.getElementById("filtroServicio")?.value
@@ -10087,309 +10020,215 @@ async function guardarInspeccion(event){
 
 async function cargarVehiculos(){
 
-    // Vehículos + datos necesarios para KM, service y VTV.
-    // Se consultan en paralelo y se conservan en estadoPanel.
-    const [resultadoVehiculos, resultadoViajes, resultadoMantenimiento, resultadoReportes, resultadoInspecciones] =
-        await Promise.all([
-            leerBackend("vehiculos"),
+    // IMPORTANTE: la flota se carga de forma independiente.
+    // Ningún dato secundario puede impedir que aparezcan los vehículos.
+    const resultado = await leerBackend("vehiculos");
+
+    if(!resultado?.ok){
+        console.warn("No se pudieron cargar los vehículos desde Backend Maestro.");
+        return estadoPanel.vehiculos || [];
+    }
+
+    const vehiculos = Array.isArray(resultado.datos)
+        ? resultado.datos
+        : [];
+
+    estadoPanel.vehiculos = vehiculos;
+    actualizarFiltroAreas(vehiculos);
+    renderizarVehiculos(vehiculos);
+
+    // Los datos complementarios se cargan después y no bloquean la flota.
+    cargarComplementosVehiculos();
+
+    return vehiculos;
+}
+
+async function cargarComplementosVehiculos(){
+    try{
+        const resultados = await Promise.allSettled([
             leerBackend("viajes"),
             leerBackend("mantenimiento"),
             leerBackend("reportes"),
             leerBackend("inspecciones")
         ]);
 
-    if(resultadoVehiculos?.ok && Array.isArray(resultadoVehiculos.datos)){
-        estadoPanel.vehiculos = resultadoVehiculos.datos;
-    }
-    if(resultadoViajes?.ok && Array.isArray(resultadoViajes.datos)){
-        estadoPanel.viajes = resultadoViajes.datos;
-    }
-    if(resultadoMantenimiento?.ok && Array.isArray(resultadoMantenimiento.datos)){
-        estadoPanel.mantenimiento = resultadoMantenimiento.datos;
-    }
-    if(resultadoReportes?.ok && Array.isArray(resultadoReportes.datos)){
-        estadoPanel.reportes = resultadoReportes.datos;
-    }
-    if(resultadoInspecciones?.ok && Array.isArray(resultadoInspecciones.datos)){
-        estadoPanel.inspecciones = resultadoInspecciones.datos;
-    }
+        const [viajes,mantenimiento,reportes,inspecciones] = resultados;
 
-    const vehiculos = Array.isArray(estadoPanel.vehiculos)
-        ? estadoPanel.vehiculos
-        : [];
+        if(viajes.status === "fulfilled" && viajes.value?.ok && Array.isArray(viajes.value.datos)){
+            estadoPanel.viajes = viajes.value.datos;
+        }
+        if(mantenimiento.status === "fulfilled" && mantenimiento.value?.ok && Array.isArray(mantenimiento.value.datos)){
+            estadoPanel.mantenimiento = mantenimiento.value.datos;
+        }
+        if(reportes.status === "fulfilled" && reportes.value?.ok && Array.isArray(reportes.value.datos)){
+            estadoPanel.reportes = reportes.value.datos;
+        }
+        if(inspecciones.status === "fulfilled" && inspecciones.value?.ok && Array.isArray(inspecciones.value.datos)){
+            estadoPanel.inspecciones = inspecciones.value.datos;
+        }
 
-    actualizarFiltroAreas(vehiculos);
-    renderizarVehiculos(vehiculos);
-    return vehiculos;
+        // Nunca reemplazamos la flota por [] si una lectura secundaria falla.
+        renderizarVehiculos(estadoPanel.vehiculos || []);
+    }catch(error){
+        console.warn("Carga secundaria de vehículos no disponible:",error);
+    }
 }
 
-function numeroKilometros(valor){
+function claseEstadoVehiculo(estado){
+    const e = normalizar(estado);
+    if(e === "DISPONIBLE" || e === "OPERATIVO") return "online";
+    if(e === "EN TALLER") return "warning";
+    return "danger";
+}
+
+function textoEstadoVehiculo(estado){
+    const e = normalizar(estado);
+    if(e === "DISPONIBLE") return "DISPONIBLE";
+    if(e === "EN TALLER") return "EN TALLER";
+    if(e === "OPERATIVO") return "OPERATIVO";
+    if(!e) return "SIN ESTADO";
+    return e;
+}
+
+function numeroKMVehiculo(valor){
     if(valor === null || valor === undefined || valor === "") return null;
-    if(typeof valor === "number" && Number.isFinite(valor)) return valor;
-    const limpio = String(valor).trim().replace(/\s/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
-    const n = Number(limpio);
+    const n = Number(String(valor).replace(/\./g,"").replace(",","."));
     return Number.isFinite(n) ? n : null;
 }
 
-function fechaTimestamp(valor){
-    if(valor === null || valor === undefined || valor === "") return 0;
-    const t = new Date(valor).getTime();
-    return Number.isFinite(t) ? t : 0;
+function obtenerKMActualVehiculo(vehiculo){
+    const directo = numeroKMVehiculo(vehiculo?.KM_ACTUAL ?? vehiculo?.KM);
+    if(directo !== null) return directo;
+
+    const id = String(vehiculo?.ID_VEHICULO || "").trim();
+    const valores=[];
+
+    (estadoPanel.viajes || []).forEach(v=>{
+        if(String(v?.ID_VEHICULO || "").trim() !== id) return;
+        const km = numeroKMVehiculo(v?.KM_FINAL ?? v?.KM_INICIAL);
+        if(km !== null) valores.push(km);
+    });
+
+    (estadoPanel.inspecciones || []).forEach(i=>{
+        if(String(i?.ID_VEHICULO || "").trim() !== id) return;
+        const km = numeroKMVehiculo(i?.KM_INICIAL ?? i?.KM_FINAL);
+        if(km !== null) valores.push(km);
+    });
+
+    return valores.length ? Math.max(...valores) : null;
 }
 
-function vehiculoIdNormalizado(valor){
-    return normalizar(valor || "");
+function obtenerUltimoServiceVehiculo(vehiculo){
+    const id = String(vehiculo?.ID_VEHICULO || "").trim();
+    const lista = (estadoPanel.mantenimiento || []).filter(m=>{
+        if(String(m?.ID_VEHICULO || "").trim() !== id) return false;
+        const tipo=normalizar(m?.TIPO || "");
+        return tipo.includes("SERVICE") || tipo.includes("PREVENTIVO");
+    });
+
+    lista.sort((a,b)=>new Date(b?.FECHA_ALTA || 0)-new Date(a?.FECHA_ALTA || 0));
+    return lista[0] || null;
 }
 
-function datosMantenimientoVehiculo(idVehiculo){
-    const id = vehiculoIdNormalizado(idVehiculo);
-    return (estadoPanel.mantenimiento || [])
-        .filter(m => vehiculoIdNormalizado(m.ID_VEHICULO) === id)
-        .sort((a,b) => fechaTimestamp(b.FECHA_ALTA || b.FECHA_INGRESO_TALLER) - fechaTimestamp(a.FECHA_ALTA || a.FECHA_INGRESO_TALLER));
-}
+function infoServiceVehiculo(vehiculo){
+    const ultimo=obtenerUltimoServiceVehiculo(vehiculo);
+    const kmUltimo=numeroKMVehiculo(ultimo?.KM);
+    const kmActual=obtenerKMActualVehiculo(vehiculo);
 
-function datosViajesVehiculo(idVehiculo){
-    const id = vehiculoIdNormalizado(idVehiculo);
-    return (estadoPanel.viajes || [])
-        .filter(v => vehiculoIdNormalizado(v.ID_VEHICULO) === id)
-        .sort((a,b) => {
-            const fa = fechaTimestamp((a.FECHA || "") + " " + (a.HORA_FIN || a.HORA_INICIO || ""));
-            const fb = fechaTimestamp((b.FECHA || "") + " " + (b.HORA_FIN || b.HORA_INICIO || ""));
-            return fb-fa;
-        });
-}
-
-function datosReportesVehiculo(idVehiculo){
-    const id = vehiculoIdNormalizado(idVehiculo);
-    return (estadoPanel.reportes || [])
-        .filter(r => vehiculoIdNormalizado(r.ID_VEHICULO) === id)
-        .sort((a,b) => fechaTimestamp(b.FECHA_HORA) - fechaTimestamp(a.FECHA_HORA));
-}
-
-function datosInspeccionesVehiculo(idVehiculo){
-    const id = vehiculoIdNormalizado(idVehiculo);
-    return (estadoPanel.inspecciones || [])
-        .filter(i => vehiculoIdNormalizado(i.ID_VEHICULO) === id)
-        .sort((a,b) => fechaTimestamp(b.FECHA_HORA || b.FECHA) - fechaTimestamp(a.FECHA_HORA || a.FECHA));
-}
-
-function obtenerKmActualVehiculo(idVehiculo){
-    const viajes = datosViajesVehiculo(idVehiculo);
-    for(const viaje of viajes){
-        const km = numeroKilometros(viaje.KM_FINAL);
-        if(km !== null) return {km, viaje};
+    if(kmUltimo === null){
+        return {kmActual,kmUltimo:null,kmProximo:null,kmFaltan:null,estado:"SIN REGISTRO"};
     }
 
-    // Compatibilidad con posibles campos de kilometraje existentes en VEHICULOS.
-    const vehiculo = (estadoPanel.vehiculos || []).find(v => vehiculoIdNormalizado(v.ID_VEHICULO) === vehiculoIdNormalizado(idVehiculo));
-    if(vehiculo){
-        for(const campo of ["KM_ACTUAL","KILOMETRAJE","KM"]){
-            const km = numeroKilometros(vehiculo[campo]);
-            if(km !== null) return {km, viaje:null};
-        }
-    }
-    return {km:null, viaje:null};
+    const kmProximo=kmUltimo+10000;
+    const kmFaltan=kmActual===null ? null : kmProximo-kmActual;
+    let estado="OK";
+    if(kmFaltan !== null && kmFaltan <= 0) estado="VENCIDO";
+    else if(kmFaltan !== null && kmFaltan <= 1000) estado="PRÓXIMO";
+
+    return {kmActual,kmUltimo,kmProximo,kmFaltan,estado,ultimo};
 }
 
-function obtenerUltimoServiceVehiculo(idVehiculo){
-    const mantenimientos = datosMantenimientoVehiculo(idVehiculo)
-        .filter(m => numeroKilometros(m.KM) !== null);
-    return mantenimientos.length ? mantenimientos[0] : null;
-}
-
-function obtenerVtvVehiculo(idVehiculo){
-    const reportes = datosReportesVehiculo(idVehiculo);
-    const vtv = reportes.filter(r => normalizar(r.TIPO_REPORTE || r.TIPO || "").includes("VTV"));
-    if(!vtv.length) return null;
-    return vtv[0];
-}
-
-function resumenServiceVehiculo(idVehiculo){
-    const ultimo = obtenerUltimoServiceVehiculo(idVehiculo);
-    const kmActualObj = obtenerKmActualVehiculo(idVehiculo);
-    const kmActual = kmActualObj.km;
-
-    if(!ultimo){
-        return {ultimo:null, kmActual, proximo:null, faltan:null, estado:"SIN DATOS"};
-    }
-
-    const kmService = numeroKilometros(ultimo.KM);
-    const proximo = kmService !== null ? kmService + 10000 : null;
-    const faltan = (proximo !== null && kmActual !== null) ? proximo - kmActual : null;
-    let estado = "PENDIENTE";
-    if(faltan !== null){
-        if(faltan < 0) estado = "VENCIDO";
-        else if(faltan <= 1000) estado = "PRÓXIMO";
-        else estado = "OK";
-    }
-    return {ultimo, kmActual, proximo, faltan, estado};
-}
-
-function claseServiceResumen(estado){
-    if(estado === "OK") return "vehiculo-service-ok";
-    if(estado === "PRÓXIMO") return "vehiculo-service-warning";
-    if(estado === "VENCIDO") return "vehiculo-service-danger";
-    return "";
-}
-
-function textoKm(valor){
-    const n = numeroKilometros(valor);
-    return n === null ? "—" : Math.round(n).toLocaleString("es-AR") + " km";
-}
-
-function textoFaltanService(valor){
-    const n = numeroKilometros(valor);
-    if(n === null) return "—";
-    if(n < 0) return "Vencido +" + Math.abs(Math.round(n)).toLocaleString("es-AR") + " km";
-    return Math.round(n).toLocaleString("es-AR") + " km";
-}
-
-function claseVtvReporte(vtv){
-    if(!vtv) return "";
-    const texto = normalizar([vtv.ESTADO, vtv.DESCRIPCION, vtv.OBSERVACIONES].join(" "));
-    if(texto.includes("VENCIDA") || texto.includes("VENCIDO") || texto.includes("RECHAZ")) return "vehiculo-service-danger";
-    if(texto.includes("VIGENTE") || texto.includes("APROB")) return "vehiculo-service-ok";
-    return "vehiculo-service-warning";
-}
-
-function textoVtv(vtv){
-    if(!vtv) return "SIN REGISTRO";
-    const e = String(vtv.ESTADO || "").trim();
-    if(e) return e.toUpperCase();
-    const bolsa = normalizar([vtv.DESCRIPCION,vtv.OBSERVACIONES].join(" "));
-    if(bolsa.includes("VENCID")) return "VENCIDA";
-    if(bolsa.includes("VIGENTE")) return "VIGENTE";
-    return "REGISTRADA";
+function escaparAtributo(valor){
+    return escaparHTML(String(valor ?? "")).replace(/'/g,"&#39;");
 }
 
 function renderizarVehiculos(vehiculos){
-
-    const tbody = document.getElementById("tablaVehiculos");
+    const tbody=document.getElementById("tablaVehiculos");
     if(!tbody) return;
 
+    const lista=Array.isArray(vehiculos) ? vehiculos : [];
     actualizarFiltroAreas(estadoPanel.vehiculos || []);
 
-    const contador = document.getElementById("contadorVehiculos");
-    if(contador){
-        contador.textContent = `${Array.isArray(vehiculos) ? vehiculos.length : 0} vehículos`;
-    }
+    const contador=document.getElementById("contadorVehiculos");
+    if(contador) contador.textContent=`${lista.length} vehículos`;
 
-    if(!Array.isArray(vehiculos) || vehiculos.length === 0){
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9">
-                    <div class="empty">Sin vehículos que coincidan con el filtro</div>
-                </td>
-            </tr>`;
+    if(!lista.length){
+        tbody.innerHTML=`<tr><td colspan="10"><div class="empty">Sin vehículos que coincidan con el filtro</div></td></tr>`;
         return;
     }
 
-    tbody.innerHTML = vehiculos.map(vehiculo => {
-        const estado = textoEstadoVehiculo(vehiculo.ESTADO_OPERATIVO);
-        const clase = claseEstadoVehiculo(vehiculo.ESTADO_OPERATIVO);
-        const marcaModelo = [vehiculo.MARCA,vehiculo.MODELO].filter(Boolean).join(" ");
-        const service = resumenServiceVehiculo(vehiculo.ID_VEHICULO);
-        const vtv = obtenerVtvVehiculo(vehiculo.ID_VEHICULO);
-        const serviceTexto = service.ultimo
-            ? (service.estado === "VENCIDO"
-                ? "VENCIDO"
-                : service.estado === "PRÓXIMO"
-                    ? "PRÓXIMO"
-                    : textoKm(service.proximo))
-            : "SIN DATOS";
-        const serviceClase = claseServiceResumen(service.estado);
-        const vtvTexto = textoVtv(vtv);
-        const vtvClase = claseVtvReporte(vtv);
-        const id = vehiculo.ID_VEHICULO || "";
+    tbody.innerHTML=lista.map(v=>{
+        const estado=textoEstadoVehiculo(v.ESTADO_OPERATIVO);
+        const clase=claseEstadoVehiculo(v.ESTADO_OPERATIVO);
+        const marcaModelo=[v.MARCA,v.MODELO].filter(Boolean).join(" ");
+        const gps=v.GPS_ID ? "🛰 ACTIVO" : "—";
+        const kmActual=obtenerKMActualVehiculo(v);
+        const service=infoServiceVehiculo(v);
+        const vtv=v.VTV || v.VTV_VENCIMIENTO || v.VTV_HASTA || "-";
+        const serviceTexto=service.kmProximo===null ? "-" : `${service.kmProximo.toLocaleString("es-AR")} km`;
+        const serviceClase=service.estado==="VENCIDO" ? "danger" : service.estado==="PRÓXIMO" ? "warning" : "online";
+        const serviceBtn=service.kmFaltan !== null && service.kmFaltan <= 1000
+            ? `<button class="btn btn-secondary btn-vehiculo-accion" type="button" onclick="avisarTallerService('${escaparAtributo(v.ID_VEHICULO)}')">✉ Service</button>`
+            : "";
 
-        return `
-            <tr>
-                <td><strong>${escaparHTML(vehiculo.DOMINIO || "-")}</strong></td>
-                <td>${escaparHTML(vehiculo.INTERNO || "-")}</td>
-                <td>${escaparHTML(marcaModelo || "-")}</td>
-                <td>${escaparHTML(vehiculo.AREA || "-")}</td>
-                <td>${escaparHTML(textoKm(service.kmActual))}</td>
-                <td>
-                    <div class="vehiculo-service-cell">
-                        <strong class="${serviceClase}">${escaparHTML(serviceTexto)}</strong>
-                        <span class="detalle-muted" style="display:block;margin-top:3px;font-size:8px">${service.ultimo ? "Faltan: " + textoFaltanService(service.faltan) : "Sin mantenimiento con KM"}</span>
-                    </div>
-                </td>
-                <td><span class="table-status ${vtvClase}">${escaparHTML(vtvTexto)}</span></td>
-                <td><span class="table-status ${clase}">${escaparHTML(estado)}</span></td>
-                <td>
-                    <div style="display:flex;gap:5px;flex-wrap:wrap">
-                        <button class="btn-vehiculo-detalle"
-                                data-id="${escaparHTML(id)}"
-                                onclick="abrirDetalleVehiculo(this.dataset.id)">
-                            🔎 Ver
-                        </button>
-                        ${service.ultimo && (service.estado === "VENCIDO" || service.estado === "PRÓXIMO")
-                            ? `<button class="btn-vehiculo-detalle"
-                                       data-id="${escaparHTML(id)}"
-                                       onclick="avisarTallerService(this.dataset.id)"
-                                       title="Avisar al taller por service">
-                                    ✉ Taller
-                               </button>`
-                            : ""}
-                    </div>
-                </td>
-            </tr>`;
+        return `<tr>
+            <td><strong>${escaparHTML(v.DOMINIO || "-")}</strong></td>
+            <td>${escaparHTML(v.INTERNO || "-")}</td>
+            <td>${escaparHTML(marcaModelo || "-")}</td>
+            <td>${escaparHTML(v.AREA || "-")}</td>
+            <td>${kmActual===null ? "-" : escaparHTML(kmActual.toLocaleString("es-AR"))}</td>
+            <td><span class="table-status ${serviceClase}">${escaparHTML(serviceTexto)}${service.estado==="VENCIDO" ? " · VENCIDO" : service.estado==="PRÓXIMO" ? " · PRÓXIMO" : ""}</span></td>
+            <td>${escaparHTML(vtv)}</td>
+            <td><span class="table-status ${clase}">${escaparHTML(estado)}</span></td>
+            <td>${escaparHTML(gps)}</td>
+            <td><div class="vehiculo-acciones"><button class="btn btn-secondary btn-vehiculo-accion" type="button" onclick="verVehiculo('${escaparAtributo(v.ID_VEHICULO)}')">Ver</button>${serviceBtn}</div></td>
+        </tr>`;
     }).join("");
 }
 
-function abrirDetalleVehiculo(idVehiculo){
-    const vehiculo = (estadoPanel.vehiculos || []).find(v => vehiculoIdNormalizado(v.ID_VEHICULO) === vehiculoIdNormalizado(idVehiculo));
-    const modal = document.getElementById("modalDetalleVehiculo");
-    const body = document.getElementById("detalleVehiculoBody");
-    if(!vehiculo || !modal || !body) return;
+function verVehiculo(idVehiculo){
+    const id=String(idVehiculo||"").trim();
+    const v=(estadoPanel.vehiculos||[]).find(x=>String(x?.ID_VEHICULO||"").trim()===id);
+    if(!v) return;
 
-    const service = resumenServiceVehiculo(vehiculo.ID_VEHICULO);
-    const vtv = obtenerVtvVehiculo(vehiculo.ID_VEHICULO);
-    const viajes = datosViajesVehiculo(vehiculo.ID_VEHICULO);
-    const mantenimientos = datosMantenimientoVehiculo(vehiculo.ID_VEHICULO);
-    const reportes = datosReportesVehiculo(vehiculo.ID_VEHICULO);
-    const inspecciones = datosInspeccionesVehiculo(vehiculo.ID_VEHICULO);
-    const kmActual = service.kmActual;
-    const serviceClase = claseServiceResumen(service.estado);
-    const marcaModelo = [vehiculo.MARCA,vehiculo.MODELO].filter(Boolean).join(" ");
+    const service=infoServiceVehiculo(v);
+    const detalle=[
+        `<strong>${escaparHTML(v.DOMINIO || "-")}</strong> · Interno ${escaparHTML(v.INTERNO || "-")}`,
+        `${escaparHTML([v.MARCA,v.MODELO].filter(Boolean).join(" ") || "-")}`,
+        `Área: ${escaparHTML(v.AREA || "-")}`,
+        `KM actual: ${service.kmActual===null ? "-" : escaparHTML(service.kmActual.toLocaleString("es-AR"))}`,
+        `Último service: ${service.kmUltimo===null ? "-" : escaparHTML(service.kmUltimo.toLocaleString("es-AR"))}`,
+        `Próximo service: ${service.kmProximo===null ? "-" : escaparHTML(service.kmProximo.toLocaleString("es-AR"))}`,
+        `VTV: ${escaparHTML(v.VTV || v.VTV_VENCIMIENTO || v.VTV_HASTA || "No registrada")}`,
+        `Estado: ${escaparHTML(textoEstadoVehiculo(v.ESTADO_OPERATIVO))}`
+    ].join("<br>");
 
-    const lista = (items, render, empty="Sin registros") => items.length ? items.slice(0,12).map(render).join("") : `<div class="detalle-muted">${empty}</div>`;
-
-    body.innerHTML = `
-        <div class="detalle-vehiculo-head">
-            <div>
-                <div class="detalle-vehiculo-domain">${escaparHTML(vehiculo.DOMINIO || "SIN DOMINIO")}</div>
-                <div class="detalle-vehiculo-sub">${escaparHTML([marcaModelo,vehiculo.INTERNO ? "Interno " + vehiculo.INTERNO : "",vehiculo.AREA || ""].filter(Boolean).join(" · "))}</div>
-            </div>
-            <span class="table-status ${claseEstadoVehiculo(vehiculo.ESTADO_OPERATIVO)}">${escaparHTML(textoEstadoVehiculo(vehiculo.ESTADO_OPERATIVO))}</span>
-        </div>
-
-        <div class="detalle-grid">
-            <div class="detalle-card"><div class="detalle-card-title">📏 KM actual</div><div class="detalle-kpi">${escaparHTML(textoKm(kmActual))}</div><div class="detalle-card-help">Último KM final registrado en viajes</div></div>
-            <div class="detalle-card"><div class="detalle-card-title">🔧 Último service</div><div class="detalle-kpi">${escaparHTML(service.ultimo ? textoKm(service.ultimo.KM) : "—")}</div><div class="detalle-card-help">${escaparHTML(service.ultimo ? formatearFecha(service.ultimo.FECHA_ALTA) : "Sin registro")}</div></div>
-            <div class="detalle-card"><div class="detalle-card-title">🛠 Próximo service</div><div class="detalle-kpi ${serviceClase}">${escaparHTML(service.proximo !== null ? textoKm(service.proximo) : "—")}</div><div class="detalle-card-help ${serviceClase}">${escaparHTML(service.estado)}</div></div>
-            <div class="detalle-card"><div class="detalle-card-title">⚠️ Falta</div><div class="detalle-kpi ${serviceClase}">${escaparHTML(textoFaltanService(service.faltan))}</div><div class="detalle-card-help">Intervalo configurado: 10.000 km</div></div>
-
-            <div class="detalle-card"><div class="detalle-card-title">🚗 Datos de unidad</div><div class="detalle-card-help">Tipo</div><strong>${escaparHTML(vehiculo.TIPO || "—")}</strong><div class="detalle-card-help">GPS ID</div><strong>${escaparHTML(vehiculo.GPS_ID || "—")}</strong></div>
-            <div class="detalle-card"><div class="detalle-card-title">📋 VTV</div><div class="detalle-kpi ${claseVtvReporte(vtv)}">${escaparHTML(textoVtv(vtv))}</div><div class="detalle-card-help">${escaparHTML(vtv ? formatearFecha(vtv.FECHA_HORA) : "Sin reporte VTV")}</div></div>
-            <div class="detalle-card"><div class="detalle-card-title">📝 Reportes</div><div class="detalle-kpi">${reportes.length}</div><div class="detalle-card-help">Incidentes y novedades</div></div>
-            <div class="detalle-card"><div class="detalle-card-title">🔍 Inspecciones</div><div class="detalle-kpi">${inspecciones.length}</div><div class="detalle-card-help">Controles registrados</div></div>
-
-            <div class="detalle-card full"><div class="detalle-card-title">🔧 Historial de mantenimiento</div><div class="detalle-list">${lista(mantenimientos,m=>`<div class="detalle-list-item"><strong>${escaparHTML(formatearFecha(m.FECHA_ALTA))}</strong> · ${escaparHTML(m.TIPO || "MANTENIMIENTO")} · ${escaparHTML(textoKm(m.KM))}<br><span class="detalle-muted">${escaparHTML(m.DESCRIPCION || "Sin descripción")} · Estado: ${escaparHTML(m.ESTADO || "—")}</span></div>`)}</div></div>
-            <div class="detalle-card full"><div class="detalle-card-title">🚙 Últimos viajes</div><div class="detalle-list">${lista(viajes,v=>`<div class="detalle-list-item"><strong>${escaparHTML(formatearFecha(v.FECHA))}</strong> · ${escaparHTML(v.ESTADO || "—")}<br><span class="detalle-muted">KM inicial: ${escaparHTML(textoKm(v.KM_INICIAL))} · KM final: ${escaparHTML(textoKm(v.KM_FINAL))} · Recorrido: ${escaparHTML(textoKm(v.KM_RECORRIDO))}</span></div>`)}</div></div>
-            <div class="detalle-card full"><div class="detalle-card-title">📝 Últimos reportes</div><div class="detalle-list">${lista(reportes,r=>`<div class="detalle-list-item"><strong>${escaparHTML(formatearFecha(r.FECHA_HORA))}</strong> · ${escaparHTML(r.TIPO_REPORTE || "REPORTE")} · ${escaparHTML(r.ESTADO || "—")}<br><span class="detalle-muted">${escaparHTML(r.DESCRIPCION || "Sin descripción")}</span></div>`)}</div></div>
-        </div>`;
-
+    let modal=document.getElementById("modalDetalleVehiculo");
+    if(!modal){
+        modal=document.createElement("div");
+        modal.id="modalDetalleVehiculo";
+        modal.className="modal-overlay";
+        modal.innerHTML=`<div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><div><div class="modal-title">Ficha del vehículo</div><div class="panel-subtitle">Información disponible en el Panel</div></div><button class="modal-close" type="button" onclick="cerrarDetalleVehiculo()">×</button></div><div class="modal-body"><div id="detalleVehiculoContenido" style="font-size:12px;line-height:1.8"></div></div><div class="modal-footer"><button class="btn btn-secondary" type="button" onclick="cerrarDetalleVehiculo()">Cerrar</button></div></div>`;
+        modal.onclick=event=>{if(event.target===modal) cerrarDetalleVehiculo();};
+        document.body.appendChild(modal);
+    }
+    document.getElementById("detalleVehiculoContenido").innerHTML=detalle;
     modal.classList.add("open");
 }
 
-function cerrarDetalleVehiculo(event){
-    if(event && event.target && event.target.id !== "modalDetalleVehiculo") return;
+function cerrarDetalleVehiculo(){
     document.getElementById("modalDetalleVehiculo")?.classList.remove("open");
 }
-
-
 
 /* =========================================================
    EVENTOS / ACTIVIDAD RECIENTE
@@ -11566,509 +11405,196 @@ async function guardarChofer(event){
    ========================================================= */
 
 async function cargarMantenimiento(){
-
-    const resultado = await leerBackend("mantenimiento");
-    const tbody = document.getElementById("tablaMantenimiento");
+    const resultado=await leerBackend("mantenimiento");
+    const tbody=document.getElementById("tablaMantenimiento");
 
     if(!resultado?.ok){
-        if(tbody){
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="8">
-                        <div class="empty">No se pudieron cargar los mantenimientos.</div>
-                    </td>
-                </tr>`;
-        }
-        return [];
+        if(tbody) tbody.innerHTML='<tr><td colspan="8"><div class="empty">No se pudieron cargar los mantenimientos.</div></td></tr>';
+        return estadoPanel.mantenimiento || [];
     }
 
-    const mantenimientos = Array.isArray(resultado.datos)
-        ? resultado.datos
-        : [];
-
-    estadoPanel.mantenimiento = mantenimientos;
+    const mantenimientos=Array.isArray(resultado.datos) ? resultado.datos : [];
+    estadoPanel.mantenimiento=mantenimientos;
     actualizarKPIsMantenimiento(mantenimientos);
     renderizarMantenimiento(mantenimientos);
-
     return mantenimientos;
 }
 
 function clasePrioridadMantenimiento(valor){
-    const p = normalizar(valor);
-    if(p === "CRITICA" || p === "CRÍTICA") return "inspeccion-rechazada";
-    if(p === "ALTA") return "inspeccion-observada";
-    if(p === "MEDIA") return "viaje-neutral";
+    const p=normalizar(valor);
+    if(p==="CRITICA" || p==="CRÍTICA") return "inspeccion-rechazada";
+    if(p==="ALTA") return "inspeccion-observada";
+    if(p==="MEDIA") return "viaje-neutral";
     return "inspeccion-aprobada";
 }
 
 function claseEstadoMantenimiento(valor){
-    const e = normalizar(valor);
-    if(e === "FINALIZADO" || e === "CERRADO" || e === "RESUELTO") return "inspeccion-aprobada";
-    if(e === "EN TALLER" || e === "EN REPARACION" || e === "AUTORIZADO" || e === "PENDIENTE") return "inspeccion-observada";
-    if(e === "CANCELADO") return "inspeccion-rechazada";
+    const e=normalizar(valor);
+    if(["FINALIZADO","CERRADO","RESUELTO"].includes(e)) return "inspeccion-aprobada";
+    if(["EN TALLER","EN REPARACION","AUTORIZADO","PENDIENTE"].includes(e)) return "inspeccion-observada";
+    if(e==="CANCELADO") return "inspeccion-rechazada";
     return "viaje-neutral";
 }
 
 function actualizarKPIsMantenimiento(mantenimientos){
-
-    const total = mantenimientos.length;
-    const pendientes = mantenimientos.filter(m => {
-        const e = normalizar(m.ESTADO);
-        return ["PENDIENTE","AUTORIZADO"].includes(e);
-    }).length;
-    const taller = mantenimientos.filter(m => {
-        const e = normalizar(m.ESTADO);
-        return ["EN TALLER","EN REPARACION"].includes(e);
-    }).length;
-    const finalizados = mantenimientos.filter(m => {
-        const e = normalizar(m.ESTADO);
-        return ["FINALIZADO","CERRADO","RESUELTO"].includes(e);
-    }).length;
-
-    const set = (id,valor) => {
-        const el = document.getElementById(id);
-        if(el) el.textContent = valor;
-    };
-
-    set("kpiMantenimientoTotal",total);
+    const lista=Array.isArray(mantenimientos)?mantenimientos:[];
+    const pendientes=lista.filter(m=>["PENDIENTE","AUTORIZADO"].includes(normalizar(m.ESTADO))).length;
+    const taller=lista.filter(m=>["EN TALLER","EN REPARACION"].includes(normalizar(m.ESTADO))).length;
+    const finalizados=lista.filter(m=>["FINALIZADO","CERRADO","RESUELTO"].includes(normalizar(m.ESTADO))).length;
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+    set("kpiMantenimientoTotal",lista.length);
     set("kpiMantenimientoPendientes",pendientes);
     set("kpiMantenimientoTaller",taller);
     set("kpiMantenimientoFinalizados",finalizados);
 }
 
 function renderizarMantenimiento(mantenimientos){
-
-    const tbody = document.getElementById("tablaMantenimiento");
+    const tbody=document.getElementById("tablaMantenimiento");
     if(!tbody) return;
+    const lista=Array.isArray(mantenimientos)?mantenimientos:[];
+    const contador=document.getElementById("contadorMantenimiento");
+    if(contador) contador.textContent=`${lista.length} mantenimientos`;
 
-    const contador = document.getElementById("contadorMantenimiento");
-    if(contador) contador.textContent = `${mantenimientos.length} mantenimientos`;
-
-    if(!mantenimientos.length){
-        tbody.innerHTML = `
-            <tr><td colspan="8"><div class="empty">Sin mantenimientos registrados</div></td></tr>`;
+    if(!lista.length){
+        tbody.innerHTML='<tr><td colspan="8"><div class="empty">Sin mantenimientos o averías registradas</div></td></tr>';
         return;
     }
 
-    const ordenados = [...mantenimientos].sort((a,b) => {
-        const fa = new Date(a.FECHA_ALTA || 0).getTime() || 0;
-        const fb = new Date(b.FECHA_ALTA || 0).getTime() || 0;
-        return fb-fa;
-    });
-
-    tbody.innerHTML = ordenados.map(m => {
-        const id = String(m.ID_MANTENIMIENTO || "").replace(/'/g,"\\'");
-        const estado = normalizar(m.ESTADO || "PENDIENTE");
-        const opcionesEstado = [
-            "PENDIENTE",
-            "AUTORIZADO",
-            "EN TALLER",
-            "EN REPARACION",
-            "FINALIZADO",
-            "CANCELADO"
-        ];
-
-        return `
-            <tr>
-                <td>${escaparHTML(formatearFecha(m.FECHA_ALTA))}</td>
-                <td>
-                    <span class="inspeccion-main">${escaparHTML(m.ID_VEHICULO || "-")}</span>
-                    <span class="inspeccion-sub">${escaparHTML(m.ID_MANTENIMIENTO || "")}</span>
-                </td>
-                <td>${escaparHTML(m.TIPO || "-")}</td>
-                <td style="white-space:normal;min-width:220px">${escaparHTML(m.DESCRIPCION || "-")}</td>
-                <td><span class="table-status ${clasePrioridadMantenimiento(m.PRIORIDAD)}">${escaparHTML(m.PRIORIDAD || "MEDIA")}</span></td>
-                <td>
-                    <select class="servicio-estado-select ${claseEstadoMantenimiento(m.ESTADO)}"
-                            onchange="cambiarEstadoMantenimiento('${id}', this.value)"
-                            title="Cambiar estado del mantenimiento">
-                        ${opcionesEstado.map(op =>
-                            `<option value="${op}" ${normalizar(op)===estado ? "selected" : ""}>${op}</option>`
-                        ).join("")}
-                    </select>
-                </td>
-                <td>${escaparHTML(textoKm(m.KM))}</td>
-                <td>
-                    <button type="button"
-                            class="btn-vehiculo-detalle"
-                            onclick="avisarTallerMantenimiento('${id}')"
-                            title="Avisar al taller">
-                        ✉ Taller
-                    </button>
-                </td>
-            </tr>`;
+    const ordenados=[...lista].sort((a,b)=>new Date(b.FECHA_ALTA||0)-new Date(a.FECHA_ALTA||0));
+    tbody.innerHTML=ordenados.map(m=>{
+        const estado=normalizar(m.ESTADO)||"PENDIENTE";
+        const id=escaparAtributo(m.ID_MANTENIMIENTO||"");
+        const veh=escaparAtributo(m.ID_VEHICULO||"");
+        return `<tr>
+            <td>${escaparHTML(formatearFecha(m.FECHA_ALTA))}</td>
+            <td><span class="inspeccion-main">${veh||"-"}</span><span class="inspeccion-sub">${id}</span></td>
+            <td>${escaparHTML(m.TIPO||"-")}</td>
+            <td style="white-space:normal;min-width:220px">${escaparHTML(m.DESCRIPCION||"-")}</td>
+            <td><span class="table-status ${clasePrioridadMantenimiento(m.PRIORIDAD)}">${escaparHTML(m.PRIORIDAD||"MEDIA")}</span></td>
+            <td><select class="mantenimiento-estado-select ${claseEstadoMantenimiento(estado)}" onchange="cambiarEstadoMantenimiento('${id}',this.value)">${["PENDIENTE","AUTORIZADO","EN TALLER","EN REPARACION","FINALIZADO","CANCELADO"].map(op=>`<option value="${op}" ${normalizar(op)===normalizar(estado)?"selected":""}>${op}</option>`).join("")}</select></td>
+            <td>${escaparHTML(m.KM||"-")}</td>
+            <td><div class="mantenimiento-acciones"><button class="btn btn-secondary btn-vehiculo-accion" type="button" onclick="avisarTallerMantenimiento('${id}')">✉ Taller</button></div></td>
+        </tr>`;
     }).join("");
 }
 
 function filtrarMantenimiento(){
-
-    const filtro = normalizar(document.getElementById("filtroMantenimiento")?.value || "");
-
-    if(!filtro){
-        renderizarMantenimiento(estadoPanel.mantenimiento || []);
-        return;
-    }
-
-    const filtrados = (estadoPanel.mantenimiento || []).filter(m => {
-        const texto = [
-            m.ID_MANTENIMIENTO,
-            m.ID_VEHICULO,
-            m.ID_REPORTE,
-            m.TIPO,
-            m.DESCRIPCION,
-            m.PRIORIDAD,
-            m.ESTADO,
-            m.RESPONSABLE,
-            m.OBSERVACIONES
-        ].map(normalizar).join(" ");
-
-        return texto.includes(filtro);
-    });
-
+    const filtro=normalizar(document.getElementById("filtroMantenimiento")?.value||"");
+    if(!filtro){renderizarMantenimiento(estadoPanel.mantenimiento||[]);return;}
+    const filtrados=(estadoPanel.mantenimiento||[]).filter(m=>[
+        m.ID_MANTENIMIENTO,m.ID_VEHICULO,m.ID_REPORTE,m.TIPO,m.DESCRIPCION,m.PRIORIDAD,m.ESTADO,m.KM,m.OBSERVACIONES
+    ].map(normalizar).join(" ").includes(filtro));
     renderizarMantenimiento(filtrados);
 }
 
 async function prepararFormularioMantenimiento(){
-
-    const selectVehiculo = document.getElementById("mantenimientoVehiculo");
-
-    // Refrescamos vehículos directamente desde Backend al abrir el modal.
-    // No dependemos solamente de la caché de estadoPanel.
-    let vehiculos = Array.isArray(estadoPanel.vehiculos)
-        ? estadoPanel.vehiculos
-        : [];
-
+    const selectVehiculo=document.getElementById("mantenimientoVehiculo");
+    let vehiculos=Array.isArray(estadoPanel.vehiculos)?estadoPanel.vehiculos:[];
     if(selectVehiculo){
-        selectVehiculo.innerHTML = '<option value="">Cargando vehículos...</option>';
-
-        try{
-            const resultadoVehiculos = await leerBackend("vehiculos");
-            if(resultadoVehiculos?.ok && Array.isArray(resultadoVehiculos.datos)){
-                vehiculos = resultadoVehiculos.datos;
-                estadoPanel.vehiculos = vehiculos;
-            }
-        }catch(error){
-            console.warn("No se pudieron actualizar los vehículos para mantenimiento:", error);
+        selectVehiculo.innerHTML='<option value="">Cargando vehículos...</option>';
+        if(!vehiculos.length){
+            const r=await leerBackend("vehiculos");
+            if(r?.ok && Array.isArray(r.datos)){vehiculos=r.datos;estadoPanel.vehiculos=vehiculos;}
         }
-
-        selectVehiculo.innerHTML =
-            '<option value="">Seleccionar vehículo...</option>' +
-            vehiculos.map(v => {
-                const id = v.ID_VEHICULO || "";
-                const dominio = v.DOMINIO || id;
-                const interno = v.INTERNO ? ` · Int. ${v.INTERNO}` : "";
-                return `<option value="${escaparHTML(id)}">${escaparHTML(`${dominio}${interno} · ${id}`)}</option>`;
-            }).join("");
-
-        if(vehiculos.length === 0){
-            selectVehiculo.innerHTML = '<option value="">No hay vehículos disponibles</option>';
-        }
-    }
-
-    const reportes = Array.isArray(estadoPanel.reportes)
-        ? estadoPanel.reportes
-        : [];
-
-    const selectReporte = document.getElementById("mantenimientoReporte");
-
-    if(selectReporte){
-        selectReporte.innerHTML =
-            '<option value="">Sin reporte asociado</option>' +
-            reportes.map(r => {
-                const id = r.ID_REPORTE || "";
-                const tipo = r.TIPO_REPORTE || "REPORTE";
-                const vehiculo = r.ID_VEHICULO || "Sin vehículo";
-                return `<option value="${escaparHTML(id)}">${escaparHTML(`${id} · ${tipo} · ${vehiculo}`)}</option>`;
-            }).join("");
+        selectVehiculo.innerHTML='<option value="">Seleccionar vehículo...</option>'+vehiculos.map(v=>{
+            const id=v.ID_VEHICULO||""; const dominio=v.DOMINIO||id; const interno=v.INTERNO?` · Int. ${v.INTERNO}`:"";
+            return `<option value="${escaparAtributo(id)}">${escaparHTML(`${dominio}${interno} · ${id}`)}</option>`;
+        }).join("");
+        if(!vehiculos.length) selectVehiculo.innerHTML='<option value="">No hay vehículos disponibles</option>';
     }
 }
 
-async function abrirModalMantenimiento(){
-
-    const modal = document.getElementById("modalMantenimiento");
+async function abrirModalMantenimiento(modo="MANTENIMIENTO"){
+    const modal=document.getElementById("modalMantenimiento");
     if(!modal) return;
-
-    const titulo = document.getElementById("mantenimientoModalTitulo");
-    const subtitulo = document.getElementById("mantenimientoModalSubtitulo");
-    if(titulo) titulo.textContent = "Nuevo mantenimiento";
-    if(subtitulo) subtitulo.textContent = "Registro de mantenimiento / service para informar al taller";
-
-    const form = document.getElementById("formMantenimiento");
-    if(form) form.reset();
-
-    const fecha = document.getElementById("mantenimientoFechaAlta");
-    if(fecha){
-        const ahora = new Date();
-        const offset = ahora.getTimezoneOffset();
-        const local = new Date(ahora.getTime() - offset * 60000);
-        fecha.value = local.toISOString().slice(0,16);
-    }
-
-    const prioridad = document.getElementById("mantenimientoPrioridad");
-    if(prioridad) prioridad.value = "MEDIA";
-
-    const estado = document.getElementById("mantenimientoEstado");
-    if(estado) estado.value = "PENDIENTE";
-
-    const boton = document.getElementById("btnGuardarMantenimiento");
-    if(boton) boton.textContent = "Guardar mantenimiento";
-
-    const mensaje = document.getElementById("mantenimientoMensaje");
-    if(mensaje){
-        mensaje.style.display = "none";
-        mensaje.textContent = "";
-    }
-
+    const form=document.getElementById("formMantenimiento"); if(form) form.reset();
+    const fecha=document.getElementById("mantenimientoFechaAlta");
+    if(fecha){const ahora=new Date();fecha.value=new Date(ahora.getTime()-ahora.getTimezoneOffset()*60000).toISOString().slice(0,16);}
+    const prioridad=document.getElementById("mantenimientoPrioridad");if(prioridad)prioridad.value="MEDIA";
+    const estado=document.getElementById("mantenimientoEstado");if(estado)estado.value="PENDIENTE";
+    const tipo=document.getElementById("mantenimientoTipo");if(tipo)tipo.value=normalizar(modo)==="AVERIA"?"AVERIA":normalizar(modo)==="SERVICE"?"SERVICE":"";
+    const titulo=modal.querySelector(".modal-title");if(titulo)titulo.textContent=normalizar(modo)==="AVERIA"?"Nueva avería":normalizar(modo)==="SERVICE"?"Nuevo service":"Nuevo mantenimiento";
+    const boton=document.getElementById("btnGuardarMantenimiento");if(boton)boton.textContent=normalizar(modo)==="AVERIA"?"Guardar avería":"Guardar mantenimiento";
+    const mensaje=document.getElementById("mantenimientoMensaje");if(mensaje){mensaje.style.display="none";mensaje.textContent="";}
     await prepararFormularioMantenimiento();
     modal.classList.add("open");
 }
 
-async function abrirModalAveria(){
-
-    await abrirModalMantenimiento();
-
-    const titulo = document.getElementById("mantenimientoModalTitulo");
-    const subtitulo = document.getElementById("mantenimientoModalSubtitulo");
-    const tipo = document.getElementById("mantenimientoTipo");
-    const prioridad = document.getElementById("mantenimientoPrioridad");
-    const estado = document.getElementById("mantenimientoEstado");
-    const boton = document.getElementById("btnGuardarMantenimiento");
-
-    if(titulo) titulo.textContent = "Nueva avería";
-    if(subtitulo) subtitulo.textContent = "Registro de rotura o falla para informar al taller";
-    if(tipo) tipo.value = "AVERIA";
-    if(prioridad) prioridad.value = "ALTA";
-    if(estado) estado.value = "PENDIENTE";
-    if(boton) boton.textContent = "Registrar avería";
-}
-
 function cerrarModalMantenimiento(event){
-    if(event && event.target && event.target.id !== "modalMantenimiento") return;
+    if(event&&event.target&&event.target.id!=="modalMantenimiento")return;
     document.getElementById("modalMantenimiento")?.classList.remove("open");
 }
 
 function mostrarMensajeMantenimiento(texto,tipo="info"){
-    const mensaje = document.getElementById("mantenimientoMensaje");
-    if(!mensaje) return;
-    mensaje.style.display = "block";
-    mensaje.textContent = texto;
-    mensaje.style.color = tipo === "error"
-        ? "#f87171"
-        : tipo === "ok"
-            ? "#6ee7a0"
-            : "#91a0b5";
+    const mensaje=document.getElementById("mantenimientoMensaje");if(!mensaje)return;
+    mensaje.style.display="block";mensaje.textContent=texto;
+    mensaje.style.color=tipo==="error"?"#f87171":tipo==="ok"?"#6ee7a0":"#91a0b5";
 }
 
 async function guardarMantenimiento(event){
-
     event.preventDefault();
-
-    const boton = document.getElementById("btnGuardarMantenimiento");
-    if(boton){
-        boton.disabled = true;
-        boton.textContent = "Guardando...";
-    }
-
-    const datos = {
-        fechaAlta: document.getElementById("mantenimientoFechaAlta")?.value,
-        idVehiculo: document.getElementById("mantenimientoVehiculo")?.value,
-        tipo: document.getElementById("mantenimientoTipo")?.value,
-        descripcion: document.getElementById("mantenimientoDescripcion")?.value.trim(),
-        prioridad: document.getElementById("mantenimientoPrioridad")?.value,
-        estado: document.getElementById("mantenimientoEstado")?.value,
-        km: document.getElementById("mantenimientoKM")?.value,
-        observaciones: document.getElementById("mantenimientoObservaciones")?.value.trim()
+    const boton=document.getElementById("btnGuardarMantenimiento");if(boton){boton.disabled=true;boton.textContent="Guardando...";}
+    const datos={
+        fechaAlta:document.getElementById("mantenimientoFechaAlta")?.value,
+        idVehiculo:document.getElementById("mantenimientoVehiculo")?.value,
+        tipo:document.getElementById("mantenimientoTipo")?.value,
+        descripcion:document.getElementById("mantenimientoDescripcion")?.value.trim(),
+        prioridad:document.getElementById("mantenimientoPrioridad")?.value,
+        estado:document.getElementById("mantenimientoEstado")?.value,
+        km:document.getElementById("mantenimientoKM")?.value,
+        observaciones:document.getElementById("mantenimientoObservaciones")?.value.trim()
     };
-
-    if(!datos.idVehiculo){
-        mostrarMensajeMantenimiento("Seleccioná el vehículo.","error");
-        if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
-        return;
-    }
-
-    if(!datos.tipo){
-        mostrarMensajeMantenimiento("Seleccioná el tipo de mantenimiento.","error");
-        if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
-        return;
-    }
-
-    if(!datos.descripcion){
-        mostrarMensajeMantenimiento("La descripción es obligatoria.","error");
-        if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
-        return;
-    }
-
-    mostrarMensajeMantenimiento("Guardando mantenimiento...","info");
-
-    const resultado = await llamarBackend("crearMantenimiento",datos);
-
-    if(!resultado?.ok){
-        mostrarMensajeMantenimiento(
-            resultado?.error || "No se pudo guardar el mantenimiento.",
-            "error"
-        );
-        if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
-        return;
-    }
-
-    mostrarMensajeMantenimiento("Mantenimiento registrado correctamente.","ok");
-
+    if(!datos.idVehiculo){mostrarMensajeMantenimiento("Seleccioná el vehículo.","error");if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}return;}
+    if(!datos.tipo){mostrarMensajeMantenimiento("Seleccioná el tipo.","error");if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}return;}
+    if(!datos.descripcion){mostrarMensajeMantenimiento("La descripción es obligatoria.","error");if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}return;}
+    mostrarMensajeMantenimiento("Guardando en el Backend Maestro...");
+    const resultado=await llamarBackend("crearMantenimiento",datos);
+    if(!resultado?.ok){mostrarMensajeMantenimiento(resultado?.error||"No se pudo guardar.","error");if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}return;}
+    mostrarMensajeMantenimiento("Registrado correctamente.","ok");
     await cargarMantenimiento();
-
-    setTimeout(() => {
-        cerrarModalMantenimiento();
-        if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
-    },700);
+    setTimeout(()=>{cerrarModalMantenimiento();if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}},600);
 }
 
-
-async function cambiarEstadoMantenimiento(idMantenimiento, nuevoEstado){
-
-    const id = String(idMantenimiento || "").trim();
-    const estado = normalizar(nuevoEstado);
-
-    const permitidos = ["PENDIENTE","AUTORIZADO","EN TALLER","EN REPARACION","FINALIZADO","CANCELADO"];
-
-    if(!id || !permitidos.includes(estado)){
-        alert("Estado de mantenimiento inválido.");
-        await cargarMantenimiento();
-        return;
-    }
-
+async function cambiarEstadoMantenimiento(idMantenimiento,nuevoEstado){
+    const id=String(idMantenimiento||"").trim();
+    const estado=normalizar(nuevoEstado);
+    if(!id)return;
     try{
-        const resultado = await llamarBackend("actualizarMantenimiento",{
-            idMantenimiento:id,
-            cambios:{ESTADO:estado}
-        });
-
-        if(!resultado?.ok){
-            throw new Error(resultado?.error || "No se pudo actualizar el estado.");
-        }
-
-        const item=(estadoPanel.mantenimiento || [])
-            .find(m => String(m.ID_MANTENIMIENTO || "").trim() === id);
-
-        if(item) item.ESTADO=estado;
-
-        actualizarKPIsMantenimiento(estadoPanel.mantenimiento || []);
-        renderizarMantenimiento(estadoPanel.mantenimiento || []);
-
-    }catch(error){
-        console.error("Error actualizando estado de mantenimiento:",error);
-        alert("No se pudo actualizar el estado: " + error.message);
-        await cargarMantenimiento();
-    }
+        const resultado=await llamarBackend("actualizarMantenimiento",{idMantenimiento:id,cambios:{ESTADO:estado}});
+        if(!resultado?.ok)throw new Error(resultado?.error||"No se pudo actualizar el estado.");
+        const item=(estadoPanel.mantenimiento||[]).find(m=>String(m.ID_MANTENIMIENTO||"").trim()===id);
+        if(item)item.ESTADO=estado;
+        actualizarKPIsMantenimiento(estadoPanel.mantenimiento||[]);
+        filtrarMantenimiento();
+    }catch(error){alert("No se pudo actualizar el estado: "+error.message);await cargarMantenimiento();}
 }
 
 async function avisarTallerMantenimiento(idMantenimiento){
-
-    const id = String(idMantenimiento || "").trim();
-
-    const mantenimiento=(estadoPanel.mantenimiento || [])
-        .find(m => String(m.ID_MANTENIMIENTO || "").trim() === id);
-
-    if(!mantenimiento){
-        alert("No se encontró el mantenimiento seleccionado.");
-        return;
-    }
-
-    const vehiculo=(estadoPanel.vehiculos || [])
-        .find(v =>
-            vehiculoIdNormalizado(v.ID_VEHICULO) ===
-            vehiculoIdNormalizado(mantenimiento.ID_VEHICULO)
-        );
-
-    const dominio=vehiculo?.DOMINIO || mantenimiento.ID_VEHICULO || "Sin dominio";
-
-    if(!confirm(
-        `¿Enviar aviso al taller por ${dominio}?\n\n` +
-        `${mantenimiento.TIPO || "MANTENIMIENTO"}: ` +
-        `${mantenimiento.DESCRIPCION || "Sin descripción"}`
-    )) return;
-
+    const id=String(idMantenimiento||"").trim();
+    const m=(estadoPanel.mantenimiento||[]).find(x=>String(x.ID_MANTENIMIENTO||"").trim()===id);
+    if(!m){alert("No se encontró el mantenimiento.");return;}
+    if(!confirm(`¿Enviar aviso al taller por ${m.ID_VEHICULO || "el vehículo"}?`))return;
     const resultado=await llamarBackend("enviarAvisoTaller",{
-        tipo:"MANTENIMIENTO",
-        idMantenimiento:id,
-        idVehiculo:mantenimiento.ID_VEHICULO,
-        motivo:mantenimiento.DESCRIPCION || "Mantenimiento / avería",
-        prioridad:mantenimiento.PRIORIDAD || "MEDIA",
-        estado:mantenimiento.ESTADO || "PENDIENTE",
-        km:mantenimiento.KM || "",
-        tipoMantenimiento:mantenimiento.TIPO || "MANTENIMIENTO"
+        tipo:"MANTENIMIENTO",idVehiculo:m.ID_VEHICULO,idMantenimiento:id,tipoMantenimiento:m.TIPO,
+        prioridad:m.PRIORIDAD,estado:m.ESTADO,km:m.KM,motivo:m.DESCRIPCION
     });
-
-    if(!resultado?.ok){
-        alert(resultado?.error || "No se pudo enviar el aviso al taller.");
-        return;
-    }
-
-    alert(
-        "Aviso enviado correctamente al taller.\n\n" +
-        "Destinatarios:\n" +
-        (resultado.destinatario || "Taller")
-    );
-
-    await cargarMantenimiento();
+    if(!resultado?.ok){alert(resultado?.error||"No se pudo enviar el aviso al taller.");return;}
+    alert("Aviso enviado al taller correctamente.");
 }
 
 async function avisarTallerService(idVehiculo){
-
-    const id=String(idVehiculo || "").trim();
-
-    const vehiculo=(estadoPanel.vehiculos || [])
-        .find(v =>
-            vehiculoIdNormalizado(v.ID_VEHICULO) ===
-            vehiculoIdNormalizado(id)
-        );
-
-    if(!vehiculo){
-        alert("No se encontró el vehículo.");
-        return;
-    }
-
-    const service=resumenServiceVehiculo(id);
-
-    if(!service.ultimo){
-        alert("La unidad no tiene un service registrado con KM.");
-        return;
-    }
-
-    if(service.faltan !== null && service.faltan > 0){
-        if(!confirm(
-            `El service todavía no llegó al límite.\n` +
-            `Faltan ${textoFaltanService(service.faltan)}.\n\n` +
-            `¿Igualmente querés avisar al taller?`
-        )) return;
-    }else{
-        if(!confirm(
-            `¿Enviar aviso al taller por service de ${vehiculo.DOMINIO || id}?\n\n` +
-            `${service.estado === "VENCIDO" ? "SERVICE VENCIDO" : "SERVICE ALCANZADO"}`
-        )) return;
-    }
-
+    const v=(estadoPanel.vehiculos||[]).find(x=>String(x.ID_VEHICULO||"").trim()===String(idVehiculo||"").trim());
+    if(!v)return;
+    const service=infoServiceVehiculo(v);
+    if(!confirm(`¿Enviar aviso de SERVICE para ${v.DOMINIO || idVehiculo}?`))return;
     const resultado=await llamarBackend("enviarAvisoTaller",{
-        tipo:"SERVICE",
-        idVehiculo:id,
-        motivo:service.estado === "VENCIDO" ? "Service vencido" : "Service alcanzado / próximo",
-        kmActual:service.kmActual,
-        kmUltimoService:service.ultimo?.KM || "",
-        fechaUltimoService:service.ultimo?.FECHA_ALTA || "",
-        kmProximoService:service.proximo,
-        kmFaltan:service.faltan,
-        dominio:vehiculo.DOMINIO || "",
-        interno:vehiculo.INTERNO || ""
+        tipo:"SERVICE",idVehiculo:String(v.ID_VEHICULO||""),kmActual:service.kmActual,
+        kmUltimoService:service.kmUltimo,fechaUltimoService:service.ultimo?.FECHA_ALTA||"",
+        kmProximoService:service.kmProximo,kmFaltan:service.kmFaltan,
+        motivo:service.estado==="VENCIDO"?"Service alcanzado / vencido":"Service próximo"
     });
-
-    if(!resultado?.ok){
-        alert(resultado?.error || "No se pudo enviar el aviso al taller.");
-        return;
-    }
-
-    alert(
-        "Aviso de service enviado correctamente al taller.\n\n" +
-        "Destinatarios:\n" +
-        (resultado.destinatario || "Taller")
-    );
+    if(!resultado?.ok){alert(resultado?.error||"No se pudo enviar el aviso de service.");return;}
+    alert("Aviso de service enviado al taller correctamente.");
 }
 
 /* =========================================================
@@ -14890,27 +14416,6 @@ function dvOrdenarCapasMapa(){
 
 
 <!-- ======================================================
-     MODAL DETALLE VEHÍCULO
-     ====================================================== -->
-<div id="modalDetalleVehiculo" class="modal-overlay" onclick="cerrarDetalleVehiculo(event)">
-    <div class="modal" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <div>
-                <div class="modal-title">Detalle del vehículo</div>
-                <div class="panel-subtitle">Kilometraje, service, VTV e historial de la unidad</div>
-            </div>
-            <button class="modal-close" onclick="cerrarDetalleVehiculo()">×</button>
-        </div>
-        <div class="modal-body" id="detalleVehiculoBody">
-            <div class="empty">Seleccioná un vehículo.</div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="cerrarDetalleVehiculo()">Cerrar</button>
-        </div>
-    </div>
-</div>
-
-<!-- ======================================================
      MODAL NUEVO CHOFER
      ====================================================== -->
 
@@ -15803,82 +15308,64 @@ function dvOrdenarCapasMapa(){
     <div class="modal" onclick="event.stopPropagation()">
         <div class="modal-header">
             <div>
-                <div id="mantenimientoModalTitulo" class="modal-title">Nuevo mantenimiento</div>
-                <div id="mantenimientoModalSubtitulo" class="panel-subtitle">Registro de mantenimiento / service para informar al taller</div>
+                <div class="modal-title">Nuevo mantenimiento</div>
+                <div class="panel-subtitle">Aviso y registro para taller</div>
             </div>
             <button class="modal-close" type="button" onclick="cerrarModalMantenimiento()">×</button>
         </div>
-
         <form id="formMantenimiento" onsubmit="guardarMantenimiento(event)">
             <div class="modal-body">
                 <div class="form-grid">
-
                     <div class="form-group">
                         <label class="form-label">Fecha de alta</label>
                         <input id="mantenimientoFechaAlta" class="form-control" type="datetime-local">
                     </div>
-
                     <div class="form-group">
                         <label class="form-label">Vehículo *</label>
-                        <select id="mantenimientoVehiculo" class="form-control" required>
-                            <option value="">Cargando vehículos...</option>
-                        </select>
+                        <select id="mantenimientoVehiculo" class="form-control" required><option value="">Cargando vehículos...</option></select>
                     </div>
-<div class="form-group">
+                    <div class="form-group">
                         <label class="form-label">Tipo *</label>
                         <select id="mantenimientoTipo" class="form-control" required>
                             <option value="">Seleccionar...</option>
                             <option value="AVERIA">AVERÍA</option>
+                            <option value="SERVICE">SERVICE</option>
                             <option value="MECANICA">MECÁNICA</option>
                             <option value="ELECTRICA">ELÉCTRICA</option>
                             <option value="NEUMATICOS">NEUMÁTICOS</option>
                             <option value="CARROCERIA">CARROCERÍA</option>
-                            <option value="SERVICIO">SERVICIO</option>
                             <option value="PREVENTIVO">PREVENTIVO</option>
                             <option value="CORRECTIVO">CORRECTIVO</option>
                             <option value="OTRO">OTRO</option>
                         </select>
                     </div>
-
                     <div class="form-group">
                         <label class="form-label">Prioridad</label>
                         <select id="mantenimientoPrioridad" class="form-control">
-                            <option value="BAJA">BAJA</option>
-                            <option value="MEDIA" selected>MEDIA</option>
-                            <option value="ALTA">ALTA</option>
-                            <option value="CRITICA">CRÍTICA</option>
+                            <option value="BAJA">BAJA</option><option value="MEDIA" selected>MEDIA</option><option value="ALTA">ALTA</option><option value="CRITICA">CRÍTICA</option>
                         </select>
                     </div>
-
                     <div class="form-group">
                         <label class="form-label">Estado</label>
                         <select id="mantenimientoEstado" class="form-control">
-                            <option value="PENDIENTE" selected>PENDIENTE</option>
-                            <option value="AUTORIZADO">AUTORIZADO</option>
-                            <option value="EN TALLER">EN TALLER</option>
-                            <option value="EN REPARACION">EN REPARACIÓN</option>
-                            <option value="FINALIZADO">FINALIZADO</option>
-                            <option value="CANCELADO">CANCELADO</option>
+                            <option value="PENDIENTE" selected>PENDIENTE</option><option value="AUTORIZADO">AUTORIZADO</option><option value="EN TALLER">EN TALLER</option><option value="EN REPARACION">EN REPARACIÓN</option><option value="FINALIZADO">FINALIZADO</option><option value="CANCELADO">CANCELADO</option>
                         </select>
                     </div>
-<div class="form-group">
+                    <div class="form-group">
                         <label class="form-label">KM</label>
-                        <input id="mantenimientoKM" class="form-control" type="number" min="0" step="1" placeholder="Kilometraje">
+                        <input id="mantenimientoKM" class="form-control" type="number" min="0" step="1" placeholder="Kilometraje actual">
                     </div>
-<div class="form-group full">
+                    <div class="form-group full">
                         <label class="form-label">Descripción *</label>
-                        <textarea id="mantenimientoDescripcion" class="form-control" required placeholder="Describí la reparación, trabajo o intervención..."></textarea>
+                        <textarea id="mantenimientoDescripcion" class="form-control" required placeholder="Describí la avería, service o trabajo que debe realizar el taller..."></textarea>
                     </div>
-
                     <div class="form-group full">
                         <label class="form-label">Observaciones</label>
-                        <textarea id="mantenimientoObservaciones" class="form-control" placeholder="Repuestos, diagnóstico, referencias, etc."></textarea>
+                        <textarea id="mantenimientoObservaciones" class="form-control" placeholder="Información adicional para el taller..."></textarea>
                     </div>
                 </div>
-
                 <div id="mantenimientoMensaje" style="display:none;margin-top:15px;font-size:11px;line-height:1.5"></div>
             </div>
-
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="cerrarModalMantenimiento()">Cancelar</button>
                 <button id="btnGuardarMantenimiento" type="submit" class="btn btn-primary">Guardar mantenimiento</button>
