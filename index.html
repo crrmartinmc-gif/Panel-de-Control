@@ -4863,6 +4863,72 @@ textarea.form-control{
 
 </div>
 
+
+
+<section id="inteligencia-flota" class="page">
+<div class="if-wrap">
+  <div class="if-head">
+    <div>
+      <h2>🧠 Inteligencia de Flota</h2>
+      <div class="if-sub">Análisis real de Vehículos + Choferes + Servicios + Asignaciones</div>
+    </div>
+    <div class="if-filter">Datos: <b>Backend Maestro</b></div>
+  </div>
+
+  <div class="if-kpis">
+    <div class="if-kpi"><div class="if-label">VEHÍCULOS</div><div class="if-num" id="ifTotalVehiculos">—</div><div class="if-help">registrados</div></div>
+    <div class="if-kpi"><div class="if-label">OPERATIVOS</div><div class="if-num" id="ifOperativos">—</div><div class="if-help">estado operativo</div></div>
+    <div class="if-kpi"><div class="if-label">CHOFERES</div><div class="if-num" id="ifTotalChoferes">—</div><div class="if-help">activos registrados</div></div>
+    <div class="if-kpi"><div class="if-label">SERVICIOS</div><div class="if-num" id="ifTotalServicios">—</div><div class="if-help">en la base</div></div>
+    <div class="if-kpi"><div class="if-label">FINALIZADOS</div><div class="if-num" id="ifFinalizados">—</div><div class="if-help">servicios completados</div></div>
+    <div class="if-kpi"><div class="if-label">INCUMPLIDOS</div><div class="if-num" id="ifIncumplidos">—</div><div class="if-help">requieren análisis</div></div>
+  </div>
+
+  <div class="if-grid">
+    <div class="if-card">
+      <div class="if-title">📊 Estado operativo de la flota</div>
+      <div class="if-row"><div class="if-row-top"><span>Operativos</span><b id="ifOpTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifOpBar" style="width:0;background:var(--green)"></div></div></div>
+      <div class="if-row"><div class="if-row-top"><span>En taller</span><b id="ifTallerTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifTallerBar" style="width:0;background:var(--yellow)"></div></div></div>
+      <div class="if-row"><div class="if-row-top"><span>Fuera de servicio / radiados</span><b id="ifFueraTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifFueraBar" style="width:0;background:var(--red)"></div></div></div>
+    </div>
+
+    <div class="if-card">
+      <div class="if-title">📋 Estado de los servicios</div>
+      <div class="if-alerts">
+        <div class="if-alert"><b style="color:var(--blue)">Programados</b><span id="ifProgramados">—</span></div>
+        <div class="if-alert"><b style="color:var(--green)">Finalizados</b><span id="ifFinalizadosBox">—</span></div>
+        <div class="if-alert"><b style="color:var(--red)">Incumplidos</b><span id="ifIncumplidosBox">—</span></div>
+      </div>
+    </div>
+
+    <div class="if-card">
+      <div class="if-title">🚚 Unidades con mayor carga operativa</div>
+      <table class="if-table">
+        <thead><tr><th>DOMINIO</th><th>INT.</th><th>SERVICIOS</th><th>CHOFERES</th><th>ESTADO</th></tr></thead>
+        <tbody id="ifUnidades"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="if-card">
+      <div class="if-title">👤 Choferes con mayor actividad</div>
+      <table class="if-table">
+        <thead><tr><th>CHOFER</th><th>LEGAJO</th><th>SERVICIOS</th><th>UNIDADES</th><th>ACTIVIDAD</th></tr></thead>
+        <tbody id="ifChoferes"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="if-card if-wide">
+      <div class="if-title">🔗 Cruces automáticos</div>
+      <div class="if-alerts">
+        <div class="if-alert"><b>Vehículo ↔ Servicios</b><span id="ifCruceVeh">Calculando…</span></div>
+        <div class="if-alert"><b>Chofer ↔ Servicios</b><span id="ifCruceChofer">Calculando…</span></div>
+        <div class="if-alert"><b>Chofer ↔ Unidad</b><span id="ifCruceUnidad">Calculando…</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
 </section>
 
 </main>
@@ -15707,69 +15773,7 @@ function dvOrdenarCapasMapa(){
 @media(max-width:1200px){.if-kpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:900px){.if-kpis{grid-template-columns:repeat(2,1fr)}.if-grid{grid-template-columns:1fr}.if-wide{grid-column:auto}.if-alerts{grid-template-columns:1fr}}
 </style>
 
-<section id="inteligencia-flota" class="page">
-<div class="if-wrap">
-  <div class="if-head">
-    <div>
-      <h2>🧠 Inteligencia de Flota</h2>
-      <div class="if-sub">Análisis real de Vehículos + Choferes + Servicios + Asignaciones</div>
-    </div>
-    <div class="if-filter">Datos: <b>Backend Maestro</b></div>
-  </div>
 
-  <div class="if-kpis">
-    <div class="if-kpi"><div class="if-label">VEHÍCULOS</div><div class="if-num" id="ifTotalVehiculos">—</div><div class="if-help">registrados</div></div>
-    <div class="if-kpi"><div class="if-label">OPERATIVOS</div><div class="if-num" id="ifOperativos">—</div><div class="if-help">estado operativo</div></div>
-    <div class="if-kpi"><div class="if-label">CHOFERES</div><div class="if-num" id="ifTotalChoferes">—</div><div class="if-help">activos registrados</div></div>
-    <div class="if-kpi"><div class="if-label">SERVICIOS</div><div class="if-num" id="ifTotalServicios">—</div><div class="if-help">en la base</div></div>
-    <div class="if-kpi"><div class="if-label">FINALIZADOS</div><div class="if-num" id="ifFinalizados">—</div><div class="if-help">servicios completados</div></div>
-    <div class="if-kpi"><div class="if-label">INCUMPLIDOS</div><div class="if-num" id="ifIncumplidos">—</div><div class="if-help">requieren análisis</div></div>
-  </div>
-
-  <div class="if-grid">
-    <div class="if-card">
-      <div class="if-title">📊 Estado operativo de la flota</div>
-      <div class="if-row"><div class="if-row-top"><span>Operativos</span><b id="ifOpTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifOpBar" style="width:0;background:var(--green)"></div></div></div>
-      <div class="if-row"><div class="if-row-top"><span>En taller</span><b id="ifTallerTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifTallerBar" style="width:0;background:var(--yellow)"></div></div></div>
-      <div class="if-row"><div class="if-row-top"><span>Fuera de servicio / radiados</span><b id="ifFueraTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifFueraBar" style="width:0;background:var(--red)"></div></div></div>
-    </div>
-
-    <div class="if-card">
-      <div class="if-title">📋 Estado de los servicios</div>
-      <div class="if-alerts">
-        <div class="if-alert"><b style="color:var(--blue)">Programados</b><span id="ifProgramados">—</span></div>
-        <div class="if-alert"><b style="color:var(--green)">Finalizados</b><span id="ifFinalizadosBox">—</span></div>
-        <div class="if-alert"><b style="color:var(--red)">Incumplidos</b><span id="ifIncumplidosBox">—</span></div>
-      </div>
-    </div>
-
-    <div class="if-card">
-      <div class="if-title">🚚 Unidades con mayor carga operativa</div>
-      <table class="if-table">
-        <thead><tr><th>DOMINIO</th><th>INT.</th><th>SERVICIOS</th><th>CHOFERES</th><th>ESTADO</th></tr></thead>
-        <tbody id="ifUnidades"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
-      </table>
-    </div>
-
-    <div class="if-card">
-      <div class="if-title">👤 Choferes con mayor actividad</div>
-      <table class="if-table">
-        <thead><tr><th>CHOFER</th><th>LEGAJO</th><th>SERVICIOS</th><th>UNIDADES</th><th>ACTIVIDAD</th></tr></thead>
-        <tbody id="ifChoferes"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
-      </table>
-    </div>
-
-    <div class="if-card if-wide">
-      <div class="if-title">🔗 Cruces automáticos</div>
-      <div class="if-alerts">
-        <div class="if-alert"><b>Vehículo ↔ Servicios</b><span id="ifCruceVeh">Calculando…</span></div>
-        <div class="if-alert"><b>Chofer ↔ Servicios</b><span id="ifCruceChofer">Calculando…</span></div>
-        <div class="if-alert"><b>Chofer ↔ Unidad</b><span id="ifCruceUnidad">Calculando…</span></div>
-      </div>
-    </div>
-  </div>
-</div>
-</section>
 
 <script id="inteligencia-flota-v2-js">
 function ifNorm(v){
