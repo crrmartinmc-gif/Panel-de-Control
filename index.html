@@ -2585,39 +2585,42 @@ textarea.form-control{
     .sidebar .brand,
     .sidebar .menu-label,
     .sidebar .sidebar-bottom{display:none;}
-    /* Carrusel horizontal único para móvil */
-    .sidebar{
+
+    /* Una sola cinta horizontal: todos los grupos de opciones
+       quedan uno al lado del otro dentro del mismo carrusel. */
+    .sidebar .sidebar-scroll{
         display:flex;
         flex-direction:row;
         align-items:stretch;
+        flex:1 1 auto;
+        min-width:0;
+        width:100%;
+        max-width:100%;
         overflow-x:auto;
         overflow-y:hidden;
-        -webkit-overflow-scrolling:touch;
+        padding:0;
+        margin:0;
         scrollbar-width:none;
+        -webkit-overflow-scrolling:touch;
         scroll-snap-type:x proximity;
         overscroll-behavior-x:contain;
         touch-action:pan-x;
-        white-space:nowrap;
     }
-    .sidebar::-webkit-scrollbar{display:none}
+    .sidebar .sidebar-scroll::-webkit-scrollbar{display:none;}
+
     .sidebar .menu{
         display:flex !important;
         flex-direction:row !important;
-        flex-wrap:nowrap !important;
-        align-items:stretch;
-        gap:0;
-        min-width:max-content;
+        flex:0 0 auto;
         width:max-content;
-    }
-    .sidebar .menu > *{
-        flex:0 0 76px;
-        width:76px;
-        min-width:76px;
-        scroll-snap-align:center;
+        gap:3px;
+        align-items:stretch;
+        margin:0;
     }
     .sidebar .menu button{
         width:76px;
         min-width:76px;
+        flex:0 0 76px;
         height:61px;
         padding:6px 3px 5px;
         border-radius:9px;
@@ -2627,13 +2630,14 @@ textarea.form-control{
         align-items:center;
         gap:3px;
         text-align:center;
-        font-size:9px;
-        line-height:1.08;
+        font-size:8px;
+        line-height:1.05;
         color:#9eacc0;
+        scroll-snap-align:center;
     }
     .sidebar .menu button span:last-child{
         display:block;
-        max-width:55px;
+        max-width:70px;
         white-space:normal;
         overflow:hidden;
         text-overflow:ellipsis;
@@ -2652,11 +2656,6 @@ textarea.form-control{
         background:rgba(34,197,94,.14);
         color:#6ee7a0;
     }
-    /* Indicadores de desplazamiento en los extremos del carrusel */
-    .sidebar{
-        position:fixed;
-    }
-
 
     /* El contenido ocupa todo el ancho; deja espacio para la barra inferior. */
     .main{
@@ -2843,7 +2842,7 @@ textarea.form-control{
 }
 
 @media(max-width:380px){
-    .sidebar .menu button{width:54px;min-width:54px;font-size:7.5px;}
+    .sidebar .menu button{width:72px;min-width:72px;flex-basis:72px;font-size:7.5px;}
     .sidebar .menu-icon{font-size:16px;}
     .content{padding-left:8px;padding-right:8px;}
     .kpi{padding:10px;}
