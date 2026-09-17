@@ -5081,7 +5081,7 @@ textarea.form-control{
   <div class="if6-head">
     <div>
       <h2>🧠 Inteligencia de Flota</h2>
-      <p>Lectura visual de la operación con porcentajes y cruces de datos reales.</p>
+      <p>Servicios, viajes, destinos, tipos de traslado, choferes, unidades y mantenimiento con porcentajes y cruces históricos.</p>
     </div>
     <div class="if6-live">● Datos: <b>Backend Maestro</b></div>
   </div>
@@ -5110,6 +5110,9 @@ textarea.form-control{
       <div class="if6-card" data-if6="choferes" onclick="if6Seleccionar('choferes')"><div class="if6-card-head"><div class="if6-card-title">👤 Choferes</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutChoferes"></div><div class="if6-mini-info"><b id="if6ChoferesPct">—</b><span>con actividad</span></div></div><div class="if6-card-help">Actividad y cantidad de unidades utilizadas.</div></div>
       <div class="if6-card" data-if6="mantenimiento" onclick="if6Seleccionar('mantenimiento')"><div class="if6-card-head"><div class="if6-card-title">🔧 Mantenimiento</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutMantenimiento"></div><div class="if6-mini-info"><b id="if6MantenimientoPct">—</b><span>control</span></div></div><div class="if6-card-help">Services registrados y unidades con atención.</div></div>
       <div class="if6-card" data-if6="vtv" onclick="if6Seleccionar('vtv')"><div class="if6-card-head"><div class="if6-card-title">📄 VTV</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutVtv"></div><div class="if6-mini-info"><b id="if6VtvPct">—</b><span>vigentes</span></div></div><div class="if6-card-help">Vigentes, próximas y vencidas.</div></div>
+      <div class="if6-card" data-if6="destinos" onclick="if6Seleccionar('destinos')"><div class="if6-card-head"><div class="if6-card-title">📍 Destinos / servicios</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutDestinos"></div><div class="if6-mini-info"><b id="if6DestinosPct">—</b><span>distribución</span></div></div><div class="if6-card-help">Huella Verde, Día Verde y cada servicio registrado.</div></div>
+      <div class="if6-card" data-if6="tipos" onclick="if6Seleccionar('tipos')"><div class="if6-card-head"><div class="if6-card-title">🔄 Tipo de traslado</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutTipos"></div><div class="if6-mini-info"><b id="if6TiposPct">—</b><span>distribución</span></div></div><div class="if6-card-help">Personal, material y otros tipos de viaje.</div></div>
+      <div class="if6-card" data-if6="unidades" onclick="if6Seleccionar('unidades')"><div class="if6-card-head"><div class="if6-card-title">🚚 Unidades</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutUnidades"></div><div class="if6-mini-info"><b id="if6UnidadesPct">—</b><span>participación</span></div></div><div class="if6-card-help">Participación de cada dominio en los viajes.</div></div>
     </div>
   </div>
 
@@ -5120,18 +5123,28 @@ textarea.form-control{
       <div class="if6-cross"><b>Chofer ↔ Servicio</b><span id="if6CrossChofer">—</span></div>
       <div class="if6-cross"><b>Chofer ↔ Unidad</b><span id="if6CrossUnidad">—</span></div>
       <div class="if6-cross"><b>Viajes ↔ KM</b><span id="if6CrossViaje">—</span></div>
+      <div class="if6-cross"><b>Destino más utilizado</b><span id="if6CrossDestino">—</span></div>
+      <div class="if6-cross"><b>Tipo de traslado</b><span id="if6CrossTipo">—</span></div>
+      <div class="if6-cross"><b>Viajes realizados</b><span id="if6CrossRealizados">—</span></div>
+      <div class="if6-cross"><b>Servicios sin viaje</b><span id="if6CrossSinViaje">—</span></div>
     </div>
   </div>
 </div>
 </div>
 
-<script id="inteligencia-flota-v6-js">
-let if6Data={flota:null,servicios:null,choferes:null,mantenimiento:null,vtv:null};
+<script id="inteligencia-flota-v7-js">
+let if6Data={flota:null,servicios:null,choferes:null,mantenimiento:null,vtv:null,destinos:null,tipos:null,unidades:null};
+
 function if6N(v){return String(v==null?"":v).trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
 function if6P(o,n){for(const k of n){if(o&&o[k]!==undefined&&o[k]!==null&&String(o[k]).trim()!=="")return o[k];}return "";}
 function if6Pct(n,total){return total?Math.round((n/total)*1000)/10:0;}
-function if6Grad(parts){let total=parts.reduce((s,p)=>s+p.value,0);if(!total) return "conic-gradient(#263b57 0 100%)";let cur=0,st=[];parts.forEach(p=>{let end=cur+(p.value/total*100);st.push(`${p.color} ${cur}% ${end}%`);cur=end;});return `conic-gradient(${st.join(",")})`;}
-function if6SetMini(id,pct,parts){const e=document.getElementById(id);if(e)e.style.background=if6Grad(parts);return pct;}
+function if6Grad(parts){
+  let total=parts.reduce((s,p)=>s+Number(p.value||0),0);
+  if(!total) return "conic-gradient(#263b57 0 100%)";
+  let cur=0,st=[];
+  parts.forEach(p=>{let end=cur+(Number(p.value||0)/total*100);st.push(`${p.color} ${cur}% ${end}%`);cur=end;});
+  return `conic-gradient(${st.join(",")})`;
+}
 function if6EstadoVeh(v){return if6N(if6P(v,["ESTADO_OPER","ESTADO_OPERATIVO","ESTADO","SITUACION"]));}
 function if6EstadoServ(s){return if6N(if6P(s,["ESTADO","ESTADO_SERVICIO"]));}
 function if6NombreChofer(c){return if6P(c,["NOMBRE","NOMBRE_COMPLETO","APELLIDO_NOMBRE","CHOFER"])||"Sin nombre";}
@@ -5144,46 +5157,23 @@ function if6FindVeh(id,veh){const k=String(id||"").trim();return (veh||[]).find(
 function if6FindCho(id,cho){const k=String(id||"").trim();return (cho||[]).find(c=>if6IdCho(c)===k)||null;}
 function if6FindAsi(id,asi){const k=String(id||"").trim();return (asi||[]).find(a=>if6IdAsi(a)===k)||null;}
 function if6FindServ(id,ser){const k=String(id||"").trim();return (ser||[]).find(s=>if6IdServ(s)===k)||null;}
-function if6ServicioNombre(s){
-  return if6P(s,["NOMBRE_SERVICIO","NOMBRE","SERVICIO","DESCRIPCION","TIPO_SERVICIO","TIPO"])||"Servicio";
-}
-function if6FechaValor(o){
-  return if6P(o,[
-    "FECHA_SERVICIO","FECHA_PROGRAMADA","FECHA","FECHA_INICIO",
-    "FECHA_ASIGNACION","FECHA_CREACION","FECHA_ALTA","FECHA_HORA",
-    "DATETIME","TIMESTAMP","INICIO"
-  ]);
-}
+function if6ServicioNombre(s){return if6P(s,["NOMBRE_SERVICIO","NOMBRE","SERVICIO","DESCRIPCION","TIPO_SERVICIO","TIPO"])||"Servicio";}
+function if6FechaValor(o){return if6P(o,["FECHA_SERVICIO","FECHA_PROGRAMADA","FECHA","FECHA_INICIO","FECHA_ASIGNACION","FECHA_CREACION","FECHA_ALTA","FECHA_HORA","DATETIME","TIMESTAMP","INICIO"]);}
+
 function if6Fecha(o){
-  const raw=if6FechaValor(o);
-  if(!raw) return null;
-  if(raw instanceof Date && !isNaN(raw)) return raw;
-  const s=String(raw).trim();
-  if(!s) return null;
+  const raw=if6FechaValor(o); if(!raw)return null;
+  if(raw instanceof Date && !isNaN(raw))return raw;
+  const s=String(raw).trim(); if(!s)return null;
   let d=null;
-  // ISO / timestamp
-  if(/^\\d{4}-\\d{2}-\\d{2}/.test(s)){
-    d=new Date(s.replace(" ","T"));
-  }
-  // dd/mm/yyyy or dd-mm-yyyy
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) d=new Date(s.replace(" ","T"));
   if(!d || isNaN(d)){
-    const m=s.match(/^(\\d{1,2})[\\/-](\\d{1,2})[\\/-](\\d{4})(?:[ T](\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?/);
-    if(m) d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0));
+    const m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if(m)d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0));
   }
   return d && !isNaN(d) ? d : null;
 }
-function if6ServicioFechaClasif(s,now){
-  const d=if6Fecha(s);
-  if(!d) return "SIN_FECHA";
-  return d.getTime()>now.getTime() ? "FUTURO" : "HISTORICO";
-}
-function if6UltimosDias(arr,dias,now){
-  const desde=new Date(now.getTime()-dias*86400000);
-  return arr.filter(s=>{
-    const d=if6Fecha(s);
-    return d && d<=now && d>=desde;
-  });
-}
+function if6ServicioFechaClasif(s,now){const d=if6Fecha(s);if(!d)return "SIN_FECHA";return d.getTime()>now.getTime()?"FUTURO":"HISTORICO";}
+function if6UltimosDias(arr,dias,now){const desde=new Date(now.getTime()-dias*86400000);return arr.filter(s=>{const d=if6Fecha(s);return d&&d<=now&&d>=desde;});}
 
 function if6ServicioLabel(s,asi,ser){
   if(!s)return "Servicio";
@@ -5193,38 +5183,91 @@ function if6ServicioLabel(s,asi,ser){
     const vid=if6P(a,["ID_VEHICULO","VEHICULO_ID"]);
     const v=if6FindVeh(vid,window.__if6Vehiculos||[]);
     const dom=v?if6Dom(v):"";
-    return dom ? `${nombre} · ${dom}` : nombre;
+    return dom?`${nombre} · ${dom}`:nombre;
   }
   return nombre;
 }
-function if6VehiculoLabelById(id,veh){
-  const v=if6FindVeh(id,veh);
-  return v ? if6Dom(v) : "Unidad sin dominio";
+function if6VehiculoLabelById(id,veh){const v=if6FindVeh(id,veh);return v?if6Dom(v):"Unidad sin dominio";}
+function if6ChoferLabelById(id,cho){const c=if6FindCho(id,cho);return c?if6NombreChofer(c):"Chofer sin nombre";}
+function if6VtvEstado(r){
+  const x=if6N([if6P(r,["ESTADO_VTV","ESTADO"]),if6P(r,["RESULTADO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"])].join(" "));
+  if(x.includes("VENC"))return "VENCIDA";if(x.includes("PROX"))return "PROXIMA";if(x.includes("NO VIG")||x.includes("RECHAZ"))return "VENCIDA";return "VIGENTE";
 }
-function if6ChoferLabelById(id,cho){
-  const c=if6FindCho(id,cho);
-  return c ? if6NombreChofer(c) : "Chofer sin nombre";
+
+function if6RenderMain(key){
+  const d=if6Data[key];if(!d)return;
+  document.querySelectorAll(".if6-card").forEach(c=>c.classList.toggle("selected",c.dataset.if6===key));
+  document.getElementById("if6MainTitle").textContent=d.title;
+  document.getElementById("if6MainSubtitle").textContent=d.subtitle;
+  document.getElementById("if6MainTotal").textContent=d.total;
+  document.getElementById("if6MainUnit").textContent=d.unit;
+  document.getElementById("if6MainDonut").style.background=if6Grad(d.parts);
+  document.getElementById("if6MainPct").textContent=d.total?if6Pct(d.focus,d.total)+"%":"—";
+  document.getElementById("if6MainCenterLabel").textContent=d.focusLabel||"distribución";
+  document.getElementById("if6MainLegend").innerHTML=d.parts.map(p=>{
+    const pct=d.total?if6Pct(p.value,d.total):0;
+    return `<div class="if6-legend-row"><span class="if6-dot" style="background:${p.color}"></span><div><div class="if6-legend-name">${escaparHTML(p.label)}</div><div class="if6-legend-meta">${p.value} ${d.itemWord||"registros"}</div></div><div class="if6-legend-pct">${pct}%</div></div>`;
+  }).join("");
+  document.getElementById("if6DetailTitle").textContent=d.detailTitle||"Detalle";
+  document.getElementById("if6DetailHelp").textContent=d.detailHelp||"";
+  document.getElementById("if6DetailList").innerHTML=(d.details&&d.details.length)
+    ?d.details.map(x=>`<div class="if6-detail-item"><b>${escaparHTML(x.name)}</b><span>${escaparHTML(x.meta)}</span></div>`).join("")
+    :"<div class=\"if6-detail-item\"><b>Sin datos suficientes</b><span>La información aparecerá cuando exista relación en el Backend.</span></div>";
 }
-function if6VtvEstado(r){const x=if6N([if6P(r,["ESTADO_VTV","ESTADO"]),if6P(r,["RESULTADO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"])].join(" "));if(x.includes("VENC"))return "VENCIDA";if(x.includes("PROX"))return "PROXIMA";if(x.includes("NO VIG")||x.includes("RECHAZ"))return "VENCIDA";return "VIGENTE";}
-function if6MostrarDonutFlota(data){const p=data.parts,total=data.total;document.getElementById("if6MainDonut").style.background=if6Grad(p);document.getElementById("if6MainPct").textContent=total?if6Pct(data.focus,total)+"%":"—";document.getElementById("if6MainCenterLabel").textContent=data.focusLabel||"distribución";document.getElementById("if6MainTotal").textContent=total;document.getElementById("if6MainUnit").textContent="vehículos";}
-function if6RenderMain(key){const d=if6Data[key];if(!d)return;document.querySelectorAll(".if6-card").forEach(c=>c.classList.toggle("selected",c.dataset.if6===key));document.getElementById("if6MainTitle").textContent=d.title;document.getElementById("if6MainSubtitle").textContent=d.subtitle;document.getElementById("if6MainTotal").textContent=d.total;document.getElementById("if6MainUnit").textContent=d.unit;document.getElementById("if6MainDonut").style.background=if6Grad(d.parts);document.getElementById("if6MainPct").textContent=d.total?if6Pct(d.focus,d.total)+"%":"—";document.getElementById("if6MainCenterLabel").textContent=d.focusLabel||"distribución";document.getElementById("if6MainLegend").innerHTML=d.parts.map(p=>{const pct=d.total?if6Pct(p.value,d.total):0;return `<div class="if6-legend-row"><span class="if6-dot" style="background:${p.color}"></span><div><div class="if6-legend-name">${escaparHTML(p.label)}</div><div class="if6-legend-meta">${p.value} ${d.itemWord||"registros"}</div></div><div class="if6-legend-pct">${pct}%</div></div>`}).join("");document.getElementById("if6DetailTitle").textContent=d.detailTitle||"Detalle";document.getElementById("if6DetailHelp").textContent=d.detailHelp||"";document.getElementById("if6DetailList").innerHTML=(d.details&&d.details.length)?d.details.map(x=>`<div class="if6-detail-item"><b>${escaparHTML(x.name)}</b><span>${escaparHTML(x.meta)}</span></div>`).join(""):"<div class=\"if6-detail-item\"><b>Sin datos suficientes</b><span>La información aparecerá cuando exista relación en el Backend.</span></div>";}
 function if6Seleccionar(key){if(if6Data[key])if6RenderMain(key);}
-function if6Mini(key,idPct,idDonut){const d=if6Data[key];if(!d)return;const pct=d.total?if6Pct(d.focus,d.total):0;document.getElementById(idPct).textContent=pct+"%";document.getElementById(idDonut).style.background=if6Grad(d.parts);}
+function if6Mini(key,idPct,idDonut){
+  const d=if6Data[key];if(!d)return;
+  const pct=d.total?if6Pct(d.focus,d.total):0;
+  const pe=document.getElementById(idPct),de=document.getElementById(idDonut);
+  if(pe)pe.textContent=pct+"%";if(de)de.style.background=if6Grad(d.parts);
+}
+function if6Agrupar(arr,keyFn){
+  const m={};
+  (arr||[]).forEach(x=>{const k=String(keyFn(x)||"").trim()||"Sin dato";m[k]=(m[k]||0)+1;});
+  return m;
+}
+function if6TopDetalles(mapa,labelFn,limit=12){
+  return Object.keys(mapa).sort((a,b)=>mapa[b]-mapa[a]).slice(0,limit).map(k=>({name:labelFn(k),meta:`${mapa[k]} viajes`}));
+}
+function if6TipoTraslado(s,a){
+  const obs=String(a?.OBSERVACIONES||"");
+  const match=obs.match(/TIPO\s+DE\s+TRASLADO\s*:\s*([^|]+)/i);
+  return String(match?.[1]||if6P(s,["TIPO_SERVICIO","TIPO","TIPO_VIAJE","TIPO_TRASLADO"])||"Otros").trim()||"Otros";
+}
+function if6NombreDestino(s){
+  return String(if6P(s,["NOMBRE_SERVICIO","NOMBRE","SERVICIO","DESTINO","DESTINO_SERVICIO","DESCRIPCION"])||"Sin destino").trim()||"Sin destino";
+}
+
 async function cargarInteligenciaFlota(){
   try{
-    const rs=await Promise.allSettled([leerBackend("vehiculos"),leerBackend("servicios"),leerBackend("choferes"),leerBackend("asignaciones"),leerBackend("viajes"),leerBackend("mantenimiento"),leerBackend("reportes")]);
+    const rs=await Promise.allSettled([
+      leerBackend("vehiculos"),leerBackend("servicios"),leerBackend("choferes"),
+      leerBackend("asignaciones"),leerBackend("viajes"),leerBackend("mantenimiento"),
+      leerBackend("reportes")
+    ]);
     const get=i=>rs[i].status==="fulfilled"&&rs[i].value?.ok&&Array.isArray(rs[i].value.datos)?rs[i].value.datos:[];
     const veh=get(0),ser=get(1),cho=get(2),asi=get(3),via=get(4),mant=get(5),rep=get(6);
-    estadoPanel.vehiculos=veh;estadoPanel.servicios=ser;estadoPanel.choferes=cho;estadoPanel.asignaciones=asi;estadoPanel.viajes=via;estadoPanel.mantenimiento=mant;estadoPanel.reportes=rep;
+
+    estadoPanel.vehiculos=veh;estadoPanel.servicios=ser;estadoPanel.choferes=cho;
+    estadoPanel.asignaciones=asi;estadoPanel.viajes=via;estadoPanel.mantenimiento=mant;estadoPanel.reportes=rep;
     window.__if6Vehiculos=veh;window.__if6Choferes=cho;window.__if6Servicios=ser;window.__if6Asignaciones=asi;
 
     const oper=veh.filter(v=>["DISPONIBLE","OPERATIVO","OPERATIVOS","ACTIVO","FUNCIONANDO","FUNCIONA"].includes(if6EstadoVeh(v))).length;
     const taller=veh.filter(v=>["EN TALLER","TALLER","MANTENIMIENTO"].includes(if6EstadoVeh(v))).length;
     const fuera=Math.max(0,veh.length-oper-taller);
-    if6Data.flota={title:"Estado general de la flota",subtitle:"Distribución actual de las unidades registradas.",total:veh.length,unit:"vehículos",focus:oper,focusLabel:"operativos",parts:[{label:"Operativos",value:oper,color:"var(--green)"},{label:"En taller",value:taller,color:"var(--yellow)"},{label:"Fuera de servicio / radiados",value:fuera,color:"var(--red)"}],detailTitle:"Unidades que concentran la operación",detailHelp:"Ordenadas por cantidad de viajes registrados.",details:[]};
+    if6Data.flota={
+      title:"Estado general de la flota",subtitle:"Distribución actual de las unidades registradas.",
+      total:veh.length,unit:"vehículos",focus:oper,focusLabel:"operativos",
+      parts:[
+        {label:"Operativos",value:oper,color:"var(--green)"},
+        {label:"En taller",value:taller,color:"var(--yellow)"},
+        {label:"Fuera de servicio / radiados",value:fuera,color:"var(--red)"}
+      ],
+      detailTitle:"Unidades que concentran la operación",
+      detailHelp:"Ordenadas por cantidad de viajes registrados.",details:[]
+    };
 
-    // SERVICIOS: el análisis histórico mira desde ahora hacia atrás.
-    // Los servicios con fecha futura no se mezclan con el histórico.
+    // SERVICIOS HISTÓRICOS: se excluyen fechas futuras.
     const ahora=new Date();
     const serHistorico=ser.filter(s=>if6ServicioFechaClasif(s,ahora)!=="FUTURO");
     const serFuturos=ser.filter(s=>if6ServicioFechaClasif(s,ahora)==="FUTURO");
@@ -5233,35 +5276,21 @@ async function cargarInteligenciaFlota(){
     const si=serHistorico.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(if6EstadoServ(s))).length;
     const sc=serHistorico.filter(s=>["EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).length;
     const sp=Math.max(0,serHistorico.length-sf-si-sc);
-    const ult30=if6UltimosDias(ser,30,ahora);
-    const ult90=if6UltimosDias(ser,90,ahora);
-    const ult7=if6UltimosDias(ser,7,ahora);
+    const ult30=if6UltimosDias(ser,30,ahora),ult90=if6UltimosDias(ser,90,ahora),ult7=if6UltimosDias(ser,7,ahora);
 
-    const serDetalles=serHistorico
-      .slice()
-      .sort((a,b)=>(if6Fecha(b)?.getTime()||0)-(if6Fecha(a)?.getTime()||0))
-      .slice(0,12)
-      .map(s=>{
-        const a=if6FindAsi(if6P(s,["ID_ASIGNACION","ASIGNACION_ID"]),asi);
-        const vid=a?if6P(a,["ID_VEHICULO","VEHICULO_ID"]):if6P(s,["ID_VEHICULO","VEHICULO_ID"]);
-        const v=if6FindVeh(vid,veh);
-        const dom=v?if6Dom(v):"";
-        const nombre=if6ServicioNombre(s);
-        const choId=a?if6P(a,["ID_CHOFER","CHOFER_ID"]):if6P(s,["ID_CHOFER","CHOFER_ID"]);
-        const c=if6FindCho(choId,cho);
-        const choTxt=c?if6NombreChofer(c):"";
-        const d=if6Fecha(s);
-        const fechaTxt=d?d.toLocaleDateString("es-AR"):"Sin fecha";
-        return {name:nombre,meta:[fechaTxt,dom,choTxt,(if6EstadoServ(s)||"SIN ESTADO")].filter(Boolean).join(" · ")};
-      });
-
+    const serDetalles=serHistorico.slice().sort((a,b)=>(if6Fecha(b)?.getTime()||0)-(if6Fecha(a)?.getTime()||0)).slice(0,12).map(s=>{
+      const a=if6FindAsi(if6P(s,["ID_ASIGNACION","ASIGNACION_ID"]),asi);
+      const vid=a?if6P(a,["ID_VEHICULO","VEHICULO_ID"]):if6P(s,["ID_VEHICULO","VEHICULO_ID"]);
+      const v=if6FindVeh(vid,veh),dom=v?if6Dom(v):"";
+      const choId=a?if6P(a,["ID_CHOFER","CHOFER_ID"]):if6P(s,["ID_CHOFER","CHOFER_ID"]);
+      const c=if6FindCho(choId,cho),choTxt=c?if6NombreChofer(c):"";
+      const d=if6Fecha(s),fechaTxt=d?d.toLocaleDateString("es-AR"):"Sin fecha";
+      return {name:if6ServicioNombre(s),meta:[fechaTxt,dom,choTxt,(if6EstadoServ(s)||"SIN ESTADO")].filter(Boolean).join(" · ")};
+    });
     if6Data.servicios={
       title:"Historial de servicios",
       subtitle:`Desde la actualidad hacia atrás · ${serFuturos.length} futuros excluidos del histórico.`,
-      total:serHistorico.length,
-      unit:"servicios históricos",
-      focus:sf,
-      focusLabel:"finalizados",
+      total:serHistorico.length,unit:"servicios históricos",focus:sf,focusLabel:"finalizados",
       parts:[
         {label:"Finalizados",value:sf,color:"var(--green)"},
         {label:"En curso",value:sc,color:"var(--blue)"},
@@ -5273,52 +5302,176 @@ async function cargarInteligenciaFlota(){
       details:serDetalles
     };
 
+    // CHOFERES
     const aid=new Set(asi.map(a=>String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim()).filter(Boolean));
-    const choAct=cho.filter(c=>aid.has(if6IdCho(c))).length;
-    const choIna=Math.max(0,cho.length-choAct);
+    const choAct=cho.filter(c=>aid.has(if6IdCho(c))).length,choIna=Math.max(0,cho.length-choAct);
     const byC={};asi.forEach(a=>{const id=String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim();if(id)byC[id]=(byC[id]||0)+1;});
     const topC=Object.keys(byC).sort((a,b)=>byC[b]-byC[a]).slice(0,8).map(id=>{
-      const c=if6FindCho(id,cho);
-      return {name:c?if6NombreChofer(c):"Chofer sin nombre",meta:`${byC[id]} asignaciones`};
+      const c=if6FindCho(id,cho);return {name:c?if6NombreChofer(c):"Chofer sin nombre",meta:`${byC[id]} asignaciones`};
     });
-    if6Data.choferes={title:"Actividad de los choferes",subtitle:"Choferes con actividad vinculada mediante asignaciones.",total:cho.length,unit:"choferes",focus:choAct,focusLabel:"con actividad",parts:[{label:"Con actividad",value:choAct,color:"var(--green)"},{label:"Sin actividad vinculada",value:choIna,color:"var(--muted)"}],detailTitle:"Choferes con mayor actividad",detailHelp:"Cantidad de asignaciones vinculadas.",details:topC};
+    if6Data.choferes={
+      title:"Actividad de los choferes",subtitle:"Choferes con actividad vinculada mediante asignaciones.",
+      total:cho.length,unit:"choferes",focus:choAct,focusLabel:"con actividad",
+      parts:[{label:"Con actividad",value:choAct,color:"var(--green)"},{label:"Sin actividad vinculada",value:choIna,color:"var(--muted)"}],
+      detailTitle:"Choferes con mayor actividad",detailHelp:"Cantidad de asignaciones vinculadas.",details:topC
+    };
 
+    // MANTENIMIENTO
     const mSvc=mant.filter(m=>{const x=if6N(if6P(m,["TIPO","TIPO_MANTENIMIENTO","TIPO_SERVICIO"]));return x.includes("SERVICE")||x.includes("PREVENTIVO")||x.includes("MANTENIMIENTO")}).length;
     const mAver=mant.filter(m=>if6N(if6P(m,["TIPO","TIPO_MANTENIMIENTO"])).includes("AVERIA")).length;
     const mOtros=Math.max(0,mant.length-mSvc-mAver);
-    const mFocus=mSvc;
-    if6Data.mantenimiento={title:"Mantenimiento",subtitle:"Distribución de los registros de mantenimiento del Backend.",total:mant.length,unit:"registros",focus:mFocus,focusLabel:"services / preventivos",parts:[{label:"Service / preventivo",value:mSvc,color:"var(--green)"},{label:"Averías",value:mAver,color:"var(--red)"},{label:"Otros",value:mOtros,color:"var(--yellow)"}],detailTitle:"Últimos registros de mantenimiento",detailHelp:"Referencia por unidad cuando está disponible.",details:mant.slice(-8).reverse().map(m=>{
-      const vid=if6P(m,["ID_VEHICULO","VEHICULO_ID"]);
-      const v=if6FindVeh(vid,veh);
-      const dom=v?if6Dom(v):if6P(m,["DOMINIO","PATENTE"])||"Unidad";
-      return {name:dom,meta:if6P(m,["TIPO","TIPO_MANTENIMIENTO","TIPO_SERVICIO"])||"Mantenimiento"};
-    })};
+    if6Data.mantenimiento={
+      title:"Mantenimiento",subtitle:"Distribución de los registros de mantenimiento del Backend.",
+      total:mant.length,unit:"registros",focus:mSvc,focusLabel:"services / preventivos",
+      parts:[{label:"Service / preventivo",value:mSvc,color:"var(--green)"},{label:"Averías",value:mAver,color:"var(--red)"},{label:"Otros",value:mOtros,color:"var(--yellow)"}],
+      detailTitle:"Últimos registros de mantenimiento",detailHelp:"Referencia por unidad cuando está disponible.",
+      details:mant.slice(-8).reverse().map(m=>{
+        const vid=if6P(m,["ID_VEHICULO","VEHICULO_ID"]),v=if6FindVeh(vid,veh);
+        const dom=v?if6Dom(v):if6P(m,["DOMINIO","PATENTE"])||"Unidad";
+        return {name:dom,meta:if6P(m,["TIPO","TIPO_MANTENIMIENTO","TIPO_SERVICIO"])||"Mantenimiento"};
+      })
+    };
 
-    const vtvs=rep.filter(r=>{const x=if6N([if6P(r,["TIPO_REPORTE","TIPO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"]),if6P(r,["RESULTADO","ESTADO_VTV"])].join(" "));return x.includes("VTV")||x.includes("VERIFICACION TECNICA")||x.includes("CONTROL_VEHICULO")});
+    // VTV
+    const vtvs=rep.filter(r=>{
+      const x=if6N([if6P(r,["TIPO_REPORTE","TIPO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"]),if6P(r,["RESULTADO","ESTADO_VTV"])].join(" "));
+      return x.includes("VTV")||x.includes("VERIFICACION TECNICA")||x.includes("CONTROL_VEHICULO");
+    });
     const vv=vtvs.filter(r=>if6VtvEstado(r)==="VIGENTE").length,vp=vtvs.filter(r=>if6VtvEstado(r)==="PROXIMA").length,vx=vtvs.filter(r=>if6VtvEstado(r)==="VENCIDA").length;
-    if6Data.vtv={title:"Estado de VTV",subtitle:"Lectura de los registros de VTV identificados en Reportes.",total:vtvs.length,unit:"registros VTV",focus:vv,focusLabel:"vigentes",parts:[{label:"Vigentes",value:vv,color:"var(--green)"},{label:"Próximas",value:vp,color:"var(--yellow)"},{label:"Vencidas",value:vx,color:"var(--red)"}],detailTitle:"VTV identificadas",detailHelp:"Dominio y estado detectado.",details:vtvs.slice(0,8).map(r=>{
-      const vid=if6P(r,["ID_VEHICULO","VEHICULO_ID"]);
-      const v=if6FindVeh(vid,veh);
-      const dom=v?if6Dom(v):if6P(r,["DOMINIO","PATENTE"])||"Unidad sin dominio";
-      return {name:dom,meta:if6VtvEstado(r)};
-    })};
+    if6Data.vtv={
+      title:"Estado de VTV",subtitle:"Lectura de los registros de VTV identificados en Reportes.",
+      total:vtvs.length,unit:"registros VTV",focus:vv,focusLabel:"vigentes",
+      parts:[{label:"Vigentes",value:vv,color:"var(--green)"},{label:"Próximas",value:vp,color:"var(--yellow)"},{label:"Vencidas",value:vx,color:"var(--red)"}],
+      detailTitle:"VTV identificadas",detailHelp:"Dominio y estado detectado.",
+      details:vtvs.slice(0,8).map(r=>{
+        const vid=if6P(r,["ID_VEHICULO","VEHICULO_ID"]),v=if6FindVeh(vid,veh);
+        const dom=v?if6Dom(v):if6P(r,["DOMINIO","PATENTE"])||"Unidad sin dominio";
+        return {name:dom,meta:if6VtvEstado(r)};
+      })
+    };
+
+    // ============================================================
+    // NUEVO: CRUCES OPERATIVOS DE SERVICIOS Y VIAJES
+    // ============================================================
+    // 1) Destinos / servicios: usa NOMBRE_SERVICIO como unidad de análisis.
+    //    Esto permite ver cuántas veces se realizó cada destino/servicio.
+    const byDestino=if6Agrupar(serHistorico, s=>if6NombreDestino(s));
+    const totalDestinos=serHistorico.length;
+    const topDestinos=if6TopDetalles(byDestino,k=>k,12).map(x=>({...x,meta:x.meta.replace("viajes","servicios")}));
+    const destKeys=Object.keys(byDestino).sort((a,b)=>byDestino[b]-byDestino[a]);
+    const destTop=destKeys[0]||"Sin datos";
+    const destFocus=destKeys.length?byDestino[destTop]:0;
+    if6Data.destinos={
+      title:"Distribución por destino / servicio",
+      subtitle:`Histórico hasta hoy · ${serFuturos.length} servicios futuros excluidos.`,
+      total:totalDestinos,unit:"servicios históricos",focus:destFocus,focusLabel:destTop,
+      parts:destKeys.slice(0,6).map((k,i)=>({label:k,value:byDestino[k],color:["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)"][i]})),
+      detailTitle:"Veces realizadas por destino / servicio",
+      detailHelp:"Cantidad y participación sobre el total histórico.",
+      details:destKeys.slice(0,12).map(k=>({name:k,meta:`${byDestino[k]} servicios · ${if6Pct(byDestino[k],totalDestinos)}%`}))
+    };
+
+    // 2) Tipo de traslado: preferimos el tipo explícito de la asignación; si no existe,
+    //    usamos TIPO_SERVICIO del servicio.
+    const tipoReg=serHistorico.map(s=>{
+      const a=if6FindAsi(if6P(s,["ID_ASIGNACION","ASIGNACION_ID"]),asi);
+      return {s,a,tipo:if6TipoTraslado(s,a)};
+    });
+    const byTipo=if6Agrupar(tipoReg,x=>x.tipo);
+    const tipoKeys=Object.keys(byTipo).sort((a,b)=>byTipo[b]-byTipo[a]);
+    const tipoFocus=tipoKeys.length?byTipo[tipoKeys[0]]:0;
+    if6Data.tipos={
+      title:"Distribución por tipo de traslado",
+      subtitle:"Clasificación histórica de los servicios según tipo de traslado.",
+      total:tipoReg.length,unit:"servicios históricos",focus:tipoFocus,focusLabel:tipoKeys[0]||"sin datos",
+      parts:tipoKeys.slice(0,6).map((k,i)=>({label:k,value:byTipo[k],color:["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)"][i]})),
+      detailTitle:"Tipos de traslado",
+      detailHelp:"Personal, material y demás categorías encontradas en la base.",
+      details:tipoKeys.slice(0,12).map(k=>({name:k,meta:`${byTipo[k]} servicios · ${if6Pct(byTipo[k],tipoReg.length)}%`}))
+    };
+
+    // 3) Vehículos: medimos participación sobre VIAJES históricos registrados.
+    const viaHistorico=via.filter(v=>{const d=if6Fecha(v);return !d||d<=ahora;});
+    const byUnidad={};
+    viaHistorico.forEach(v=>{
+      const id=String(v?.ID_VEHICULO||"").trim();
+      if(id)byUnidad[id]=(byUnidad[id]||0)+1;
+    });
+    const unidadKeys=Object.keys(byUnidad).sort((a,b)=>byUnidad[b]-byUnidad[a]);
+    const unidadTotal=viaHistorico.length;
+    const unidadFocus=unidadKeys.length?byUnidad[unidadKeys[0]]:0;
+    if6Data.unidades={
+      title:"Participación de las unidades en los viajes",
+      subtitle:"Distribución de los viajes históricos registrados por dominio.",
+      total:unidadTotal,unit:"viajes históricos",focus:unidadFocus,focusLabel:(if6FindVeh(unidadKeys[0],veh)?if6Dom(if6FindVeh(unidadKeys[0],veh)):"Sin dominio"),
+      parts:unidadKeys.slice(0,6).map((k,i)=>({label:if6FindVeh(k,veh)?if6Dom(if6FindVeh(k,veh)):"Unidad sin dominio",value:byUnidad[k],color:["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)"][i]})),
+      detailTitle:"Dominios con mayor participación",
+      detailHelp:"Porcentaje calculado sobre los viajes históricos registrados.",
+      details:unidadKeys.slice(0,12).map(k=>{
+        const v=if6FindVeh(k,veh);
+        return {name:v?if6Dom(v):"Unidad sin dominio",meta:`${byUnidad[k]} viajes · ${if6Pct(byUnidad[k],unidadTotal)}%`};
+      })
+    };
+
+    // 4) Choferes: se mantiene la tarjeta original y además calculamos participación
+    //    real sobre viajes para los cruces.
+    const byChoferViajes={};
+    viaHistorico.forEach(v=>{
+      const id=String(v?.ID_CHOFER||"").trim();
+      if(id)byChoferViajes[id]=(byChoferViajes[id]||0)+1;
+    });
+    const choViajeKeys=Object.keys(byChoferViajes).sort((a,b)=>byChoferViajes[b]-byChoferViajes[a]);
+    const choViajesTotal=viaHistorico.length;
+
+    // Cruces resumen
+    const viajeIds=new Set(viaHistorico.map(v=>String(v?.ID_SERVICIO||"").trim()).filter(Boolean));
+    const serviciosConViaje=serHistorico.filter(s=>viajeIds.has(if6IdServ(s))).length;
+    const serviciosSinViaje=Math.max(0,serHistorico.length-serviciosConViaje);
+
+    document.getElementById("if6CrossDestino").textContent=
+      destTop==="Sin datos"?"Sin datos":`${destTop} · ${destFocus} servicios · ${if6Pct(destFocus,totalDestinos)}%`;
+    document.getElementById("if6CrossTipo").textContent=
+      tipoKeys.length?`${tipoKeys[0]} · ${byTipo[tipoKeys[0]]} · ${if6Pct(byTipo[tipoKeys[0]],tipoReg.length)}%`:"Sin datos";
+    document.getElementById("if6CrossRealizados").textContent=
+      `${viaHistorico.length} viajes históricos registrados`;
+    document.getElementById("if6CrossSinViaje").textContent=
+      `${serviciosSinViaje} servicios históricos sin viaje vinculado`;
 
     const byV={};asi.forEach(a=>{const id=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();if(id)byV[id]=(byV[id]||0)+1;});
-    const byVV={};via.forEach(v=>{const id=String(v?.ID_VEHICULO||"").trim();if(id)byVV[id]=(byVV[id]||0)+1;});
-    const topV=Object.keys(byVV).sort((a,b)=>byVV[b]-byVV[a]).slice(0,8).map(id=>{
-      const v=if6FindVeh(id,veh);
-      return {name:v?if6Dom(v):"Unidad sin dominio",meta:`${byVV[id]} viajes registrados`};
+    const byVV=byUnidad;
+    const topV=unidadKeys.slice(0,8).map(id=>{
+      const v=if6FindVeh(id,veh);return {name:v?if6Dom(v):"Unidad sin dominio",meta:`${byVV[id]} viajes registrados · ${if6Pct(byVV[id],unidadTotal)}%`};
     });
     if6Data.flota.details=topV;
-    document.getElementById("if6CrossVeh").textContent=`${Object.keys(byV).length} unidades con asignaciones y ${Object.keys(byVV).length} con viajes. · Servicios históricos: ${serHistorico.length} · Últimos 30 días: ${ult30.length}`;
-    document.getElementById("if6CrossChofer").textContent=`${Object.keys(byC).length} choferes vinculados a asignaciones.`;
-    const pairs=new Set();asi.forEach(a=>{const c=String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim(),v=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();if(c&&v)pairs.add(c+"|"+v);});
-    document.getElementById("if6CrossUnidad").textContent=`${pairs.size} relaciones chofer ↔ unidad detectadas.`;
-    const km=via.reduce((s,v)=>s+(Number(String(v?.KM_RECORRIDO??0).replace(",","."))||0),0);
-    document.getElementById("if6CrossViaje").textContent=`${via.length} viajes registrados · ${Math.round(km).toLocaleString("es-AR")} km informados.`;
 
-    if6Mini("flota","if6FlotaPct","if6DonutFlota");if6Mini("servicios","if6ServiciosPct","if6DonutServicios");if6Mini("choferes","if6ChoferesPct","if6DonutChoferes");if6Mini("mantenimiento","if6MantenimientoPct","if6DonutMantenimiento");if6Mini("vtv","if6VtvPct","if6DonutVtv");if6RenderMain("flota");
-  }catch(e){console.error("Inteligencia de Flota V6",e);}
+    document.getElementById("if6CrossVeh").textContent=
+      `${Object.keys(byV).length} unidades con asignaciones y ${Object.keys(byVV).length} con viajes. · Servicios históricos: ${serHistorico.length}`;
+    document.getElementById("if6CrossChofer").textContent=
+      `${Object.keys(byC).length} choferes vinculados a asignaciones. · ${choViajeKeys.length} con viajes registrados`;
+    const pairs=new Set();
+    asi.forEach(a=>{
+      const c=String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim();
+      const v=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();
+      if(c&&v)pairs.add(c+"|"+v);
+    });
+    document.getElementById("if6CrossUnidad").textContent=`${pairs.size} relaciones chofer ↔ unidad detectadas.`;
+    const km=viaHistorico.reduce((s,v)=>s+(Number(String(v?.KM_RECORRIDO??0).replace(",","."))||0),0);
+    document.getElementById("if6CrossViaje").textContent=
+      `${viaHistorico.length} viajes registrados · ${Math.round(km).toLocaleString("es-AR")} km informados.`;
+
+    if6Mini("flota","if6FlotaPct","if6DonutFlota");
+    if6Mini("servicios","if6ServiciosPct","if6DonutServicios");
+    if6Mini("choferes","if6ChoferesPct","if6DonutChoferes");
+    if6Mini("mantenimiento","if6MantenimientoPct","if6DonutMantenimiento");
+    if6Mini("vtv","if6VtvPct","if6DonutVtv");
+    if6Mini("destinos","if6DestinosPct","if6DonutDestinos");
+    if6Mini("tipos","if6TiposPct","if6DonutTipos");
+    if6Mini("unidades","if6UnidadesPct","if6DonutUnidades");
+
+    if6RenderMain("flota");
+  }catch(e){
+    console.error("Inteligencia de Flota V7",e);
+  }
 }
 </script>
 
