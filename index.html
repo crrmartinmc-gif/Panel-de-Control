@@ -2585,42 +2585,16 @@ textarea.form-control{
     .sidebar .brand,
     .sidebar .menu-label,
     .sidebar .sidebar-bottom{display:none;}
-
-    /* Una sola cinta horizontal: todos los grupos de opciones
-       quedan uno al lado del otro dentro del mismo carrusel. */
-    .sidebar .sidebar-scroll{
+    .sidebar .menu{
         display:flex;
         flex-direction:row;
-        align-items:stretch;
-        flex:1 1 auto;
-        min-width:0;
-        width:100%;
-        max-width:100%;
-        overflow-x:auto;
-        overflow-y:hidden;
-        padding:0;
-        margin:0;
-        scrollbar-width:none;
-        -webkit-overflow-scrolling:touch;
-        scroll-snap-type:x proximity;
-        overscroll-behavior-x:contain;
-        touch-action:pan-x;
-    }
-    .sidebar .sidebar-scroll::-webkit-scrollbar{display:none;}
-
-    .sidebar .menu{
-        display:flex !important;
-        flex-direction:row !important;
         flex:0 0 auto;
-        width:max-content;
         gap:3px;
         align-items:stretch;
-        margin:0;
     }
     .sidebar .menu button{
-        width:76px;
-        min-width:76px;
-        flex:0 0 76px;
+        width:58px;
+        min-width:58px;
         height:61px;
         padding:6px 3px 5px;
         border-radius:9px;
@@ -2633,11 +2607,10 @@ textarea.form-control{
         font-size:8px;
         line-height:1.05;
         color:#9eacc0;
-        scroll-snap-align:center;
     }
     .sidebar .menu button span:last-child{
         display:block;
-        max-width:70px;
+        max-width:55px;
         white-space:normal;
         overflow:hidden;
         text-overflow:ellipsis;
@@ -2842,7 +2815,7 @@ textarea.form-control{
 }
 
 @media(max-width:380px){
-    .sidebar .menu button{width:72px;min-width:72px;flex-basis:72px;font-size:7.5px;}
+    .sidebar .menu button{width:54px;min-width:54px;font-size:7.5px;}
     .sidebar .menu-icon{font-size:16px;}
     .content{padding-left:8px;padding-right:8px;}
     .kpi{padding:10px;}
@@ -5064,12 +5037,39 @@ function if6Grad(parts){let total=parts.reduce((s,p)=>s+p.value,0);if(!total) re
 function if6SetMini(id,pct,parts){const e=document.getElementById(id);if(e)e.style.background=if6Grad(parts);return pct;}
 function if6EstadoVeh(v){return if6N(if6P(v,["ESTADO_OPER","ESTADO_OPERATIVO","ESTADO","SITUACION"]));}
 function if6EstadoServ(s){return if6N(if6P(s,["ESTADO","ESTADO_SERVICIO"]));}
-function if6NombreChofer(c){return if6P(c,["NOMBRE","NOMBRE_COMPLETO","APELLIDO_NOMBRE","CHOFER"])||if6P(c,["ID_CHOFER","ID"])||"Sin nombre";}
+function if6NombreChofer(c){return if6P(c,["NOMBRE","NOMBRE_COMPLETO","APELLIDO_NOMBRE","CHOFER"])||"Sin nombre";}
 function if6IdVeh(v){return String(if6P(v,["ID_VEHICULO","ID"])||"").trim();}
 function if6IdCho(c){return String(if6P(c,["ID_CHOFER","ID"])||"").trim();}
 function if6IdServ(s){return String(if6P(s,["ID_SERVICIO","ID"])||"").trim();}
 function if6IdAsi(a){return String(if6P(a,["ID_ASIGNACION","ID"])||"").trim();}
 function if6Dom(v){return if6P(v,["DOMINIO","PATENTE"])||"Sin dominio";}
+function if6FindVeh(id,veh){const k=String(id||"").trim();return (veh||[]).find(v=>if6IdVeh(v)===k)||null;}
+function if6FindCho(id,cho){const k=String(id||"").trim();return (cho||[]).find(c=>if6IdCho(c)===k)||null;}
+function if6FindAsi(id,asi){const k=String(id||"").trim();return (asi||[]).find(a=>if6IdAsi(a)===k)||null;}
+function if6FindServ(id,ser){const k=String(id||"").trim();return (ser||[]).find(s=>if6IdServ(s)===k)||null;}
+function if6ServicioNombre(s){
+  return if6P(s,["NOMBRE_SERVICIO","NOMBRE","SERVICIO","DESCRIPCION","TIPO_SERVICIO","TIPO"])||"Servicio";
+}
+function if6ServicioLabel(s,asi,ser){
+  if(!s)return "Servicio";
+  const nombre=if6ServicioNombre(s);
+  const a=if6FindAsi(if6P(s,["ID_ASIGNACION","ASIGNACION_ID"]),asi);
+  if(a){
+    const vid=if6P(a,["ID_VEHICULO","VEHICULO_ID"]);
+    const v=if6FindVeh(vid,window.__if6Vehiculos||[]);
+    const dom=v?if6Dom(v):"";
+    return dom ? `${nombre} · ${dom}` : nombre;
+  }
+  return nombre;
+}
+function if6VehiculoLabelById(id,veh){
+  const v=if6FindVeh(id,veh);
+  return v ? if6Dom(v) : "Unidad sin dominio";
+}
+function if6ChoferLabelById(id,cho){
+  const c=if6FindCho(id,cho);
+  return c ? if6NombreChofer(c) : "Chofer sin nombre";
+}
 function if6VtvEstado(r){const x=if6N([if6P(r,["ESTADO_VTV","ESTADO"]),if6P(r,["RESULTADO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"])].join(" "));if(x.includes("VENC"))return "VENCIDA";if(x.includes("PROX"))return "PROXIMA";if(x.includes("NO VIG")||x.includes("RECHAZ"))return "VENCIDA";return "VIGENTE";}
 function if6MostrarDonutFlota(data){const p=data.parts,total=data.total;document.getElementById("if6MainDonut").style.background=if6Grad(p);document.getElementById("if6MainPct").textContent=total?if6Pct(data.focus,total)+"%":"—";document.getElementById("if6MainCenterLabel").textContent=data.focusLabel||"distribución";document.getElementById("if6MainTotal").textContent=total;document.getElementById("if6MainUnit").textContent="vehículos";}
 function if6RenderMain(key){const d=if6Data[key];if(!d)return;document.querySelectorAll(".if6-card").forEach(c=>c.classList.toggle("selected",c.dataset.if6===key));document.getElementById("if6MainTitle").textContent=d.title;document.getElementById("if6MainSubtitle").textContent=d.subtitle;document.getElementById("if6MainTotal").textContent=d.total;document.getElementById("if6MainUnit").textContent=d.unit;document.getElementById("if6MainDonut").style.background=if6Grad(d.parts);document.getElementById("if6MainPct").textContent=d.total?if6Pct(d.focus,d.total)+"%":"—";document.getElementById("if6MainCenterLabel").textContent=d.focusLabel||"distribución";document.getElementById("if6MainLegend").innerHTML=d.parts.map(p=>{const pct=d.total?if6Pct(p.value,d.total):0;return `<div class="if6-legend-row"><span class="if6-dot" style="background:${p.color}"></span><div><div class="if6-legend-name">${escaparHTML(p.label)}</div><div class="if6-legend-meta">${p.value} ${d.itemWord||"registros"}</div></div><div class="if6-legend-pct">${pct}%</div></div>`}).join("");document.getElementById("if6DetailTitle").textContent=d.detailTitle||"Detalle";document.getElementById("if6DetailHelp").textContent=d.detailHelp||"";document.getElementById("if6DetailList").innerHTML=(d.details&&d.details.length)?d.details.map(x=>`<div class="if6-detail-item"><b>${escaparHTML(x.name)}</b><span>${escaparHTML(x.meta)}</span></div>`).join(""):"<div class=\"if6-detail-item\"><b>Sin datos suficientes</b><span>La información aparecerá cuando exista relación en el Backend.</span></div>";}
@@ -5081,6 +5081,7 @@ async function cargarInteligenciaFlota(){
     const get=i=>rs[i].status==="fulfilled"&&rs[i].value?.ok&&Array.isArray(rs[i].value.datos)?rs[i].value.datos:[];
     const veh=get(0),ser=get(1),cho=get(2),asi=get(3),via=get(4),mant=get(5),rep=get(6);
     estadoPanel.vehiculos=veh;estadoPanel.servicios=ser;estadoPanel.choferes=cho;estadoPanel.asignaciones=asi;estadoPanel.viajes=via;estadoPanel.mantenimiento=mant;estadoPanel.reportes=rep;
+    window.__if6Vehiculos=veh;window.__if6Choferes=cho;window.__if6Servicios=ser;window.__if6Asignaciones=asi;
 
     const oper=veh.filter(v=>["DISPONIBLE","OPERATIVO","OPERATIVOS","ACTIVO","FUNCIONANDO","FUNCIONA"].includes(if6EstadoVeh(v))).length;
     const taller=veh.filter(v=>["EN TALLER","TALLER","MANTENIMIENTO"].includes(if6EstadoVeh(v))).length;
@@ -5091,28 +5092,54 @@ async function cargarInteligenciaFlota(){
     const si=ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(if6EstadoServ(s))).length;
     const sc=ser.filter(s=>["EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).length;
     const sp=Math.max(0,ser.length-sf-si-sc);
-    if6Data.servicios={title:"Estado de los servicios",subtitle:"Lectura porcentual del estado de todos los servicios.",total:ser.length,unit:"servicios",focus:sf,focusLabel:"finalizados",parts:[{label:"Finalizados",value:sf,color:"var(--green)"},{label:"En curso",value:sc,color:"var(--blue)"},{label:"Programados / pendientes",value:sp,color:"var(--yellow)"},{label:"Incumplidos",value:si,color:"var(--red)"}],detailTitle:"Servicios que requieren atención",detailHelp:"Incumplidos y servicios actualmente en curso.",details:ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS","EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).slice(0,8).map(s=>({name:if6IdServ(s)||"Servicio",meta:(if6EstadoServ(s)||"SIN ESTADO")}))};
+    if6Data.servicios={title:"Estado de los servicios",subtitle:"Lectura porcentual del estado de todos los servicios.",total:ser.length,unit:"servicios",focus:sf,focusLabel:"finalizados",parts:[{label:"Finalizados",value:sf,color:"var(--green)"},{label:"En curso",value:sc,color:"var(--blue)"},{label:"Programados / pendientes",value:sp,color:"var(--yellow)"},{label:"Incumplidos",value:si,color:"var(--red)"}],detailTitle:"Servicios que requieren atención",detailHelp:"Incumplidos y servicios actualmente en curso.",details:ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS","EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).slice(0,8).map(s=>{
+      const a=if6FindAsi(if6P(s,["ID_ASIGNACION","ASIGNACION_ID"]),asi);
+      const vid=a?if6P(a,["ID_VEHICULO","VEHICULO_ID"]):if6P(s,["ID_VEHICULO","VEHICULO_ID"]);
+      const v=if6FindVeh(vid,veh);
+      const dom=v?if6Dom(v):"";
+      const nombre=if6ServicioNombre(s);
+      const choId=a?if6P(a,["ID_CHOFER","CHOFER_ID"]):if6P(s,["ID_CHOFER","CHOFER_ID"]);
+      const c=if6FindCho(choId,cho);
+      const choTxt=c?if6NombreChofer(c):"";
+      return {name:nombre,meta:[dom,choTxt,(if6EstadoServ(s)||"SIN ESTADO")].filter(Boolean).join(" · ")};
+    })};
 
     const aid=new Set(asi.map(a=>String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim()).filter(Boolean));
     const choAct=cho.filter(c=>aid.has(if6IdCho(c))).length;
     const choIna=Math.max(0,cho.length-choAct);
     const byC={};asi.forEach(a=>{const id=String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim();if(id)byC[id]=(byC[id]||0)+1;});
-    const topC=Object.keys(byC).sort((a,b)=>byC[b]-byC[a]).slice(0,8).map(id=>{const c=cho.find(x=>if6IdCho(x)===id)||{};return{name:if6NombreChofer(c),meta:`${byC[id]} asignaciones`};});
+    const topC=Object.keys(byC).sort((a,b)=>byC[b]-byC[a]).slice(0,8).map(id=>{
+      const c=if6FindCho(id,cho);
+      return {name:c?if6NombreChofer(c):"Chofer sin nombre",meta:`${byC[id]} asignaciones`};
+    });
     if6Data.choferes={title:"Actividad de los choferes",subtitle:"Choferes con actividad vinculada mediante asignaciones.",total:cho.length,unit:"choferes",focus:choAct,focusLabel:"con actividad",parts:[{label:"Con actividad",value:choAct,color:"var(--green)"},{label:"Sin actividad vinculada",value:choIna,color:"var(--muted)"}],detailTitle:"Choferes con mayor actividad",detailHelp:"Cantidad de asignaciones vinculadas.",details:topC};
 
     const mSvc=mant.filter(m=>{const x=if6N(if6P(m,["TIPO","TIPO_MANTENIMIENTO","TIPO_SERVICIO"]));return x.includes("SERVICE")||x.includes("PREVENTIVO")||x.includes("MANTENIMIENTO")}).length;
     const mAver=mant.filter(m=>if6N(if6P(m,["TIPO","TIPO_MANTENIMIENTO"])).includes("AVERIA")).length;
     const mOtros=Math.max(0,mant.length-mSvc-mAver);
     const mFocus=mSvc;
-    if6Data.mantenimiento={title:"Mantenimiento",subtitle:"Distribución de los registros de mantenimiento del Backend.",total:mant.length,unit:"registros",focus:mFocus,focusLabel:"services / preventivos",parts:[{label:"Service / preventivo",value:mSvc,color:"var(--green)"},{label:"Averías",value:mAver,color:"var(--red)"},{label:"Otros",value:mOtros,color:"var(--yellow)"}],detailTitle:"Últimos registros de mantenimiento",detailHelp:"Referencia por unidad cuando está disponible.",details:mant.slice(-8).reverse().map(m=>({name:if6P(m,["DOMINIO","PATENTE","ID_VEHICULO"])||"Unidad",meta:if6P(m,["TIPO","TIPO_MANTENIMIENTO"])||"Mantenimiento"}))};
+    if6Data.mantenimiento={title:"Mantenimiento",subtitle:"Distribución de los registros de mantenimiento del Backend.",total:mant.length,unit:"registros",focus:mFocus,focusLabel:"services / preventivos",parts:[{label:"Service / preventivo",value:mSvc,color:"var(--green)"},{label:"Averías",value:mAver,color:"var(--red)"},{label:"Otros",value:mOtros,color:"var(--yellow)"}],detailTitle:"Últimos registros de mantenimiento",detailHelp:"Referencia por unidad cuando está disponible.",details:mant.slice(-8).reverse().map(m=>{
+      const vid=if6P(m,["ID_VEHICULO","VEHICULO_ID"]);
+      const v=if6FindVeh(vid,veh);
+      const dom=v?if6Dom(v):if6P(m,["DOMINIO","PATENTE"])||"Unidad";
+      return {name:dom,meta:if6P(m,["TIPO","TIPO_MANTENIMIENTO","TIPO_SERVICIO"])||"Mantenimiento"};
+    })};
 
     const vtvs=rep.filter(r=>{const x=if6N([if6P(r,["TIPO_REPORTE","TIPO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"]),if6P(r,["RESULTADO","ESTADO_VTV"])].join(" "));return x.includes("VTV")||x.includes("VERIFICACION TECNICA")||x.includes("CONTROL_VEHICULO")});
     const vv=vtvs.filter(r=>if6VtvEstado(r)==="VIGENTE").length,vp=vtvs.filter(r=>if6VtvEstado(r)==="PROXIMA").length,vx=vtvs.filter(r=>if6VtvEstado(r)==="VENCIDA").length;
-    if6Data.vtv={title:"Estado de VTV",subtitle:"Lectura de los registros de VTV identificados en Reportes.",total:vtvs.length,unit:"registros VTV",focus:vv,focusLabel:"vigentes",parts:[{label:"Vigentes",value:vv,color:"var(--green)"},{label:"Próximas",value:vp,color:"var(--yellow)"},{label:"Vencidas",value:vx,color:"var(--red)"}],detailTitle:"VTV identificadas",detailHelp:"Dominio y estado detectado.",details:vtvs.slice(0,8).map(r=>({name:if6P(r,["DOMINIO","PATENTE","ID_VEHICULO"])||"Unidad",meta:if6VtvEstado(r)}))};
+    if6Data.vtv={title:"Estado de VTV",subtitle:"Lectura de los registros de VTV identificados en Reportes.",total:vtvs.length,unit:"registros VTV",focus:vv,focusLabel:"vigentes",parts:[{label:"Vigentes",value:vv,color:"var(--green)"},{label:"Próximas",value:vp,color:"var(--yellow)"},{label:"Vencidas",value:vx,color:"var(--red)"}],detailTitle:"VTV identificadas",detailHelp:"Dominio y estado detectado.",details:vtvs.slice(0,8).map(r=>{
+      const vid=if6P(r,["ID_VEHICULO","VEHICULO_ID"]);
+      const v=if6FindVeh(vid,veh);
+      const dom=v?if6Dom(v):if6P(r,["DOMINIO","PATENTE"])||"Unidad sin dominio";
+      return {name:dom,meta:if6VtvEstado(r)};
+    })};
 
     const byV={};asi.forEach(a=>{const id=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();if(id)byV[id]=(byV[id]||0)+1;});
     const byVV={};via.forEach(v=>{const id=String(v?.ID_VEHICULO||"").trim();if(id)byVV[id]=(byVV[id]||0)+1;});
-    const topV=Object.keys(byVV).sort((a,b)=>byVV[b]-byVV[a]).slice(0,8).map(id=>{const v=veh.find(x=>if6IdVeh(x)===id)||{};return{name:if6Dom(v),meta:`${byVV[id]} viajes registrados`};});
+    const topV=Object.keys(byVV).sort((a,b)=>byVV[b]-byVV[a]).slice(0,8).map(id=>{
+      const v=if6FindVeh(id,veh);
+      return {name:v?if6Dom(v):"Unidad sin dominio",meta:`${byVV[id]} viajes registrados`};
+    });
     if6Data.flota.details=topV;
     document.getElementById("if6CrossVeh").textContent=`${Object.keys(byV).length} unidades con asignaciones y ${Object.keys(byVV).length} con viajes.`;
     document.getElementById("if6CrossChofer").textContent=`${Object.keys(byC).length} choferes vinculados a asignaciones.`;
