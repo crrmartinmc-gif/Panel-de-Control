@@ -2585,28 +2585,35 @@ textarea.form-control{
     .sidebar .brand,
     .sidebar .menu-label,
     .sidebar .sidebar-bottom{display:none;}
-    /* Carrusel horizontal de TODAS las opciones.
-       Los grupos del menú se vuelven transparentes para que
-       los botones formen una única fila desplazable. */
+    /* Carrusel horizontal único para móvil */
     .sidebar{
+        display:flex;
+        flex-direction:row;
+        align-items:stretch;
+        overflow-x:auto;
+        overflow-y:hidden;
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:none;
         scroll-snap-type:x proximity;
         overscroll-behavior-x:contain;
-        scroll-behavior:smooth;
         touch-action:pan-x;
+        white-space:nowrap;
     }
+    .sidebar::-webkit-scrollbar{display:none}
     .sidebar .menu{
-        display:contents;
+        display:flex !important;
+        flex-direction:row !important;
+        flex-wrap:nowrap !important;
+        align-items:stretch;
+        gap:0;
+        min-width:max-content;
+        width:max-content;
     }
-    .sidebar .menu button{
+    .sidebar .menu > *{
         flex:0 0 76px;
         width:76px;
         min-width:76px;
         scroll-snap-align:center;
-    }
-    .sidebar::before,
-    .sidebar::after{
-        content:"";
-        flex:0 0 4px;
     }
     .sidebar .menu button{
         width:76px;
