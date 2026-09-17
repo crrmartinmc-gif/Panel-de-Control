@@ -3017,6 +3017,103 @@ textarea.form-control{
 .mantenimiento-estado-select.inspeccion-observada{color:#fbbf24}
 .mantenimiento-estado-select.inspeccion-rechazada{color:#f87171}
 </style>
+
+<style id="mobile-single-row-carousel-final">
+@media(max-width:768px){
+    /* CARRUSEL ÚNICO: toda la navegación inferior es una sola fila */
+    .sidebar{
+        display:flex !important;
+        flex-direction:row !important;
+        align-items:stretch !important;
+        overflow:hidden !important;
+        white-space:nowrap !important;
+    }
+
+    .sidebar .sidebar-scroll{
+        display:flex !important;
+        flex-direction:row !important;
+        align-items:stretch !important;
+        width:100% !important;
+        min-width:0 !important;
+        flex:1 1 auto !important;
+        overflow-x:auto !important;
+        overflow-y:hidden !important;
+        padding:0 4px !important;
+        margin:0 !important;
+        scrollbar-width:none !important;
+        -webkit-overflow-scrolling:touch !important;
+        scroll-behavior:smooth !important;
+        overscroll-behavior-x:contain !important;
+        touch-action:pan-x !important;
+    }
+
+    .sidebar .sidebar-scroll::-webkit-scrollbar{display:none !important;}
+
+    /* Los títulos de grupo no ocupan espacio en la cinta */
+    .sidebar .sidebar-scroll > .menu-label{
+        display:none !important;
+    }
+
+    /* Los distintos nav pasan a formar una única fila continua */
+    .sidebar .sidebar-scroll > .menu{
+        display:flex !important;
+        flex-direction:row !important;
+        flex-wrap:nowrap !important;
+        align-items:stretch !important;
+        width:max-content !important;
+        min-width:max-content !important;
+        flex:0 0 auto !important;
+        gap:3px !important;
+        margin:0 !important;
+    }
+
+    /* Cada opción es un elemento fijo de la fila */
+    .sidebar .sidebar-scroll > .menu button{
+        display:flex !important;
+        flex:0 0 76px !important;
+        width:76px !important;
+        min-width:76px !important;
+        max-width:76px !important;
+        height:61px !important;
+        margin:0 !important;
+        padding:6px 3px 5px !important;
+        flex-direction:column !important;
+        justify-content:center !important;
+        align-items:center !important;
+        gap:3px !important;
+        white-space:normal !important;
+        scroll-snap-align:center;
+    }
+
+    .sidebar .sidebar-scroll > .menu button span:last-child{
+        display:block !important;
+        width:70px !important;
+        max-width:70px !important;
+        white-space:nowrap !important;
+        overflow:hidden !important;
+        text-overflow:ellipsis !important;
+        text-align:center !important;
+    }
+
+    .sidebar .sidebar-scroll > .menu-icon{
+        width:auto !important;
+    }
+}
+
+@media(max-width:380px){
+    .sidebar .sidebar-scroll > .menu button{
+        flex-basis:72px !important;
+        width:72px !important;
+        min-width:72px !important;
+        max-width:72px !important;
+    }
+    .sidebar .sidebar-scroll > .menu button span:last-child{
+        width:68px !important;
+        max-width:68px !important;
+    }
+}
+</style>
+
 </head>
 
 <body>
@@ -5050,6 +5147,44 @@ function if6FindServ(id,ser){const k=String(id||"").trim();return (ser||[]).find
 function if6ServicioNombre(s){
   return if6P(s,["NOMBRE_SERVICIO","NOMBRE","SERVICIO","DESCRIPCION","TIPO_SERVICIO","TIPO"])||"Servicio";
 }
+function if6FechaValor(o){
+  return if6P(o,[
+    "FECHA_SERVICIO","FECHA_PROGRAMADA","FECHA","FECHA_INICIO",
+    "FECHA_ASIGNACION","FECHA_CREACION","FECHA_ALTA","FECHA_HORA",
+    "DATETIME","TIMESTAMP","INICIO"
+  ]);
+}
+function if6Fecha(o){
+  const raw=if6FechaValor(o);
+  if(!raw) return null;
+  if(raw instanceof Date && !isNaN(raw)) return raw;
+  const s=String(raw).trim();
+  if(!s) return null;
+  let d=null;
+  // ISO / timestamp
+  if(/^\\d{4}-\\d{2}-\\d{2}/.test(s)){
+    d=new Date(s.replace(" ","T"));
+  }
+  // dd/mm/yyyy or dd-mm-yyyy
+  if(!d || isNaN(d)){
+    const m=s.match(/^(\\d{1,2})[\\/-](\\d{1,2})[\\/-](\\d{4})(?:[ T](\\d{1,2}):(\\d{2})(?::(\\d{2}))?)?/);
+    if(m) d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0));
+  }
+  return d && !isNaN(d) ? d : null;
+}
+function if6ServicioFechaClasif(s,now){
+  const d=if6Fecha(s);
+  if(!d) return "SIN_FECHA";
+  return d.getTime()>now.getTime() ? "FUTURO" : "HISTORICO";
+}
+function if6UltimosDias(arr,dias,now){
+  const desde=new Date(now.getTime()-dias*86400000);
+  return arr.filter(s=>{
+    const d=if6Fecha(s);
+    return d && d<=now && d>=desde;
+  });
+}
+
 function if6ServicioLabel(s,asi,ser){
   if(!s)return "Servicio";
   const nombre=if6ServicioNombre(s);
@@ -5088,21 +5223,55 @@ async function cargarInteligenciaFlota(){
     const fuera=Math.max(0,veh.length-oper-taller);
     if6Data.flota={title:"Estado general de la flota",subtitle:"Distribución actual de las unidades registradas.",total:veh.length,unit:"vehículos",focus:oper,focusLabel:"operativos",parts:[{label:"Operativos",value:oper,color:"var(--green)"},{label:"En taller",value:taller,color:"var(--yellow)"},{label:"Fuera de servicio / radiados",value:fuera,color:"var(--red)"}],detailTitle:"Unidades que concentran la operación",detailHelp:"Ordenadas por cantidad de viajes registrados.",details:[]};
 
-    const sf=ser.filter(s=>["FINALIZADO","FINALIZADOS","COMPLETADO","COMPLETADOS"].includes(if6EstadoServ(s))).length;
-    const si=ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(if6EstadoServ(s))).length;
-    const sc=ser.filter(s=>["EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).length;
-    const sp=Math.max(0,ser.length-sf-si-sc);
-    if6Data.servicios={title:"Estado de los servicios",subtitle:"Lectura porcentual del estado de todos los servicios.",total:ser.length,unit:"servicios",focus:sf,focusLabel:"finalizados",parts:[{label:"Finalizados",value:sf,color:"var(--green)"},{label:"En curso",value:sc,color:"var(--blue)"},{label:"Programados / pendientes",value:sp,color:"var(--yellow)"},{label:"Incumplidos",value:si,color:"var(--red)"}],detailTitle:"Servicios que requieren atención",detailHelp:"Incumplidos y servicios actualmente en curso.",details:ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS","EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).slice(0,8).map(s=>{
-      const a=if6FindAsi(if6P(s,["ID_ASIGNACION","ASIGNACION_ID"]),asi);
-      const vid=a?if6P(a,["ID_VEHICULO","VEHICULO_ID"]):if6P(s,["ID_VEHICULO","VEHICULO_ID"]);
-      const v=if6FindVeh(vid,veh);
-      const dom=v?if6Dom(v):"";
-      const nombre=if6ServicioNombre(s);
-      const choId=a?if6P(a,["ID_CHOFER","CHOFER_ID"]):if6P(s,["ID_CHOFER","CHOFER_ID"]);
-      const c=if6FindCho(choId,cho);
-      const choTxt=c?if6NombreChofer(c):"";
-      return {name:nombre,meta:[dom,choTxt,(if6EstadoServ(s)||"SIN ESTADO")].filter(Boolean).join(" · ")};
-    })};
+    // SERVICIOS: el análisis histórico mira desde ahora hacia atrás.
+    // Los servicios con fecha futura no se mezclan con el histórico.
+    const ahora=new Date();
+    const serHistorico=ser.filter(s=>if6ServicioFechaClasif(s,ahora)!=="FUTURO");
+    const serFuturos=ser.filter(s=>if6ServicioFechaClasif(s,ahora)==="FUTURO");
+    const serSinFecha=serHistorico.filter(s=>if6ServicioFechaClasif(s,ahora)==="SIN_FECHA").length;
+    const sf=serHistorico.filter(s=>["FINALIZADO","FINALIZADOS","COMPLETADO","COMPLETADOS"].includes(if6EstadoServ(s))).length;
+    const si=serHistorico.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(if6EstadoServ(s))).length;
+    const sc=serHistorico.filter(s=>["EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).length;
+    const sp=Math.max(0,serHistorico.length-sf-si-sc);
+    const ult30=if6UltimosDias(ser,30,ahora);
+    const ult90=if6UltimosDias(ser,90,ahora);
+    const ult7=if6UltimosDias(ser,7,ahora);
+
+    const serDetalles=serHistorico
+      .slice()
+      .sort((a,b)=>(if6Fecha(b)?.getTime()||0)-(if6Fecha(a)?.getTime()||0))
+      .slice(0,12)
+      .map(s=>{
+        const a=if6FindAsi(if6P(s,["ID_ASIGNACION","ASIGNACION_ID"]),asi);
+        const vid=a?if6P(a,["ID_VEHICULO","VEHICULO_ID"]):if6P(s,["ID_VEHICULO","VEHICULO_ID"]);
+        const v=if6FindVeh(vid,veh);
+        const dom=v?if6Dom(v):"";
+        const nombre=if6ServicioNombre(s);
+        const choId=a?if6P(a,["ID_CHOFER","CHOFER_ID"]):if6P(s,["ID_CHOFER","CHOFER_ID"]);
+        const c=if6FindCho(choId,cho);
+        const choTxt=c?if6NombreChofer(c):"";
+        const d=if6Fecha(s);
+        const fechaTxt=d?d.toLocaleDateString("es-AR"):"Sin fecha";
+        return {name:nombre,meta:[fechaTxt,dom,choTxt,(if6EstadoServ(s)||"SIN ESTADO")].filter(Boolean).join(" · ")};
+      });
+
+    if6Data.servicios={
+      title:"Historial de servicios",
+      subtitle:`Desde la actualidad hacia atrás · ${serFuturos.length} futuros excluidos del histórico.`,
+      total:serHistorico.length,
+      unit:"servicios históricos",
+      focus:sf,
+      focusLabel:"finalizados",
+      parts:[
+        {label:"Finalizados",value:sf,color:"var(--green)"},
+        {label:"En curso",value:sc,color:"var(--blue)"},
+        {label:"Programados / pendientes",value:sp,color:"var(--yellow)"},
+        {label:"Incumplidos",value:si,color:"var(--red)"}
+      ],
+      detailTitle:"Actividad histórica de servicios",
+      detailHelp:`Últimos 7 días: ${ult7.length} · 30 días: ${ult30.length} · 90 días: ${ult90.length} · Sin fecha: ${serSinFecha}.`,
+      details:serDetalles
+    };
 
     const aid=new Set(asi.map(a=>String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim()).filter(Boolean));
     const choAct=cho.filter(c=>aid.has(if6IdCho(c))).length;
@@ -5141,7 +5310,7 @@ async function cargarInteligenciaFlota(){
       return {name:v?if6Dom(v):"Unidad sin dominio",meta:`${byVV[id]} viajes registrados`};
     });
     if6Data.flota.details=topV;
-    document.getElementById("if6CrossVeh").textContent=`${Object.keys(byV).length} unidades con asignaciones y ${Object.keys(byVV).length} con viajes.`;
+    document.getElementById("if6CrossVeh").textContent=`${Object.keys(byV).length} unidades con asignaciones y ${Object.keys(byVV).length} con viajes. · Servicios históricos: ${serHistorico.length} · Últimos 30 días: ${ult30.length}`;
     document.getElementById("if6CrossChofer").textContent=`${Object.keys(byC).length} choferes vinculados a asignaciones.`;
     const pairs=new Set();asi.forEach(a=>{const c=String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim(),v=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();if(c&&v)pairs.add(c+"|"+v);});
     document.getElementById("if6CrossUnidad").textContent=`${pairs.size} relaciones chofer ↔ unidad detectadas.`;
