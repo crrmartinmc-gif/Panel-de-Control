@@ -4952,6 +4952,130 @@ textarea.form-control{
 
 </div>
 
+<style id="inteligencia-flota-v5-style">
+.if-wrap{padding:0 0 20px}
+.if-head{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:18px}
+.if-head h2{margin:0;font-size:22px}.if-sub{color:var(--muted);font-size:11px;margin-top:4px}
+.if-filter{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-size:11px}
+.if-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:15px}
+.if-kpi{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:15px;box-shadow:var(--shadow)}
+.if-label{font-size:10px;color:var(--muted);font-weight:700}.if-num{font-size:26px;font-weight:800;margin-top:8px}.if-help{font-size:9px;color:var(--muted);margin-top:4px}
+.if-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:15px}
+.if-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:17px;box-shadow:var(--shadow);min-width:0}
+.if-title{font-size:13px;font-weight:800;margin-bottom:13px}.if-row{margin:12px 0;font-size:11px}.if-row-top{display:flex;justify-content:space-between}.if-bar{height:7px;background:#1b2a3e;border-radius:20px;margin-top:6px;overflow:hidden}.if-fill{height:100%;border-radius:20px}
+.if-alerts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.if-alert{padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)}.if-alert b{display:block;font-size:11px;margin-bottom:4px}.if-alert span{font-size:9px;color:var(--muted);line-height:1.4}
+.if-wide{grid-column:1/-1}.if-table-wrap{overflow-x:auto}.if-table{width:100%;border-collapse:collapse;font-size:10px}.if-table th,.if-table td{padding:10px 7px;border-bottom:1px solid #1b2a3e;text-align:left;white-space:nowrap}.if-table th{color:var(--muted);font-size:9px}.if-badge{padding:4px 7px;border-radius:6px;background:#1b2a3e}.if-loading{color:var(--muted);font-size:11px}
+@media(max-width:1200px){.if-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.if-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.if-grid{grid-template-columns:1fr}.if-wide{grid-column:auto}.if-alerts{grid-template-columns:1fr}}
+@media(max-width:520px){.if-kpis{grid-template-columns:1fr}.if-head{align-items:flex-start;flex-direction:column}.if-filter{width:100%}}
+</style>
+
+<div id="inteligencia-flota" class="page">
+<div class="if-wrap">
+  <div class="if-head">
+    <div>
+      <h2>🧠 Inteligencia de Flota</h2>
+      <div class="if-sub">Análisis real de Vehículos + Choferes + Servicios + Asignaciones</div>
+    </div>
+    <div class="if-filter">Datos: <b>Backend Maestro</b></div>
+  </div>
+
+  <div class="if-kpis">
+    <div class="if-kpi"><div class="if-label">VEHÍCULOS</div><div class="if-num" id="ifTotalVehiculos">—</div><div class="if-help">registrados</div></div>
+    <div class="if-kpi"><div class="if-label">OPERATIVOS</div><div class="if-num" id="ifOperativos">—</div><div class="if-help">estado operativo</div></div>
+    <div class="if-kpi"><div class="if-label">CHOFERES</div><div class="if-num" id="ifTotalChoferes">—</div><div class="if-help">activos registrados</div></div>
+    <div class="if-kpi"><div class="if-label">SERVICIOS</div><div class="if-num" id="ifTotalServicios">—</div><div class="if-help">en la base</div></div>
+    <div class="if-kpi"><div class="if-label">FINALIZADOS</div><div class="if-num" id="ifFinalizados">—</div><div class="if-help">servicios completados</div></div>
+    <div class="if-kpi"><div class="if-label">INCUMPLIDOS</div><div class="if-num" id="ifIncumplidos">—</div><div class="if-help">requieren análisis</div></div>
+  </div>
+
+  <div class="if-grid">
+    <div class="if-card">
+      <div class="if-title">📊 Estado operativo de la flota</div>
+      <div class="if-row"><div class="if-row-top"><span>Operativos</span><b id="ifOpTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifOpBar" style="width:0;background:var(--green)"></div></div></div>
+      <div class="if-row"><div class="if-row-top"><span>En taller</span><b id="ifTallerTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifTallerBar" style="width:0;background:var(--yellow)"></div></div></div>
+      <div class="if-row"><div class="if-row-top"><span>Fuera de servicio / radiados</span><b id="ifFueraTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifFueraBar" style="width:0;background:var(--red)"></div></div></div>
+    </div>
+
+    <div class="if-card">
+      <div class="if-title">📋 Estado de los servicios</div>
+      <div class="if-alerts">
+        <div class="if-alert"><b style="color:var(--blue)">Programados</b><span id="ifProgramados">—</span></div>
+        <div class="if-alert"><b style="color:var(--green)">Finalizados</b><span id="ifFinalizadosBox">—</span></div>
+        <div class="if-alert"><b style="color:var(--red)">Incumplidos</b><span id="ifIncumplidosBox">—</span></div>
+      </div>
+    </div>
+
+    <div class="if-card">
+      <div class="if-title">🚚 Unidades con mayor carga operativa</div>
+      <div class="if-table-wrap"><table class="if-table">
+        <thead><tr><th>DOMINIO</th><th>INT.</th><th>SERVICIOS</th><th>CHOFERES</th><th>ESTADO</th></tr></thead>
+        <tbody id="ifUnidades"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="if-card">
+      <div class="if-title">👤 Choferes con mayor actividad</div>
+      <div class="if-table-wrap"><table class="if-table">
+        <thead><tr><th>CHOFER</th><th>LEGAJO</th><th>SERVICIOS</th><th>UNIDADES</th><th>ACTIVIDAD</th></tr></thead>
+        <tbody id="ifChoferes"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <div class="if-card if-wide">
+      <div class="if-title">🔗 Cruces automáticos</div>
+      <div class="if-alerts">
+        <div class="if-alert"><b>Vehículo ↔ Servicios</b><span id="ifCruceVeh">Calculando…</span></div>
+        <div class="if-alert"><b>Chofer ↔ Servicios</b><span id="ifCruceChofer">Calculando…</span></div>
+        <div class="if-alert"><b>Chofer ↔ Unidad</b><span id="ifCruceUnidad">Calculando…</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script id="inteligencia-flota-v5-js">
+function ifNorm(v){return String(v==null?"":v).trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+function ifPick(o,n){for(var i=0;i<n.length;i++){if(o&&o[n[i]]!==undefined&&o[n[i]]!==null&&String(o[n[i]]).trim()!=="")return o[n[i]];}return "";}
+function ifEstadoVeh(v){return ifNorm(ifPick(v,["ESTADO_OPERATIVO","ESTADO","SITUACION"]));}
+function ifEstadoServ(s){return ifNorm(ifPick(s,["ESTADO","ESTADO_SERVICIO"]));}
+function ifNombreChofer(c){return ifPick(c,["NOMBRE_COMPLETO","NOMBRE","CHOFER","APELLIDO_NOMBRE"])||ifPick(c,["ID_CHOFER","ID"])||"Sin nombre";}
+async function cargarInteligenciaFlota(){
+  try{
+    var r=await Promise.all([leerBackend("vehiculos"),leerBackend("choferes"),leerBackend("servicios"),leerBackend("asignaciones")]);
+    var veh=r[0]?.ok&&Array.isArray(r[0].datos)?r[0].datos:[];
+    var cho=r[1]?.ok&&Array.isArray(r[1].datos)?r[1].datos:[];
+    var ser=r[2]?.ok&&Array.isArray(r[2].datos)?r[2].datos:[];
+    var asi=r[3]?.ok&&Array.isArray(r[3].datos)?r[3].datos:[];
+    estadoPanel.vehiculos=veh;estadoPanel.choferes=cho;estadoPanel.servicios=ser;estadoPanel.asignaciones=asi;
+    var oper=veh.filter(v=>["OPERATIVO","OPERATIVOS","ACTIVO","ACTIVA","FUNCIONANDO","FUNCIONA"].includes(ifEstadoVeh(v))).length;
+    var taller=veh.filter(v=>["TALLER","EN TALLER","MANTENIMIENTO"].includes(ifEstadoVeh(v))).length;
+    var fuera=Math.max(0,veh.length-oper-taller), total=veh.length||1;
+    var fin=ser.filter(s=>["FINALIZADO","FINALIZADOS","COMPLETADO","COMPLETADOS"].includes(ifEstadoServ(s))).length;
+    var inc=ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(ifEstadoServ(s))).length;
+    var prog=ser.filter(s=>["PROGRAMADO","PROGRAMADOS","PENDIENTE","PENDIENTES","EN CURSO","EN_CURSO"].includes(ifEstadoServ(s))).length;
+    [["ifTotalVehiculos",veh.length],["ifOperativos",oper],["ifTotalChoferes",cho.length],["ifTotalServicios",ser.length],["ifFinalizados",fin],["ifIncumplidos",inc],["ifOpTxt",oper],["ifTallerTxt",taller],["ifFueraTxt",fuera],["ifProgramados",prog+" servicios"],["ifFinalizadosBox",fin+" servicios"],["ifIncumplidosBox",inc+" servicios"]].forEach(x=>{var e=document.getElementById(x[0]);if(e)e.textContent=x[1];});
+    document.getElementById("ifOpBar").style.width=(oper/total*100)+"%";document.getElementById("ifTallerBar").style.width=(taller/total*100)+"%";document.getElementById("ifFueraBar").style.width=(fuera/total*100)+"%";
+    var vmap={};veh.forEach(v=>vmap[String(ifPick(v,["ID_VEHICULO","ID"]))]=v);
+    var cmap={};cho.forEach(c=>cmap[String(ifPick(c,["ID_CHOFER","ID"]))]=c);
+    var byV={},byC={},byVC={};
+    asi.forEach(a=>{
+      var vid=String(ifPick(a,["ID_VEHICULO","VEHICULO_ID"])),cid=String(ifPick(a,["ID_CHOFER","CHOFER_ID"]));
+      if(vid){byV[vid]??={n:0,cho:{}};byV[vid].n++;if(cid)byV[vid].cho[cid]=1;}
+      if(cid){byC[cid]??={n:0,veh:{}};byC[cid].n++;if(vid)byC[cid].veh[vid]=1;}
+      if(vid&&cid)byVC[vid+"|"+cid]=(byVC[vid+"|"+cid]||0)+1;
+    });
+    var vr=Object.keys(byV).map(id=>{var v=vmap[id]||{};return{id,n:byV[id].n,cho:Object.keys(byV[id].cho).length,dom:ifPick(v,["DOMINIO","PATENTE"])||id,int:ifPick(v,["INTERNO"])||"—",estado:ifPick(v,["ESTADO_OPERATIVO","ESTADO"])||"—"}}).sort((a,b)=>b.n-a.n).slice(0,10);
+    document.getElementById("ifUnidades").innerHTML=vr.length?vr.map(x=>`<tr><td><b>${escaparHTML(x.dom)}</b></td><td>${escaparHTML(x.int)}</td><td>${x.n}</td><td>${x.cho}</td><td><span class="if-badge">${escaparHTML(x.estado)}</span></td></tr>`).join(""):`<tr><td colspan="5" class="if-loading">No hay asignaciones relacionadas todavía.</td></tr>`;
+    var cr=Object.keys(byC).map(id=>{var c=cmap[id]||{};return{n:byC[id].n,veh:Object.keys(byC[id].veh).length,nombre:ifNombreChofer(c),leg:ifPick(c,["LEGAJO","DNI"])||"—"}}).sort((a,b)=>b.n-a.n).slice(0,10);
+    document.getElementById("ifChoferes").innerHTML=cr.length?cr.map(x=>`<tr><td><b>${escaparHTML(x.nombre)}</b></td><td>${escaparHTML(x.leg)}</td><td>${x.n}</td><td>${x.veh}</td><td><span class="if-badge">Activa</span></td></tr>`).join(""):`<tr><td colspan="5" class="if-loading">No hay asignaciones relacionadas todavía.</td></tr>`;
+    document.getElementById("ifCruceVeh").textContent=Object.keys(byV).length+" unidades con actividad vinculada";
+    document.getElementById("ifCruceChofer").textContent=Object.keys(byC).length+" choferes con actividad vinculada";
+    document.getElementById("ifCruceUnidad").textContent=Object.keys(byVC).length+" relaciones chofer ↔ unidad detectadas";
+  }catch(e){console.error("Inteligencia de Flota",e);}
+}
+</script>
+
 </section>
 
 </main>
@@ -15829,129 +15953,7 @@ function dvOrdenarCapasMapa(){
 
 
 
-<style id="inteligencia-flota-v5-style">
-.if-wrap{padding:0 0 20px}
-.if-head{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:18px}
-.if-head h2{margin:0;font-size:22px}.if-sub{color:var(--muted);font-size:11px;margin-top:4px}
-.if-filter{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-size:11px}
-.if-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:15px}
-.if-kpi{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:15px;box-shadow:var(--shadow)}
-.if-label{font-size:10px;color:var(--muted);font-weight:700}.if-num{font-size:26px;font-weight:800;margin-top:8px}.if-help{font-size:9px;color:var(--muted);margin-top:4px}
-.if-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:15px}
-.if-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:17px;box-shadow:var(--shadow);min-width:0}
-.if-title{font-size:13px;font-weight:800;margin-bottom:13px}.if-row{margin:12px 0;font-size:11px}.if-row-top{display:flex;justify-content:space-between}.if-bar{height:7px;background:#1b2a3e;border-radius:20px;margin-top:6px;overflow:hidden}.if-fill{height:100%;border-radius:20px}
-.if-alerts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.if-alert{padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)}.if-alert b{display:block;font-size:11px;margin-bottom:4px}.if-alert span{font-size:9px;color:var(--muted);line-height:1.4}
-.if-wide{grid-column:1/-1}.if-table-wrap{overflow-x:auto}.if-table{width:100%;border-collapse:collapse;font-size:10px}.if-table th,.if-table td{padding:10px 7px;border-bottom:1px solid #1b2a3e;text-align:left;white-space:nowrap}.if-table th{color:var(--muted);font-size:9px}.if-badge{padding:4px 7px;border-radius:6px;background:#1b2a3e}.if-loading{color:var(--muted);font-size:11px}
-@media(max-width:1200px){.if-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:900px){.if-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.if-grid{grid-template-columns:1fr}.if-wide{grid-column:auto}.if-alerts{grid-template-columns:1fr}}
-@media(max-width:520px){.if-kpis{grid-template-columns:1fr}.if-head{align-items:flex-start;flex-direction:column}.if-filter{width:100%}}
-</style>
 
-<div id="inteligencia-flota" class="page">
-<div class="if-wrap">
-  <div class="if-head">
-    <div>
-      <h2>🧠 Inteligencia de Flota</h2>
-      <div class="if-sub">Análisis real de Vehículos + Choferes + Servicios + Asignaciones</div>
-    </div>
-    <div class="if-filter">Datos: <b>Backend Maestro</b></div>
-  </div>
-
-  <div class="if-kpis">
-    <div class="if-kpi"><div class="if-label">VEHÍCULOS</div><div class="if-num" id="ifTotalVehiculos">—</div><div class="if-help">registrados</div></div>
-    <div class="if-kpi"><div class="if-label">OPERATIVOS</div><div class="if-num" id="ifOperativos">—</div><div class="if-help">estado operativo</div></div>
-    <div class="if-kpi"><div class="if-label">CHOFERES</div><div class="if-num" id="ifTotalChoferes">—</div><div class="if-help">activos registrados</div></div>
-    <div class="if-kpi"><div class="if-label">SERVICIOS</div><div class="if-num" id="ifTotalServicios">—</div><div class="if-help">en la base</div></div>
-    <div class="if-kpi"><div class="if-label">FINALIZADOS</div><div class="if-num" id="ifFinalizados">—</div><div class="if-help">servicios completados</div></div>
-    <div class="if-kpi"><div class="if-label">INCUMPLIDOS</div><div class="if-num" id="ifIncumplidos">—</div><div class="if-help">requieren análisis</div></div>
-  </div>
-
-  <div class="if-grid">
-    <div class="if-card">
-      <div class="if-title">📊 Estado operativo de la flota</div>
-      <div class="if-row"><div class="if-row-top"><span>Operativos</span><b id="ifOpTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifOpBar" style="width:0;background:var(--green)"></div></div></div>
-      <div class="if-row"><div class="if-row-top"><span>En taller</span><b id="ifTallerTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifTallerBar" style="width:0;background:var(--yellow)"></div></div></div>
-      <div class="if-row"><div class="if-row-top"><span>Fuera de servicio / radiados</span><b id="ifFueraTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifFueraBar" style="width:0;background:var(--red)"></div></div></div>
-    </div>
-
-    <div class="if-card">
-      <div class="if-title">📋 Estado de los servicios</div>
-      <div class="if-alerts">
-        <div class="if-alert"><b style="color:var(--blue)">Programados</b><span id="ifProgramados">—</span></div>
-        <div class="if-alert"><b style="color:var(--green)">Finalizados</b><span id="ifFinalizadosBox">—</span></div>
-        <div class="if-alert"><b style="color:var(--red)">Incumplidos</b><span id="ifIncumplidosBox">—</span></div>
-      </div>
-    </div>
-
-    <div class="if-card">
-      <div class="if-title">🚚 Unidades con mayor carga operativa</div>
-      <div class="if-table-wrap"><table class="if-table">
-        <thead><tr><th>DOMINIO</th><th>INT.</th><th>SERVICIOS</th><th>CHOFERES</th><th>ESTADO</th></tr></thead>
-        <tbody id="ifUnidades"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
-      </table></div>
-    </div>
-
-    <div class="if-card">
-      <div class="if-title">👤 Choferes con mayor actividad</div>
-      <div class="if-table-wrap"><table class="if-table">
-        <thead><tr><th>CHOFER</th><th>LEGAJO</th><th>SERVICIOS</th><th>UNIDADES</th><th>ACTIVIDAD</th></tr></thead>
-        <tbody id="ifChoferes"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
-      </table></div>
-    </div>
-
-    <div class="if-card if-wide">
-      <div class="if-title">🔗 Cruces automáticos</div>
-      <div class="if-alerts">
-        <div class="if-alert"><b>Vehículo ↔ Servicios</b><span id="ifCruceVeh">Calculando…</span></div>
-        <div class="if-alert"><b>Chofer ↔ Servicios</b><span id="ifCruceChofer">Calculando…</span></div>
-        <div class="if-alert"><b>Chofer ↔ Unidad</b><span id="ifCruceUnidad">Calculando…</span></div>
-      </div>
-    </div>
-  </div>
-</div>
-</div>
-
-<script id="inteligencia-flota-v5-js">
-function ifNorm(v){return String(v==null?"":v).trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
-function ifPick(o,n){for(var i=0;i<n.length;i++){if(o&&o[n[i]]!==undefined&&o[n[i]]!==null&&String(o[n[i]]).trim()!=="")return o[n[i]];}return "";}
-function ifEstadoVeh(v){return ifNorm(ifPick(v,["ESTADO_OPERATIVO","ESTADO","SITUACION"]));}
-function ifEstadoServ(s){return ifNorm(ifPick(s,["ESTADO","ESTADO_SERVICIO"]));}
-function ifNombreChofer(c){return ifPick(c,["NOMBRE_COMPLETO","NOMBRE","CHOFER","APELLIDO_NOMBRE"])||ifPick(c,["ID_CHOFER","ID"])||"Sin nombre";}
-async function cargarInteligenciaFlota(){
-  try{
-    var r=await Promise.all([leerBackend("vehiculos"),leerBackend("choferes"),leerBackend("servicios"),leerBackend("asignaciones")]);
-    var veh=r[0]?.ok&&Array.isArray(r[0].datos)?r[0].datos:[];
-    var cho=r[1]?.ok&&Array.isArray(r[1].datos)?r[1].datos:[];
-    var ser=r[2]?.ok&&Array.isArray(r[2].datos)?r[2].datos:[];
-    var asi=r[3]?.ok&&Array.isArray(r[3].datos)?r[3].datos:[];
-    estadoPanel.vehiculos=veh;estadoPanel.choferes=cho;estadoPanel.servicios=ser;estadoPanel.asignaciones=asi;
-    var oper=veh.filter(v=>["OPERATIVO","OPERATIVOS","ACTIVO","ACTIVA","FUNCIONANDO","FUNCIONA"].includes(ifEstadoVeh(v))).length;
-    var taller=veh.filter(v=>["TALLER","EN TALLER","MANTENIMIENTO"].includes(ifEstadoVeh(v))).length;
-    var fuera=Math.max(0,veh.length-oper-taller), total=veh.length||1;
-    var fin=ser.filter(s=>["FINALIZADO","FINALIZADOS","COMPLETADO","COMPLETADOS"].includes(ifEstadoServ(s))).length;
-    var inc=ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(ifEstadoServ(s))).length;
-    var prog=ser.filter(s=>["PROGRAMADO","PROGRAMADOS","PENDIENTE","PENDIENTES","EN CURSO","EN_CURSO"].includes(ifEstadoServ(s))).length;
-    [["ifTotalVehiculos",veh.length],["ifOperativos",oper],["ifTotalChoferes",cho.length],["ifTotalServicios",ser.length],["ifFinalizados",fin],["ifIncumplidos",inc],["ifOpTxt",oper],["ifTallerTxt",taller],["ifFueraTxt",fuera],["ifProgramados",prog+" servicios"],["ifFinalizadosBox",fin+" servicios"],["ifIncumplidosBox",inc+" servicios"]].forEach(x=>{var e=document.getElementById(x[0]);if(e)e.textContent=x[1];});
-    document.getElementById("ifOpBar").style.width=(oper/total*100)+"%";document.getElementById("ifTallerBar").style.width=(taller/total*100)+"%";document.getElementById("ifFueraBar").style.width=(fuera/total*100)+"%";
-    var vmap={};veh.forEach(v=>vmap[String(ifPick(v,["ID_VEHICULO","ID"]))]=v);
-    var cmap={};cho.forEach(c=>cmap[String(ifPick(c,["ID_CHOFER","ID"]))]=c);
-    var byV={},byC={},byVC={};
-    asi.forEach(a=>{
-      var vid=String(ifPick(a,["ID_VEHICULO","VEHICULO_ID"])),cid=String(ifPick(a,["ID_CHOFER","CHOFER_ID"]));
-      if(vid){byV[vid]??={n:0,cho:{}};byV[vid].n++;if(cid)byV[vid].cho[cid]=1;}
-      if(cid){byC[cid]??={n:0,veh:{}};byC[cid].n++;if(vid)byC[cid].veh[vid]=1;}
-      if(vid&&cid)byVC[vid+"|"+cid]=(byVC[vid+"|"+cid]||0)+1;
-    });
-    var vr=Object.keys(byV).map(id=>{var v=vmap[id]||{};return{id,n:byV[id].n,cho:Object.keys(byV[id].cho).length,dom:ifPick(v,["DOMINIO","PATENTE"])||id,int:ifPick(v,["INTERNO"])||"—",estado:ifPick(v,["ESTADO_OPERATIVO","ESTADO"])||"—"}}).sort((a,b)=>b.n-a.n).slice(0,10);
-    document.getElementById("ifUnidades").innerHTML=vr.length?vr.map(x=>`<tr><td><b>${escaparHTML(x.dom)}</b></td><td>${escaparHTML(x.int)}</td><td>${x.n}</td><td>${x.cho}</td><td><span class="if-badge">${escaparHTML(x.estado)}</span></td></tr>`).join(""):`<tr><td colspan="5" class="if-loading">No hay asignaciones relacionadas todavía.</td></tr>`;
-    var cr=Object.keys(byC).map(id=>{var c=cmap[id]||{};return{n:byC[id].n,veh:Object.keys(byC[id].veh).length,nombre:ifNombreChofer(c),leg:ifPick(c,["LEGAJO","DNI"])||"—"}}).sort((a,b)=>b.n-a.n).slice(0,10);
-    document.getElementById("ifChoferes").innerHTML=cr.length?cr.map(x=>`<tr><td><b>${escaparHTML(x.nombre)}</b></td><td>${escaparHTML(x.leg)}</td><td>${x.n}</td><td>${x.veh}</td><td><span class="if-badge">Activa</span></td></tr>`).join(""):`<tr><td colspan="5" class="if-loading">No hay asignaciones relacionadas todavía.</td></tr>`;
-    document.getElementById("ifCruceVeh").textContent=Object.keys(byV).length+" unidades con actividad vinculada";
-    document.getElementById("ifCruceChofer").textContent=Object.keys(byC).length+" choferes con actividad vinculada";
-    document.getElementById("ifCruceUnidad").textContent=Object.keys(byVC).length+" relaciones chofer ↔ unidad detectadas";
-  }catch(e){console.error("Inteligencia de Flota",e);}
-}
-</script>
 
 </body>
 </html>
