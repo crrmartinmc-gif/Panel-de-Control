@@ -4952,127 +4952,150 @@ textarea.form-control{
 
 </div>
 
-<style id="inteligencia-flota-v5-style">
-.if-wrap{padding:0 0 20px}
-.if-head{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:18px}
-.if-head h2{margin:0;font-size:22px}.if-sub{color:var(--muted);font-size:11px;margin-top:4px}
-.if-filter{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-size:11px}
-.if-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:15px}
-.if-kpi{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:15px;box-shadow:var(--shadow)}
-.if-label{font-size:10px;color:var(--muted);font-weight:700}.if-num{font-size:26px;font-weight:800;margin-top:8px}.if-help{font-size:9px;color:var(--muted);margin-top:4px}
-.if-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:15px}
-.if-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:17px;box-shadow:var(--shadow);min-width:0}
-.if-title{font-size:13px;font-weight:800;margin-bottom:13px}.if-row{margin:12px 0;font-size:11px}.if-row-top{display:flex;justify-content:space-between}.if-bar{height:7px;background:#1b2a3e;border-radius:20px;margin-top:6px;overflow:hidden}.if-fill{height:100%;border-radius:20px}
-.if-alerts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.if-alert{padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)}.if-alert b{display:block;font-size:11px;margin-bottom:4px}.if-alert span{font-size:9px;color:var(--muted);line-height:1.4}
-.if-wide{grid-column:1/-1}.if-table-wrap{overflow-x:auto}.if-table{width:100%;border-collapse:collapse;font-size:10px}.if-table th,.if-table td{padding:10px 7px;border-bottom:1px solid #1b2a3e;text-align:left;white-space:nowrap}.if-table th{color:var(--muted);font-size:9px}.if-badge{padding:4px 7px;border-radius:6px;background:#1b2a3e}.if-loading{color:var(--muted);font-size:11px}
-@media(max-width:1200px){.if-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:900px){.if-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.if-grid{grid-template-columns:1fr}.if-wide{grid-column:auto}.if-alerts{grid-template-columns:1fr}}
-@media(max-width:520px){.if-kpis{grid-template-columns:1fr}.if-head{align-items:flex-start;flex-direction:column}.if-filter{width:100%}}
+<style id="inteligencia-flota-v6-style">
+/* =========================================================
+   INTELIGENCIA DE FLOTA — VISUAL CIRCULAR V6
+   Capa independiente: no modifica los módulos existentes.
+   ========================================================= */
+.if6-wrap{width:100%;}
+.if6-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:18px}
+.if6-head h2{margin:0;font-size:22px;font-weight:800}.if6-head p{margin:5px 0 0;color:var(--muted);font-size:11px}
+.if6-live{padding:8px 11px;border:1px solid var(--border);border-radius:9px;background:var(--panel);font-size:10px;color:var(--muted);white-space:nowrap}.if6-live b{color:#6ee7a0}
+.if6-layout{display:grid;grid-template-columns:minmax(420px,1.35fr) minmax(330px,.85fr);gap:16px;align-items:stretch}
+.if6-main{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:20px;min-height:430px}
+.if6-main-top{display:flex;align-items:flex-start;justify-content:space-between;gap:15px}.if6-title{font-size:14px;font-weight:800}.if6-subtitle{font-size:10px;color:var(--muted);margin-top:4px}
+.if6-main-value{text-align:right}.if6-main-value strong{font-size:28px;font-weight:800;display:block}.if6-main-value span{font-size:9px;color:var(--muted)}
+.if6-main-body{display:grid;grid-template-columns:minmax(280px,.95fr) minmax(250px,1.05fr);gap:20px;align-items:center;margin-top:10px}
+.if6-donut{width:min(310px,100%);aspect-ratio:1;margin:auto;position:relative;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--green) 0 100%);box-shadow:0 0 0 1px rgba(255,255,255,.03),0 18px 45px rgba(0,0,0,.20)}
+.if6-donut:after{content:"";position:absolute;inset:22%;border-radius:50%;background:var(--panel);border:1px solid var(--border);box-shadow:inset 0 0 25px rgba(0,0,0,.15)}
+.if6-donut-center{position:relative;z-index:2;text-align:center}.if6-donut-center strong{display:block;font-size:38px;font-weight:800;line-height:1}.if6-donut-center span{display:block;margin-top:7px;color:var(--muted);font-size:10px}
+.if6-legend{display:flex;flex-direction:column;gap:9px}.if6-legend-row{display:grid;grid-template-columns:10px 1fr auto;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.045)}.if6-dot{width:8px;height:8px;border-radius:50%}.if6-legend-name{font-size:10px;font-weight:700}.if6-legend-meta{font-size:9px;color:var(--muted);margin-top:2px}.if6-legend-pct{font-size:11px;font-weight:800}
+.if6-detail{margin-top:17px;padding-top:15px;border-top:1px solid var(--border)}.if6-detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.if6-detail-title{font-size:11px;font-weight:800}.if6-detail-help{font-size:9px;color:var(--muted)}
+.if6-detail-list{display:grid;grid-template-columns:1fr 1fr;gap:7px}.if6-detail-item{padding:9px 10px;border-radius:9px;background:#0c1727;border:1px solid rgba(255,255,255,.05);min-width:0}.if6-detail-item b{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.if6-detail-item span{display:block;color:var(--muted);font-size:9px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.if6-side{display:grid;grid-template-columns:1fr 1fr;gap:12px}.if6-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:14px;cursor:pointer;transition:.16s;min-width:0}.if6-card:hover{transform:translateY(-2px);border-color:#35506f}.if6-card.selected{border-color:rgba(34,197,94,.7);box-shadow:0 0 0 1px rgba(34,197,94,.12),var(--shadow)}.if6-card-head{display:flex;align-items:center;justify-content:space-between;gap:7px}.if6-card-title{font-size:10px;font-weight:800}.if6-card-arrow{font-size:11px;color:#718198}.if6-mini-row{display:flex;align-items:center;gap:10px;margin-top:13px}.if6-mini-donut{width:64px;height:64px;flex:0 0 64px;border-radius:50%;display:grid;place-items:center;position:relative}.if6-mini-donut:after{content:"";position:absolute;inset:19%;background:var(--panel);border-radius:50%}.if6-mini-center{position:relative;z-index:1;font-size:12px;font-weight:800}.if6-mini-info{min-width:0}.if6-mini-info b{font-size:15px}.if6-mini-info span{display:block;color:var(--muted);font-size:8px;margin-top:3px}.if6-card-help{margin-top:10px;color:#718198;font-size:8px;line-height:1.4}
+.if6-bottom{margin-top:16px;background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:15px}.if6-bottom-title{font-size:12px;font-weight:800;margin-bottom:10px}.if6-cross-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.if6-cross{padding:10px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.045)}.if6-cross b{font-size:10px}.if6-cross span{display:block;color:var(--muted);font-size:9px;margin-top:4px;line-height:1.4}
+@media(max-width:1100px){.if6-layout{grid-template-columns:1fr}.if6-side{grid-template-columns:repeat(4,minmax(0,1fr))}.if6-cross-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.if6-head{align-items:flex-start;flex-direction:column}.if6-main-body{grid-template-columns:1fr}.if6-side{grid-template-columns:1fr 1fr}.if6-detail-list{grid-template-columns:1fr}.if6-live{width:100%}}
+@media(max-width:460px){.if6-side{grid-template-columns:1fr}.if6-cross-grid{grid-template-columns:1fr}}
 </style>
 
 <div id="inteligencia-flota" class="page">
-<div class="if-wrap">
-  <div class="if-head">
+<div class="if6-wrap">
+  <div class="if6-head">
     <div>
       <h2>🧠 Inteligencia de Flota</h2>
-      <div class="if-sub">Análisis real de Vehículos + Choferes + Servicios + Asignaciones</div>
+      <p>Lectura visual de la operación con porcentajes y cruces de datos reales.</p>
     </div>
-    <div class="if-filter">Datos: <b>Backend Maestro</b></div>
+    <div class="if6-live">● Datos: <b>Backend Maestro</b></div>
   </div>
 
-  <div class="if-kpis">
-    <div class="if-kpi"><div class="if-label">VEHÍCULOS</div><div class="if-num" id="ifTotalVehiculos">—</div><div class="if-help">registrados</div></div>
-    <div class="if-kpi"><div class="if-label">OPERATIVOS</div><div class="if-num" id="ifOperativos">—</div><div class="if-help">estado operativo</div></div>
-    <div class="if-kpi"><div class="if-label">CHOFERES</div><div class="if-num" id="ifTotalChoferes">—</div><div class="if-help">activos registrados</div></div>
-    <div class="if-kpi"><div class="if-label">SERVICIOS</div><div class="if-num" id="ifTotalServicios">—</div><div class="if-help">en la base</div></div>
-    <div class="if-kpi"><div class="if-label">FINALIZADOS</div><div class="if-num" id="ifFinalizados">—</div><div class="if-help">servicios completados</div></div>
-    <div class="if-kpi"><div class="if-label">INCUMPLIDOS</div><div class="if-num" id="ifIncumplidos">—</div><div class="if-help">requieren análisis</div></div>
-  </div>
-
-  <div class="if-grid">
-    <div class="if-card">
-      <div class="if-title">📊 Estado operativo de la flota</div>
-      <div class="if-row"><div class="if-row-top"><span>Operativos</span><b id="ifOpTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifOpBar" style="width:0;background:var(--green)"></div></div></div>
-      <div class="if-row"><div class="if-row-top"><span>En taller</span><b id="ifTallerTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifTallerBar" style="width:0;background:var(--yellow)"></div></div></div>
-      <div class="if-row"><div class="if-row-top"><span>Fuera de servicio / radiados</span><b id="ifFueraTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifFueraBar" style="width:0;background:var(--red)"></div></div></div>
-    </div>
-
-    <div class="if-card">
-      <div class="if-title">📋 Estado de los servicios</div>
-      <div class="if-alerts">
-        <div class="if-alert"><b style="color:var(--blue)">Programados</b><span id="ifProgramados">—</span></div>
-        <div class="if-alert"><b style="color:var(--green)">Finalizados</b><span id="ifFinalizadosBox">—</span></div>
-        <div class="if-alert"><b style="color:var(--red)">Incumplidos</b><span id="ifIncumplidosBox">—</span></div>
+  <div class="if6-layout">
+    <div class="if6-main">
+      <div class="if6-main-top">
+        <div><div class="if6-title" id="if6MainTitle">Estado general de la flota</div><div class="if6-subtitle" id="if6MainSubtitle">Seleccioná un gráfico secundario para profundizar.</div></div>
+        <div class="if6-main-value"><strong id="if6MainTotal">—</strong><span id="if6MainUnit">registros</span></div>
+      </div>
+      <div class="if6-main-body">
+        <div class="if6-donut" id="if6MainDonut">
+          <div class="if6-donut-center"><strong id="if6MainPct">—</strong><span id="if6MainCenterLabel">distribución</span></div>
+        </div>
+        <div class="if6-legend" id="if6MainLegend"><div class="if6-loading">Cargando análisis…</div></div>
+      </div>
+      <div class="if6-detail">
+        <div class="if6-detail-head"><div class="if6-detail-title" id="if6DetailTitle">Detalle</div><div class="if6-detail-help" id="if6DetailHelp">—</div></div>
+        <div class="if6-detail-list" id="if6DetailList"><div class="if6-loading">Esperando datos…</div></div>
       </div>
     </div>
 
-    <div class="if-card">
-      <div class="if-title">🚚 Unidades con mayor carga operativa</div>
-      <div class="if-table-wrap"><table class="if-table">
-        <thead><tr><th>DOMINIO</th><th>INT.</th><th>SERVICIOS</th><th>CHOFERES</th><th>ESTADO</th></tr></thead>
-        <tbody id="ifUnidades"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
-      </table></div>
+    <div class="if6-side">
+      <div class="if6-card selected" data-if6="flota" onclick="if6Seleccionar('flota')"><div class="if6-card-head"><div class="if6-card-title">🚚 Flota</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutFlota"></div><div class="if6-mini-info"><b id="if6FlotaPct">—</b><span>disponibilidad</span></div></div><div class="if6-card-help">Estado operativo de las unidades.</div></div>
+      <div class="if6-card" data-if6="servicios" onclick="if6Seleccionar('servicios')"><div class="if6-card-head"><div class="if6-card-title">📋 Servicios</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutServicios"></div><div class="if6-mini-info"><b id="if6ServiciosPct">—</b><span>cumplimiento</span></div></div><div class="if6-card-help">Programados, finalizados e incumplidos.</div></div>
+      <div class="if6-card" data-if6="choferes" onclick="if6Seleccionar('choferes')"><div class="if6-card-head"><div class="if6-card-title">👤 Choferes</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutChoferes"></div><div class="if6-mini-info"><b id="if6ChoferesPct">—</b><span>con actividad</span></div></div><div class="if6-card-help">Actividad y cantidad de unidades utilizadas.</div></div>
+      <div class="if6-card" data-if6="mantenimiento" onclick="if6Seleccionar('mantenimiento')"><div class="if6-card-head"><div class="if6-card-title">🔧 Mantenimiento</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutMantenimiento"></div><div class="if6-mini-info"><b id="if6MantenimientoPct">—</b><span>control</span></div></div><div class="if6-card-help">Services registrados y unidades con atención.</div></div>
+      <div class="if6-card" data-if6="vtv" onclick="if6Seleccionar('vtv')"><div class="if6-card-head"><div class="if6-card-title">📄 VTV</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutVtv"></div><div class="if6-mini-info"><b id="if6VtvPct">—</b><span>vigentes</span></div></div><div class="if6-card-help">Vigentes, próximas y vencidas.</div></div>
     </div>
+  </div>
 
-    <div class="if-card">
-      <div class="if-title">👤 Choferes con mayor actividad</div>
-      <div class="if-table-wrap"><table class="if-table">
-        <thead><tr><th>CHOFER</th><th>LEGAJO</th><th>SERVICIOS</th><th>UNIDADES</th><th>ACTIVIDAD</th></tr></thead>
-        <tbody id="ifChoferes"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
-      </table></div>
-    </div>
-
-    <div class="if-card if-wide">
-      <div class="if-title">🔗 Cruces automáticos</div>
-      <div class="if-alerts">
-        <div class="if-alert"><b>Vehículo ↔ Servicios</b><span id="ifCruceVeh">Calculando…</span></div>
-        <div class="if-alert"><b>Chofer ↔ Servicios</b><span id="ifCruceChofer">Calculando…</span></div>
-        <div class="if-alert"><b>Chofer ↔ Unidad</b><span id="ifCruceUnidad">Calculando…</span></div>
-      </div>
+  <div class="if6-bottom">
+    <div class="if6-bottom-title">🔗 Cruces operativos</div>
+    <div class="if6-cross-grid">
+      <div class="if6-cross"><b>Vehículo ↔ Servicio</b><span id="if6CrossVeh">—</span></div>
+      <div class="if6-cross"><b>Chofer ↔ Servicio</b><span id="if6CrossChofer">—</span></div>
+      <div class="if6-cross"><b>Chofer ↔ Unidad</b><span id="if6CrossUnidad">—</span></div>
+      <div class="if6-cross"><b>Viajes ↔ KM</b><span id="if6CrossViaje">—</span></div>
     </div>
   </div>
 </div>
 </div>
 
-<script id="inteligencia-flota-v5-js">
-function ifNorm(v){return String(v==null?"":v).trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
-function ifPick(o,n){for(var i=0;i<n.length;i++){if(o&&o[n[i]]!==undefined&&o[n[i]]!==null&&String(o[n[i]]).trim()!=="")return o[n[i]];}return "";}
-function ifEstadoVeh(v){return ifNorm(ifPick(v,["ESTADO_OPERATIVO","ESTADO","SITUACION"]));}
-function ifEstadoServ(s){return ifNorm(ifPick(s,["ESTADO","ESTADO_SERVICIO"]));}
-function ifNombreChofer(c){return ifPick(c,["NOMBRE_COMPLETO","NOMBRE","CHOFER","APELLIDO_NOMBRE"])||ifPick(c,["ID_CHOFER","ID"])||"Sin nombre";}
+<script id="inteligencia-flota-v6-js">
+let if6Data={flota:null,servicios:null,choferes:null,mantenimiento:null,vtv:null};
+function if6N(v){return String(v==null?"":v).trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+function if6P(o,n){for(const k of n){if(o&&o[k]!==undefined&&o[k]!==null&&String(o[k]).trim()!=="")return o[k];}return "";}
+function if6Pct(n,total){return total?Math.round((n/total)*1000)/10:0;}
+function if6Grad(parts){let total=parts.reduce((s,p)=>s+p.value,0);if(!total) return "conic-gradient(#263b57 0 100%)";let cur=0,st=[];parts.forEach(p=>{let end=cur+(p.value/total*100);st.push(`${p.color} ${cur}% ${end}%`);cur=end;});return `conic-gradient(${st.join(",")})`;}
+function if6SetMini(id,pct,parts){const e=document.getElementById(id);if(e)e.style.background=if6Grad(parts);return pct;}
+function if6EstadoVeh(v){return if6N(if6P(v,["ESTADO_OPER","ESTADO_OPERATIVO","ESTADO","SITUACION"]));}
+function if6EstadoServ(s){return if6N(if6P(s,["ESTADO","ESTADO_SERVICIO"]));}
+function if6NombreChofer(c){return if6P(c,["NOMBRE","NOMBRE_COMPLETO","APELLIDO_NOMBRE","CHOFER"])||if6P(c,["ID_CHOFER","ID"])||"Sin nombre";}
+function if6IdVeh(v){return String(if6P(v,["ID_VEHICULO","ID"])||"").trim();}
+function if6IdCho(c){return String(if6P(c,["ID_CHOFER","ID"])||"").trim();}
+function if6IdServ(s){return String(if6P(s,["ID_SERVICIO","ID"])||"").trim();}
+function if6IdAsi(a){return String(if6P(a,["ID_ASIGNACION","ID"])||"").trim();}
+function if6Dom(v){return if6P(v,["DOMINIO","PATENTE"])||"Sin dominio";}
+function if6VtvEstado(r){const x=if6N([if6P(r,["ESTADO_VTV","ESTADO"]),if6P(r,["RESULTADO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"])].join(" "));if(x.includes("VENC"))return "VENCIDA";if(x.includes("PROX"))return "PROXIMA";if(x.includes("NO VIG")||x.includes("RECHAZ"))return "VENCIDA";return "VIGENTE";}
+function if6MostrarDonutFlota(data){const p=data.parts,total=data.total;document.getElementById("if6MainDonut").style.background=if6Grad(p);document.getElementById("if6MainPct").textContent=total?if6Pct(data.focus,total)+"%":"—";document.getElementById("if6MainCenterLabel").textContent=data.focusLabel||"distribución";document.getElementById("if6MainTotal").textContent=total;document.getElementById("if6MainUnit").textContent="vehículos";}
+function if6RenderMain(key){const d=if6Data[key];if(!d)return;document.querySelectorAll(".if6-card").forEach(c=>c.classList.toggle("selected",c.dataset.if6===key));document.getElementById("if6MainTitle").textContent=d.title;document.getElementById("if6MainSubtitle").textContent=d.subtitle;document.getElementById("if6MainTotal").textContent=d.total;document.getElementById("if6MainUnit").textContent=d.unit;document.getElementById("if6MainDonut").style.background=if6Grad(d.parts);document.getElementById("if6MainPct").textContent=d.total?if6Pct(d.focus,d.total)+"%":"—";document.getElementById("if6MainCenterLabel").textContent=d.focusLabel||"distribución";document.getElementById("if6MainLegend").innerHTML=d.parts.map(p=>{const pct=d.total?if6Pct(p.value,d.total):0;return `<div class="if6-legend-row"><span class="if6-dot" style="background:${p.color}"></span><div><div class="if6-legend-name">${escaparHTML(p.label)}</div><div class="if6-legend-meta">${p.value} ${d.itemWord||"registros"}</div></div><div class="if6-legend-pct">${pct}%</div></div>`}).join("");document.getElementById("if6DetailTitle").textContent=d.detailTitle||"Detalle";document.getElementById("if6DetailHelp").textContent=d.detailHelp||"";document.getElementById("if6DetailList").innerHTML=(d.details&&d.details.length)?d.details.map(x=>`<div class="if6-detail-item"><b>${escaparHTML(x.name)}</b><span>${escaparHTML(x.meta)}</span></div>`).join(""):"<div class=\"if6-detail-item\"><b>Sin datos suficientes</b><span>La información aparecerá cuando exista relación en el Backend.</span></div>";}
+function if6Seleccionar(key){if(if6Data[key])if6RenderMain(key);}
+function if6Mini(key,idPct,idDonut){const d=if6Data[key];if(!d)return;const pct=d.total?if6Pct(d.focus,d.total):0;document.getElementById(idPct).textContent=pct+"%";document.getElementById(idDonut).style.background=if6Grad(d.parts);}
 async function cargarInteligenciaFlota(){
   try{
-    var r=await Promise.all([leerBackend("vehiculos"),leerBackend("choferes"),leerBackend("servicios"),leerBackend("asignaciones")]);
-    var veh=r[0]?.ok&&Array.isArray(r[0].datos)?r[0].datos:[];
-    var cho=r[1]?.ok&&Array.isArray(r[1].datos)?r[1].datos:[];
-    var ser=r[2]?.ok&&Array.isArray(r[2].datos)?r[2].datos:[];
-    var asi=r[3]?.ok&&Array.isArray(r[3].datos)?r[3].datos:[];
-    estadoPanel.vehiculos=veh;estadoPanel.choferes=cho;estadoPanel.servicios=ser;estadoPanel.asignaciones=asi;
-    var oper=veh.filter(v=>["OPERATIVO","OPERATIVOS","ACTIVO","ACTIVA","FUNCIONANDO","FUNCIONA"].includes(ifEstadoVeh(v))).length;
-    var taller=veh.filter(v=>["TALLER","EN TALLER","MANTENIMIENTO"].includes(ifEstadoVeh(v))).length;
-    var fuera=Math.max(0,veh.length-oper-taller), total=veh.length||1;
-    var fin=ser.filter(s=>["FINALIZADO","FINALIZADOS","COMPLETADO","COMPLETADOS"].includes(ifEstadoServ(s))).length;
-    var inc=ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(ifEstadoServ(s))).length;
-    var prog=ser.filter(s=>["PROGRAMADO","PROGRAMADOS","PENDIENTE","PENDIENTES","EN CURSO","EN_CURSO"].includes(ifEstadoServ(s))).length;
-    [["ifTotalVehiculos",veh.length],["ifOperativos",oper],["ifTotalChoferes",cho.length],["ifTotalServicios",ser.length],["ifFinalizados",fin],["ifIncumplidos",inc],["ifOpTxt",oper],["ifTallerTxt",taller],["ifFueraTxt",fuera],["ifProgramados",prog+" servicios"],["ifFinalizadosBox",fin+" servicios"],["ifIncumplidosBox",inc+" servicios"]].forEach(x=>{var e=document.getElementById(x[0]);if(e)e.textContent=x[1];});
-    document.getElementById("ifOpBar").style.width=(oper/total*100)+"%";document.getElementById("ifTallerBar").style.width=(taller/total*100)+"%";document.getElementById("ifFueraBar").style.width=(fuera/total*100)+"%";
-    var vmap={};veh.forEach(v=>vmap[String(ifPick(v,["ID_VEHICULO","ID"]))]=v);
-    var cmap={};cho.forEach(c=>cmap[String(ifPick(c,["ID_CHOFER","ID"]))]=c);
-    var byV={},byC={},byVC={};
-    asi.forEach(a=>{
-      var vid=String(ifPick(a,["ID_VEHICULO","VEHICULO_ID"])),cid=String(ifPick(a,["ID_CHOFER","CHOFER_ID"]));
-      if(vid){byV[vid]??={n:0,cho:{}};byV[vid].n++;if(cid)byV[vid].cho[cid]=1;}
-      if(cid){byC[cid]??={n:0,veh:{}};byC[cid].n++;if(vid)byC[cid].veh[vid]=1;}
-      if(vid&&cid)byVC[vid+"|"+cid]=(byVC[vid+"|"+cid]||0)+1;
-    });
-    var vr=Object.keys(byV).map(id=>{var v=vmap[id]||{};return{id,n:byV[id].n,cho:Object.keys(byV[id].cho).length,dom:ifPick(v,["DOMINIO","PATENTE"])||id,int:ifPick(v,["INTERNO"])||"—",estado:ifPick(v,["ESTADO_OPERATIVO","ESTADO"])||"—"}}).sort((a,b)=>b.n-a.n).slice(0,10);
-    document.getElementById("ifUnidades").innerHTML=vr.length?vr.map(x=>`<tr><td><b>${escaparHTML(x.dom)}</b></td><td>${escaparHTML(x.int)}</td><td>${x.n}</td><td>${x.cho}</td><td><span class="if-badge">${escaparHTML(x.estado)}</span></td></tr>`).join(""):`<tr><td colspan="5" class="if-loading">No hay asignaciones relacionadas todavía.</td></tr>`;
-    var cr=Object.keys(byC).map(id=>{var c=cmap[id]||{};return{n:byC[id].n,veh:Object.keys(byC[id].veh).length,nombre:ifNombreChofer(c),leg:ifPick(c,["LEGAJO","DNI"])||"—"}}).sort((a,b)=>b.n-a.n).slice(0,10);
-    document.getElementById("ifChoferes").innerHTML=cr.length?cr.map(x=>`<tr><td><b>${escaparHTML(x.nombre)}</b></td><td>${escaparHTML(x.leg)}</td><td>${x.n}</td><td>${x.veh}</td><td><span class="if-badge">Activa</span></td></tr>`).join(""):`<tr><td colspan="5" class="if-loading">No hay asignaciones relacionadas todavía.</td></tr>`;
-    document.getElementById("ifCruceVeh").textContent=Object.keys(byV).length+" unidades con actividad vinculada";
-    document.getElementById("ifCruceChofer").textContent=Object.keys(byC).length+" choferes con actividad vinculada";
-    document.getElementById("ifCruceUnidad").textContent=Object.keys(byVC).length+" relaciones chofer ↔ unidad detectadas";
-  }catch(e){console.error("Inteligencia de Flota",e);}
+    const rs=await Promise.allSettled([leerBackend("vehiculos"),leerBackend("servicios"),leerBackend("choferes"),leerBackend("asignaciones"),leerBackend("viajes"),leerBackend("mantenimiento"),leerBackend("reportes")]);
+    const get=i=>rs[i].status==="fulfilled"&&rs[i].value?.ok&&Array.isArray(rs[i].value.datos)?rs[i].value.datos:[];
+    const veh=get(0),ser=get(1),cho=get(2),asi=get(3),via=get(4),mant=get(5),rep=get(6);
+    estadoPanel.vehiculos=veh;estadoPanel.servicios=ser;estadoPanel.choferes=cho;estadoPanel.asignaciones=asi;estadoPanel.viajes=via;estadoPanel.mantenimiento=mant;estadoPanel.reportes=rep;
+
+    const oper=veh.filter(v=>["DISPONIBLE","OPERATIVO","OPERATIVOS","ACTIVO","FUNCIONANDO","FUNCIONA"].includes(if6EstadoVeh(v))).length;
+    const taller=veh.filter(v=>["EN TALLER","TALLER","MANTENIMIENTO"].includes(if6EstadoVeh(v))).length;
+    const fuera=Math.max(0,veh.length-oper-taller);
+    if6Data.flota={title:"Estado general de la flota",subtitle:"Distribución actual de las unidades registradas.",total:veh.length,unit:"vehículos",focus:oper,focusLabel:"operativos",parts:[{label:"Operativos",value:oper,color:"var(--green)"},{label:"En taller",value:taller,color:"var(--yellow)"},{label:"Fuera de servicio / radiados",value:fuera,color:"var(--red)"}],detailTitle:"Unidades que concentran la operación",detailHelp:"Ordenadas por cantidad de viajes registrados.",details:[]};
+
+    const sf=ser.filter(s=>["FINALIZADO","FINALIZADOS","COMPLETADO","COMPLETADOS"].includes(if6EstadoServ(s))).length;
+    const si=ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(if6EstadoServ(s))).length;
+    const sc=ser.filter(s=>["EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).length;
+    const sp=Math.max(0,ser.length-sf-si-sc);
+    if6Data.servicios={title:"Estado de los servicios",subtitle:"Lectura porcentual del estado de todos los servicios.",total:ser.length,unit:"servicios",focus:sf,focusLabel:"finalizados",parts:[{label:"Finalizados",value:sf,color:"var(--green)"},{label:"En curso",value:sc,color:"var(--blue)"},{label:"Programados / pendientes",value:sp,color:"var(--yellow)"},{label:"Incumplidos",value:si,color:"var(--red)"}],detailTitle:"Servicios que requieren atención",detailHelp:"Incumplidos y servicios actualmente en curso.",details:ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS","EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).slice(0,8).map(s=>({name:if6IdServ(s)||"Servicio",meta:(if6EstadoServ(s)||"SIN ESTADO")}))};
+
+    const aid=new Set(asi.map(a=>String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim()).filter(Boolean));
+    const choAct=cho.filter(c=>aid.has(if6IdCho(c))).length;
+    const choIna=Math.max(0,cho.length-choAct);
+    const byC={};asi.forEach(a=>{const id=String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim();if(id)byC[id]=(byC[id]||0)+1;});
+    const topC=Object.keys(byC).sort((a,b)=>byC[b]-byC[a]).slice(0,8).map(id=>{const c=cho.find(x=>if6IdCho(x)===id)||{};return{name:if6NombreChofer(c),meta:`${byC[id]} asignaciones`};});
+    if6Data.choferes={title:"Actividad de los choferes",subtitle:"Choferes con actividad vinculada mediante asignaciones.",total:cho.length,unit:"choferes",focus:choAct,focusLabel:"con actividad",parts:[{label:"Con actividad",value:choAct,color:"var(--green)"},{label:"Sin actividad vinculada",value:choIna,color:"var(--muted)"}],detailTitle:"Choferes con mayor actividad",detailHelp:"Cantidad de asignaciones vinculadas.",details:topC};
+
+    const mSvc=mant.filter(m=>{const x=if6N(if6P(m,["TIPO","TIPO_MANTENIMIENTO","TIPO_SERVICIO"]));return x.includes("SERVICE")||x.includes("PREVENTIVO")||x.includes("MANTENIMIENTO")}).length;
+    const mAver=mant.filter(m=>if6N(if6P(m,["TIPO","TIPO_MANTENIMIENTO"])).includes("AVERIA")).length;
+    const mOtros=Math.max(0,mant.length-mSvc-mAver);
+    const mFocus=mSvc;
+    if6Data.mantenimiento={title:"Mantenimiento",subtitle:"Distribución de los registros de mantenimiento del Backend.",total:mant.length,unit:"registros",focus:mFocus,focusLabel:"services / preventivos",parts:[{label:"Service / preventivo",value:mSvc,color:"var(--green)"},{label:"Averías",value:mAver,color:"var(--red)"},{label:"Otros",value:mOtros,color:"var(--yellow)"}],detailTitle:"Últimos registros de mantenimiento",detailHelp:"Referencia por unidad cuando está disponible.",details:mant.slice(-8).reverse().map(m=>({name:if6P(m,["DOMINIO","PATENTE","ID_VEHICULO"])||"Unidad",meta:if6P(m,["TIPO","TIPO_MANTENIMIENTO"])||"Mantenimiento"}))};
+
+    const vtvs=rep.filter(r=>{const x=if6N([if6P(r,["TIPO_REPORTE","TIPO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"]),if6P(r,["RESULTADO","ESTADO_VTV"])].join(" "));return x.includes("VTV")||x.includes("VERIFICACION TECNICA")||x.includes("CONTROL_VEHICULO")});
+    const vv=vtvs.filter(r=>if6VtvEstado(r)==="VIGENTE").length,vp=vtvs.filter(r=>if6VtvEstado(r)==="PROXIMA").length,vx=vtvs.filter(r=>if6VtvEstado(r)==="VENCIDA").length;
+    if6Data.vtv={title:"Estado de VTV",subtitle:"Lectura de los registros de VTV identificados en Reportes.",total:vtvs.length,unit:"registros VTV",focus:vv,focusLabel:"vigentes",parts:[{label:"Vigentes",value:vv,color:"var(--green)"},{label:"Próximas",value:vp,color:"var(--yellow)"},{label:"Vencidas",value:vx,color:"var(--red)"}],detailTitle:"VTV identificadas",detailHelp:"Dominio y estado detectado.",details:vtvs.slice(0,8).map(r=>({name:if6P(r,["DOMINIO","PATENTE","ID_VEHICULO"])||"Unidad",meta:if6VtvEstado(r)}))};
+
+    const byV={};asi.forEach(a=>{const id=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();if(id)byV[id]=(byV[id]||0)+1;});
+    const byVV={};via.forEach(v=>{const id=String(v?.ID_VEHICULO||"").trim();if(id)byVV[id]=(byVV[id]||0)+1;});
+    const topV=Object.keys(byVV).sort((a,b)=>byVV[b]-byVV[a]).slice(0,8).map(id=>{const v=veh.find(x=>if6IdVeh(x)===id)||{};return{name:if6Dom(v),meta:`${byVV[id]} viajes registrados`};});
+    if6Data.flota.details=topV;
+    document.getElementById("if6CrossVeh").textContent=`${Object.keys(byV).length} unidades con asignaciones y ${Object.keys(byVV).length} con viajes.`;
+    document.getElementById("if6CrossChofer").textContent=`${Object.keys(byC).length} choferes vinculados a asignaciones.`;
+    const pairs=new Set();asi.forEach(a=>{const c=String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim(),v=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();if(c&&v)pairs.add(c+"|"+v);});
+    document.getElementById("if6CrossUnidad").textContent=`${pairs.size} relaciones chofer ↔ unidad detectadas.`;
+    const km=via.reduce((s,v)=>s+(Number(String(v?.KM_RECORRIDO??0).replace(",","."))||0),0);
+    document.getElementById("if6CrossViaje").textContent=`${via.length} viajes registrados · ${Math.round(km).toLocaleString("es-AR")} km informados.`;
+
+    if6Mini("flota","if6FlotaPct","if6DonutFlota");if6Mini("servicios","if6ServiciosPct","if6DonutServicios");if6Mini("choferes","if6ChoferesPct","if6DonutChoferes");if6Mini("mantenimiento","if6MantenimientoPct","if6DonutMantenimiento");if6Mini("vtv","if6VtvPct","if6DonutVtv");if6RenderMain("flota");
+  }catch(e){console.error("Inteligencia de Flota V6",e);}
 }
 </script>
 
