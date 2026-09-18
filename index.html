@@ -5361,22 +5361,23 @@ async function cargarInteligenciaFlota(){
     const destKeys=Object.keys(byDestino).sort((a,b)=>byDestino[b]-byDestino[a]);
     const destTop=destKeys[0]||"Sin datos";
     const destFocus=destKeys.length?byDestino[destTop]:0;
-    // La torta principal debe representar SIEMPRE el 100% del histórico.
-    // Mostramos los 5 destinos con mayor frecuencia + un único segmento "Otros"
-    // que reúne todos los destinos restantes. Así los porcentajes visibles suman 100%.
-    const destTopKeys=destKeys.slice(0,5);
-    const destTopCount=destTopKeys.reduce((n,k)=>n+byDestino[k],0);
-    const destOtros=Math.max(0,totalDestinos-destTopCount);
-    const destParts=destTopKeys.map((k,i)=>({label:k,value:byDestino[k],color:["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)"][i]}));
-    if(destOtros>0)destParts.push({label:"Otros destinos / servicios",value:destOtros,color:"var(--muted)"});
+    // IMPORTANTE: no agrupamos el resto en "Otros".
+    // Si todos los destinos/servicios están tipificados, cada categoría debe quedar
+    // visible y explicar su parte del 100% del histórico.
+    const destPalette=["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)","#f97316","#14b8a6","#eab308","#ec4899","#84cc16","#a855f7"];
+    const destParts=destKeys.map((k,i)=>({
+      label:k,
+      value:byDestino[k],
+      color:destPalette[i%destPalette.length]
+    }));
     if6Data.destinos={
       title:"Distribución por destino / servicio",
-      subtitle:`Histórico hasta hoy · ${serFuturos.length} servicios futuros excluidos · ${destKeys.length} destinos encontrados.`,
+      subtitle:`Histórico hasta hoy · ${serFuturos.length} servicios futuros excluidos · ${destKeys.length} destinos/servicios tipificados.`,
       total:totalDestinos,unit:"servicios históricos",focus:destFocus,focusLabel:destTop,
       parts:destParts,
-      detailTitle:"Veces realizadas por destino / servicio",
-      detailHelp:"Los porcentajes de la torta representan el 100% del histórico. Los destinos fuera del top 6 se agrupan en «Otros destinos / servicios».",
-      details:destKeys.slice(0,12).map(k=>({name:k,meta:`${byDestino[k]} servicios · ${if6Pct(byDestino[k],totalDestinos)}%`}))
+      detailTitle:"Detalle completo por destino / servicio",
+      detailHelp:"Cada destino/servicio tipificado aparece por separado. Los porcentajes se calculan sobre el 100% del histórico y la suma de todas las categorías es 100%.`,
+      details:destKeys.map(k=>({name:k,meta:`${byDestino[k]} servicios · ${if6Pct(byDestino[k],totalDestinos)}%`}))
     };
 
     // 2) Tipo de traslado: preferimos el tipo explícito de la asignación; si no existe,
