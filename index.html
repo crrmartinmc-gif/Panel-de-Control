@@ -5106,7 +5106,7 @@ textarea.form-control{
 
     <div class="if6-side">
       <div class="if6-card selected" data-if6="flota" onclick="if6Seleccionar('flota')"><div class="if6-card-head"><div class="if6-card-title">🚚 Flota</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutFlota"></div><div class="if6-mini-info"><b id="if6FlotaPct">—</b><span>disponibilidad</span></div></div><div class="if6-card-help">Estado operativo de las unidades.</div></div>
-      <div class="if6-card" data-if6="servicios" onclick="if6Seleccionar('servicios')"><div class="if6-card-head"><div class="if6-card-title">📋 Servicios</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutServicios"></div><div class="if6-mini-info"><b id="if6ServiciosPct">—</b><span>cumplimiento</span></div></div><div class="if6-card-help">Programados, finalizados e incumplidos.</div></div>
+      <div class="if6-card" data-if6="servicios" onclick="if6Seleccionar('servicios')"><div class="if6-card-head"><div class="if6-card-title">📋 Servicios</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutServicios"></div><div class="if6-mini-info"><b id="if6ServiciosPct">—</b><span>finalizados</span></div></div><div class="if6-card-help">Histórico hasta hoy: finalizados, en curso, pendientes y incumplidos.</div></div>
       <div class="if6-card" data-if6="choferes" onclick="if6Seleccionar('choferes')"><div class="if6-card-head"><div class="if6-card-title">👤 Choferes</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutChoferes"></div><div class="if6-mini-info"><b id="if6ChoferesPct">—</b><span>con actividad</span></div></div><div class="if6-card-help">Actividad y cantidad de unidades utilizadas.</div></div>
       <div class="if6-card" data-if6="mantenimiento" onclick="if6Seleccionar('mantenimiento')"><div class="if6-card-head"><div class="if6-card-title">🔧 Mantenimiento</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutMantenimiento"></div><div class="if6-mini-info"><b id="if6MantenimientoPct">—</b><span>control</span></div></div><div class="if6-card-help">Services registrados y unidades con atención.</div></div>
       <div class="if6-card" data-if6="vtv" onclick="if6Seleccionar('vtv')"><div class="if6-card-head"><div class="if6-card-title">📄 VTV</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutVtv"></div><div class="if6-mini-info"><b id="if6VtvPct">—</b><span>vigentes</span></div></div><div class="if6-card-help">Vigentes, próximas y vencidas.</div></div>
@@ -5361,13 +5361,21 @@ async function cargarInteligenciaFlota(){
     const destKeys=Object.keys(byDestino).sort((a,b)=>byDestino[b]-byDestino[a]);
     const destTop=destKeys[0]||"Sin datos";
     const destFocus=destKeys.length?byDestino[destTop]:0;
+    // La torta principal debe representar SIEMPRE el 100% del histórico.
+    // Mostramos los 5 destinos con mayor frecuencia + un único segmento "Otros"
+    // que reúne todos los destinos restantes. Así los porcentajes visibles suman 100%.
+    const destTopKeys=destKeys.slice(0,5);
+    const destTopCount=destTopKeys.reduce((n,k)=>n+byDestino[k],0);
+    const destOtros=Math.max(0,totalDestinos-destTopCount);
+    const destParts=destTopKeys.map((k,i)=>({label:k,value:byDestino[k],color:["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)"][i]}));
+    if(destOtros>0)destParts.push({label:"Otros destinos / servicios",value:destOtros,color:"var(--muted)"});
     if6Data.destinos={
       title:"Distribución por destino / servicio",
-      subtitle:`Histórico hasta hoy · ${serFuturos.length} servicios futuros excluidos.`,
+      subtitle:`Histórico hasta hoy · ${serFuturos.length} servicios futuros excluidos · ${destKeys.length} destinos encontrados.`,
       total:totalDestinos,unit:"servicios históricos",focus:destFocus,focusLabel:destTop,
-      parts:destKeys.slice(0,6).map((k,i)=>({label:k,value:byDestino[k],color:["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)"][i]})),
+      parts:destParts,
       detailTitle:"Veces realizadas por destino / servicio",
-      detailHelp:"Cantidad y participación sobre el total histórico.",
+      detailHelp:"Los porcentajes de la torta representan el 100% del histórico. Los destinos fuera del top 6 se agrupan en «Otros destinos / servicios».",
       details:destKeys.slice(0,12).map(k=>({name:k,meta:`${byDestino[k]} servicios · ${if6Pct(byDestino[k],totalDestinos)}%`}))
     };
 
