@@ -5555,26 +5555,57 @@ async function cargarInteligenciaFlota(){
       details:tipoKeys.slice(0,12).map(k=>({name:k,meta:`${byTipo[k]} servicios · ${if6Pct(byTipo[k],tipoReg.length)}%`}))
     };
 
-    // 3) Vehículos: medimos participación sobre VIAJES históricos registrados.
-    const viaHistorico=via.filter(v=>{const d=if6Fecha(v);return !d||d<=ahora;});
+    // 3) Unidades: la fuente principal es ASIGNACIONES.
+    //    Cada asignación representa un servicio vinculado a una unidad.
+    //    Se toma solo el histórico: la fecha se cruza con el servicio cuando
+    //    existe ID_SERVICIO; si la asignación tiene fecha propia, se utiliza
+    //    como respaldo.
+    const asiHistorico=asi.filter(a=>{
+      const sid=String(if6P(a,["ID_SERVICIO","SERVICIO_ID"])||"").trim();
+      const sRelacionado=sid?if6FindServ(sid,serHistorico):null;
+      if(sRelacionado)return true;
+
+      const fa=if6Fecha(a);
+      if(!fa)return true;
+      return fa<=ahora;
+    });
+
     const byUnidad={};
-    viaHistorico.forEach(v=>{
-      const id=String(v?.ID_VEHICULO||"").trim();
+    asiHistorico.forEach(a=>{
+      const id=String(if6P(a,["ID_VEHICULO","VEHICULO_ID","ID_UNIDAD","UNIDAD_ID"])||"").trim();
       if(id)byUnidad[id]=(byUnidad[id]||0)+1;
     });
+
     const unidadKeys=Object.keys(byUnidad).sort((a,b)=>byUnidad[b]-byUnidad[a]);
-    const unidadTotal=viaHistorico.length;
+    const unidadTotal=Object.values(byUnidad).reduce((s,n)=>s+n,0);
     const unidadFocus=unidadKeys.length?byUnidad[unidadKeys[0]]:0;
+
     if6Data.unidades={
-      title:"Participación de las unidades en los viajes",
-      subtitle:"Distribución de los viajes históricos registrados por dominio.",
-      total:unidadTotal,unit:"viajes históricos",focus:unidadFocus,focusLabel:(if6FindVeh(unidadKeys[0],veh)?if6Dom(if6FindVeh(unidadKeys[0],veh)):"Sin dominio"),
-      parts:unidadKeys.slice(0,6).map((k,i)=>({label:if6FindVeh(k,veh)?if6Dom(if6FindVeh(k,veh)):"Unidad sin dominio",value:byUnidad[k],color:["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)"][i]})),
-      detailTitle:"Dominios con mayor participación",
-      detailHelp:"Porcentaje calculado sobre los viajes históricos registrados.",
-      details:unidadKeys.slice(0,12).map(k=>{
+      title:"Participación de las unidades en las asignaciones",
+      subtitle:"Distribución de las asignaciones históricas por dominio.",
+      total:unidadTotal,
+      unit:"asignaciones históricas",
+      focus:unidadFocus,
+      focusLabel:(if6FindVeh(unidadKeys[0],veh)?if6Dom(if6FindVeh(unidadKeys[0],veh)):"Unidad sin dominio"),
+
+      parts:unidadKeys.slice(0,6).map((k,i)=>{
         const v=if6FindVeh(k,veh);
-        return {name:v?if6Dom(v):"Unidad sin dominio",meta:`${byUnidad[k]} viajes · ${if6Pct(byUnidad[k],unidadTotal)}%`};
+        return {
+          label:v?if6Dom(v):"Unidad sin dominio",
+          value:byUnidad[k],
+          color:["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)"][i]
+        };
+      }),
+
+      detailTitle:"Dominios con mayor participación",
+      detailHelp:"Porcentaje calculado sobre todas las asignaciones históricas con vehículo identificado.",
+
+      details:unidadKeys.map(k=>{
+        const v=if6FindVeh(k,veh);
+        return {
+          name:v?if6Dom(v):"Unidad sin dominio",
+          meta:`${byUnidad[k]} asignaciones · ${if6Pct(byUnidad[k],unidadTotal)}%`
+        };
       })
     };
 
