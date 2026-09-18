@@ -3114,6 +3114,162 @@ textarea.form-control{
 }
 </style>
 
+
+<style id="if6-visual-orden-final">
+/* =========================================================
+   INTELIGENCIA DE FLOTA — ORDEN VISUAL
+   Mantiene todas las categorías, pero evita que la leyenda
+   haga crecer indefinidamente la tarjeta principal.
+   ========================================================= */
+
+.if6-layout{
+  align-items:start !important;
+}
+
+.if6-main{
+  min-height:0 !important;
+  height:560px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  overflow:hidden !important;
+}
+
+.if6-main-top{
+  flex:0 0 auto !important;
+}
+
+.if6-main-body{
+  flex:0 0 285px !important;
+  min-height:285px !important;
+  height:285px !important;
+  grid-template-columns:minmax(245px,.9fr) minmax(260px,1.1fr) !important;
+  gap:18px !important;
+  margin-top:12px !important;
+  align-items:center !important;
+  overflow:hidden !important;
+}
+
+.if6-donut{
+  width:min(270px,100%) !important;
+  max-width:270px !important;
+}
+
+.if6-legend{
+  height:285px !important;
+  max-height:285px !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  padding-right:5px !important;
+  scrollbar-width:thin !important;
+  scrollbar-color:#263b57 transparent !important;
+}
+
+.if6-legend::-webkit-scrollbar{
+  width:5px !important;
+}
+
+.if6-legend::-webkit-scrollbar-track{
+  background:transparent !important;
+}
+
+.if6-legend::-webkit-scrollbar-thumb{
+  background:#263b57 !important;
+  border-radius:10px !important;
+}
+
+.if6-legend-row{
+  min-height:43px !important;
+}
+
+.if6-detail{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  margin-top:14px !important;
+  padding-top:12px !important;
+  overflow:hidden !important;
+}
+
+.if6-detail-list{
+  max-height:105px !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  scrollbar-width:thin !important;
+  scrollbar-color:#263b57 transparent !important;
+}
+
+.if6-detail-list::-webkit-scrollbar{
+  width:5px !important;
+}
+
+.if6-detail-list::-webkit-scrollbar-thumb{
+  background:#263b57 !important;
+  border-radius:10px !important;
+}
+
+.if6-side{
+  align-content:start !important;
+}
+
+@media(max-width:1100px){
+  .if6-main{
+    height:560px !important;
+  }
+}
+
+@media(max-width:760px){
+  .if6-main{
+    height:auto !important;
+    min-height:0 !important;
+  }
+
+  .if6-main-body{
+    flex:0 0 auto !important;
+    height:auto !important;
+    min-height:0 !important;
+    grid-template-columns:1fr !important;
+    overflow:visible !important;
+  }
+
+  .if6-donut{
+    width:min(250px,82vw) !important;
+    max-width:250px !important;
+  }
+
+  .if6-legend{
+    height:250px !important;
+    max-height:250px !important;
+  }
+
+  .if6-detail{
+    overflow:visible !important;
+  }
+
+  .if6-detail-list{
+    max-height:220px !important;
+  }
+}
+
+@media(max-width:460px){
+  .if6-main{
+    padding:14px !important;
+  }
+
+  .if6-main-body{
+    gap:12px !important;
+  }
+
+  .if6-donut{
+    width:220px !important;
+    max-width:220px !important;
+  }
+
+  .if6-legend{
+    height:220px !important;
+    max-height:220px !important;
+  }
+}
+</style>
+
 </head>
 
 <body>
@@ -3166,11 +3322,6 @@ textarea.form-control{
         <button onclick="mostrarPagina('inteligencia-flota',this)">
             <span class="menu-icon">🧠</span>
             <span>Inteligencia de Flota</span>
-        </button>
-
-        <button onclick="mostrarPagina('ia-flota',this)">
-            <span class="menu-icon">🤖</span>
-            <span>IA de Flota</span>
         </button>
 
     </nav>
@@ -5111,7 +5262,7 @@ textarea.form-control{
 
     <div class="if6-side">
       <div class="if6-card selected" data-if6="flota" onclick="if6Seleccionar('flota')"><div class="if6-card-head"><div class="if6-card-title">🚚 Flota</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutFlota"></div><div class="if6-mini-info"><b id="if6FlotaPct">—</b><span>disponibilidad</span></div></div><div class="if6-card-help">Estado operativo de las unidades.</div></div>
-      <div class="if6-card" data-if6="servicios" onclick="if6Seleccionar('servicios')"><div class="if6-card-head"><div class="if6-card-title">📋 Servicios</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutServicios"></div><div class="if6-mini-info"><b id="if6ServiciosPct">—</b><span>cumplimiento</span></div></div><div class="if6-card-help">Programados, finalizados e incumplidos.</div></div>
+      <div class="if6-card" data-if6="servicios" onclick="if6Seleccionar('servicios')"><div class="if6-card-head"><div class="if6-card-title">📋 Servicios</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutServicios"></div><div class="if6-mini-info"><b id="if6ServiciosPct">—</b><span>finalizados</span></div></div><div class="if6-card-help">Histórico hasta hoy: finalizados, en curso, pendientes y incumplidos.</div></div>
       <div class="if6-card" data-if6="choferes" onclick="if6Seleccionar('choferes')"><div class="if6-card-head"><div class="if6-card-title">👤 Choferes</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutChoferes"></div><div class="if6-mini-info"><b id="if6ChoferesPct">—</b><span>con actividad</span></div></div><div class="if6-card-help">Actividad y cantidad de unidades utilizadas.</div></div>
       <div class="if6-card" data-if6="mantenimiento" onclick="if6Seleccionar('mantenimiento')"><div class="if6-card-head"><div class="if6-card-title">🔧 Mantenimiento</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutMantenimiento"></div><div class="if6-mini-info"><b id="if6MantenimientoPct">—</b><span>control</span></div></div><div class="if6-card-help">Services registrados y unidades con atención.</div></div>
       <div class="if6-card" data-if6="vtv" onclick="if6Seleccionar('vtv')"><div class="if6-card-head"><div class="if6-card-title">📄 VTV</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutVtv"></div><div class="if6-mini-info"><b id="if6VtvPct">—</b><span>vigentes</span></div></div><div class="if6-card-help">Vigentes, próximas y vencidas.</div></div>
@@ -5136,35 +5287,6 @@ textarea.form-control{
   </div>
 </div>
 </div>
-
-<style id="ia-flota-style">
-.iaf-wrap{padding:20px;max-width:1200px;margin:0 auto}.iaf-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px}.iaf-head h2{margin:0;font-size:20px}.iaf-head p{margin:6px 0 0;color:var(--muted);font-size:11px}.iaf-live{padding:8px 11px;border:1px solid var(--border);border-radius:999px;background:#0d1829;color:#9fb0c7;font-size:10px;white-space:nowrap}.iaf-live b{color:#22c55e}.iaf-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px}.iaf-chat,.iaf-sidecard{background:var(--panel);border:1px solid var(--border);border-radius:15px;box-shadow:var(--shadow)}.iaf-chat{min-height:610px;display:flex;flex-direction:column;overflow:hidden}.iaf-chat-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}.iaf-chat-title{font-size:13px;font-weight:800}.iaf-chat-sub{font-size:9px;color:var(--muted);margin-top:3px}.iaf-status{font-size:9px;color:#7f8da3}.iaf-status.ok{color:var(--green)}.iaf-messages{flex:1;padding:16px;overflow:auto;display:flex;flex-direction:column;gap:10px;min-height:440px;max-height:600px}.iaf-msg{max-width:88%;padding:11px 13px;border-radius:12px;font-size:11px;line-height:1.55;white-space:pre-wrap;word-break:break-word}.iaf-msg.ai{align-self:flex-start;background:#0c1727;border:1px solid rgba(255,255,255,.05)}.iaf-msg.user{align-self:flex-end;background:#14365b;border:1px solid #245b92}.iaf-msg small{display:block;color:#718198;font-size:8px;margin-bottom:5px}.iaf-inputbar{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px}.iaf-input{flex:1;min-height:46px;max-height:130px;resize:vertical;background:#091422;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px;font:inherit;font-size:11px;outline:none}.iaf-input:focus{border-color:#35628e}.iaf-send{min-width:94px;border:0;border-radius:10px;background:var(--green2);color:white;font-weight:800;cursor:pointer}.iaf-send:disabled{opacity:.5;cursor:wait}.iaf-side{display:flex;flex-direction:column;gap:12px}.iaf-sidecard{padding:14px}.iaf-side-title{font-size:11px;font-weight:800;margin-bottom:10px}.iaf-q{width:100%;text-align:left;background:#0c1727;color:#dce6f3;border:1px solid rgba(255,255,255,.05);padding:9px 10px;border-radius:9px;margin-top:7px;font-size:10px;cursor:pointer}.iaf-q:hover{border-color:#35506f}.iaf-note{font-size:9px;color:var(--muted);line-height:1.5}.iaf-pill{display:inline-flex;padding:5px 8px;border-radius:999px;background:#10263a;color:#7fd7a0;font-size:8px;margin:3px 3px 0 0}
-@media(max-width:900px){.iaf-grid{grid-template-columns:1fr}.iaf-side{display:grid;grid-template-columns:1fr 1fr}.iaf-chat{min-height:560px}}
-@media(max-width:600px){.iaf-wrap{padding:12px}.iaf-head{align-items:flex-start;flex-direction:column}.iaf-live{width:100%}.iaf-side{grid-template-columns:1fr}.iaf-msg{max-width:94%}.iaf-inputbar{position:sticky;bottom:0;background:var(--panel)}}
-</style>
-
-<div id="ia-flota" class="page">
-<div class="iaf-wrap">
-<div class="iaf-head"><div><h2>🤖 IA de Flota</h2><p>Consultá la operación en lenguaje natural. La IA analiza datos que el Backend Maestro le entrega en tiempo real.</p></div><div class="iaf-live">● Motor: <b>OpenAI</b> · Datos: <b>Backend Maestro</b></div></div>
-<div class="iaf-grid">
-<div class="iaf-chat">
-<div class="iaf-chat-head"><div><div class="iaf-chat-title">Asistente de Operaciones</div><div class="iaf-chat-sub">Responde sobre el contexto operativo recibido por el Backend Maestro.</div></div><div id="iafStatus" class="iaf-status">Listo</div></div>
-<div id="iafMessages" class="iaf-messages"><div class="iaf-msg ai"><small>🤖 IA DE FLOTA</small>Hola. Puedo analizar la flota, servicios, viajes, choferes, unidades, mantenimiento, reportes y VTV. Preguntame qué está pasando con la operación.</div></div>
-<div class="iaf-inputbar"><textarea id="iafInput" class="iaf-input" placeholder="Ej.: ¿Qué unidades tuvieron más actividad y qué choferes las utilizaron?"></textarea><button id="iafSend" class="iaf-send" type="button" onclick="iafEnviar()">Preguntar</button></div>
-</div>
-<div class="iaf-side">
-<div class="iaf-sidecard"><div class="iaf-side-title">⚡ Consultas rápidas</div><button class="iaf-q" onclick="iafPregunta('¿Cómo está la situación general de la flota actualmente?')">¿Cómo está la flota?</button><button class="iaf-q" onclick="iafPregunta('¿Qué servicios históricos presentan más incumplimientos o problemas?')">Servicios con problemas</button><button class="iaf-q" onclick="iafPregunta('¿Qué unidades concentran más viajes y kilómetros?')">Unidades con más actividad</button><button class="iaf-q" onclick="iafPregunta('¿Qué mantenimiento y reportes deberían revisarse primero según los datos disponibles?')">Prioridades de mantenimiento</button><button class="iaf-q" onclick="iafPregunta('¿Qué choferes y unidades aparecen más vinculados en la operación?')">Chofer ↔ unidad</button></div>
-<div class="iaf-sidecard"><div class="iaf-side-title">🧠 Qué puede analizar</div><span class="iaf-pill">Flota</span><span class="iaf-pill">Servicios</span><span class="iaf-pill">Viajes</span><span class="iaf-pill">Choferes</span><span class="iaf-pill">Unidades</span><span class="iaf-pill">Mantenimiento</span><span class="iaf-pill">Reportes</span><span class="iaf-pill">VTV</span><span class="iaf-pill">Cruces</span><div class="iaf-note" style="margin-top:10px">La IA interpreta los indicadores calculados por el sistema. Para una cifra exacta, el Backend es la fuente de datos.</div></div>
-<div class="iaf-sidecard"><div class="iaf-side-title">🔐 Seguridad</div><div class="iaf-note">La clave de OpenAI queda en las Propiedades del Script del Backend y no se coloca en este HTML ni en GitHub.</div></div>
-</div></div></div></div>
-
-<script id="ia-flota-js">
-function iafEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');}
-function iafAgregar(tipo,texto){const box=document.getElementById('iafMessages');if(!box)return;const div=document.createElement('div');div.className='iaf-msg '+tipo;div.innerHTML='<small>'+(tipo==='user'?'TÚ':'🤖 IA DE FLOTA')+'</small>'+iafEsc(texto);box.appendChild(div);box.scrollTop=box.scrollHeight;}
-function iafPregunta(texto){const i=document.getElementById('iafInput');if(!i)return;i.value=texto;i.focus();iafEnviar();}
-async function iafEnviar(){const input=document.getElementById('iafInput'),btn=document.getElementById('iafSend'),status=document.getElementById('iafStatus');const pregunta=String(input?.value||'').trim();if(!pregunta)return;iafAgregar('user',pregunta);input.value='';btn.disabled=true;status.textContent='Analizando…';status.className='iaf-status';try{const r=await llamarBackend('analisisIA',{pregunta:pregunta});if(!r?.ok)throw new Error(r?.error||'El Backend no pudo procesar la consulta.');const respuesta=r.resultado?.respuesta||r.datos?.respuesta||r.respuesta||'Sin respuesta.';iafAgregar('ai',respuesta);status.textContent='Online';status.className='iaf-status ok';}catch(e){console.error('IA de Flota',e);iafAgregar('ai','No pude procesar la consulta. '+(e?.message||e));status.textContent='Error';status.className='iaf-status';}finally{btn.disabled=false;input.focus();}}
-document.addEventListener('keydown',function(e){if(e.target?.id==='iafInput'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();iafEnviar();}});
-</script>
 
 <script id="inteligencia-flota-v7-js">
 let if6Data={flota:null,servicios:null,choferes:null,mantenimiento:null,vtv:null,destinos:null,tipos:null,unidades:null};
@@ -5269,13 +5391,7 @@ function if6TipoTraslado(s,a){
   return String(match?.[1]||if6P(s,["TIPO_SERVICIO","TIPO","TIPO_VIAJE","TIPO_TRASLADO"])||"Otros").trim()||"Otros";
 }
 function if6NombreDestino(s){
-  // FUENTE OFICIAL PARA "DISTRIBUCIÓN POR DESTINO / SERVICIO":
-  // Hoja SERVICIOS del Google Sheet -> columna E -> NOMBRE_SERVICIO.
-  // No usamos NOMBRE, DESTINO, DESCRIPCION ni ningún otro campo como respaldo.
-  const nombre = s && s.NOMBRE_SERVICIO !== undefined && s.NOMBRE_SERVICIO !== null
-    ? String(s.NOMBRE_SERVICIO).trim()
-    : "";
-  return nombre || "SIN NOMBRE_SERVICIO";
+  return String(if6P(s,["NOMBRE_SERVICIO","NOMBRE","SERVICIO","DESTINO","DESTINO_SERVICIO","DESCRIPCION"])||"Sin destino").trim()||"Sin destino";
 }
 
 async function cargarInteligenciaFlota(){
@@ -5393,15 +5509,17 @@ async function cargarInteligenciaFlota(){
     // ============================================================
     // NUEVO: CRUCES OPERATIVOS DE SERVICIOS Y VIAJES
     // ============================================================
-    // 1) DISTRIBUCIÓN POR DESTINO / SERVICIO
-    //    Fuente única y explícita: SERVICIOS -> columna E -> NOMBRE_SERVICIO.
-    //    Cada valor distinto de NOMBRE_SERVICIO es una categoría independiente.
-    //    No agrupamos categorías en "Otros" y no usamos otros campos.
+    // 1) Destinos / servicios: usa NOMBRE_SERVICIO como unidad de análisis.
+    //    Esto permite ver cuántas veces se realizó cada destino/servicio.
     const byDestino=if6Agrupar(serHistorico, s=>if6NombreDestino(s));
     const totalDestinos=serHistorico.length;
+    const topDestinos=if6TopDetalles(byDestino,k=>k,12).map(x=>({...x,meta:x.meta.replace("viajes","servicios")}));
     const destKeys=Object.keys(byDestino).sort((a,b)=>byDestino[b]-byDestino[a]);
     const destTop=destKeys[0]||"Sin datos";
     const destFocus=destKeys.length?byDestino[destTop]:0;
+    // IMPORTANTE: no agrupamos el resto en "Otros".
+    // Si todos los destinos/servicios están tipificados, cada categoría debe quedar
+    // visible y explicar su parte del 100% del histórico.
     const destPalette=["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)","#f97316","#14b8a6","#eab308","#ec4899","#84cc16","#a855f7"];
     const destParts=destKeys.map((k,i)=>({
       label:k,
@@ -5410,11 +5528,11 @@ async function cargarInteligenciaFlota(){
     }));
     if6Data.destinos={
       title:"Distribución por destino / servicio",
-      subtitle:`SERVICIOS · columna E (NOMBRE_SERVICIO) · histórico hasta hoy · ${serFuturos.length} servicios futuros excluidos · ${destKeys.length} categorías.`,
+      subtitle:`Histórico hasta hoy · ${serFuturos.length} servicios futuros excluidos · ${destKeys.length} destinos/servicios tipificados.`,
       total:totalDestinos,unit:"servicios históricos",focus:destFocus,focusLabel:destTop,
       parts:destParts,
-      detailTitle:"Detalle completo de NOMBRE_SERVICIO",
-      detailHelp:"Fuente: hoja SERVICIOS, columna E. Cada categoría se muestra por separado y todas juntas representan el 100% del histórico.",
+      detailTitle:"Detalle completo por destino / servicio",
+      detailHelp:"Cada destino/servicio tipificado aparece por separado. Los porcentajes se calculan sobre el 100% del histórico y la suma de todas las categorías es 100%.`,
       details:destKeys.map(k=>({name:k,meta:`${byDestino[k]} servicios · ${if6Pct(byDestino[k],totalDestinos)}%`}))
     };
 
@@ -5823,11 +5941,6 @@ function mostrarPagina(id, boton){
 
     if(id === "inteligencia-flota"){
         cargarInteligenciaFlota();
-    }
-
-    if(id === "ia-flota") {
-        const st=document.getElementById("iafStatus");
-        if(st) st.textContent="Listo";
     }
 
     /*
