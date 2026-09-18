@@ -5532,7 +5532,7 @@ async function cargarInteligenciaFlota(){
       total:totalDestinos,unit:"servicios históricos",focus:destFocus,focusLabel:destTop,
       parts:destParts,
       detailTitle:"Detalle completo por destino / servicio",
-      detailHelp:"Cada destino/servicio tipificado aparece por separado. Los porcentajes se calculan sobre el 100% del histórico y la suma de todas las categorías es 100%.`,
+      detailHelp:"Cada destino/servicio tipificado aparece por separado. Los porcentajes se calculan sobre el 100% del histórico y la suma de todas las categorías es 100%.",
       details:destKeys.map(k=>({name:k,meta:`${byDestino[k]} servicios · ${if6Pct(byDestino[k],totalDestinos)}%`}))
     };
 
