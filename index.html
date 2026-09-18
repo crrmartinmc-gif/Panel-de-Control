@@ -5428,6 +5428,12 @@ async function cargarInteligenciaFlota(){
     const serHistorico=ser.filter(s=>if6ServicioFechaClasif(s,ahora)!=="FUTURO");
     const serFuturos=ser.filter(s=>if6ServicioFechaClasif(s,ahora)==="FUTURO");
     const serSinFecha=serHistorico.filter(s=>if6ServicioFechaClasif(s,ahora)==="SIN_FECHA").length;
+    // VIAJES HISTÓRICOS: se conserva para los cruces operativos y para
+    // comparar asignaciones contra viajes efectivamente registrados.
+    const viaHistorico=via.filter(v=>{
+      const d=if6Fecha(v);
+      return !d || d<=ahora;
+    });
     const sf=serHistorico.filter(s=>["FINALIZADO","FINALIZADOS","COMPLETADO","COMPLETADOS"].includes(if6EstadoServ(s))).length;
     const si=serHistorico.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(if6EstadoServ(s))).length;
     const sc=serHistorico.filter(s=>["EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).length;
@@ -5636,7 +5642,7 @@ async function cargarInteligenciaFlota(){
     const byV={};asi.forEach(a=>{const id=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();if(id)byV[id]=(byV[id]||0)+1;});
     const byVV=byUnidad;
     const topV=unidadKeys.slice(0,8).map(id=>{
-      const v=if6FindVeh(id,veh);return {name:v?if6Dom(v):"Unidad sin dominio",meta:`${byVV[id]} viajes registrados · ${if6Pct(byVV[id],unidadTotal)}%`};
+      const v=if6FindVeh(id,veh);return {name:v?if6Dom(v):"Unidad sin dominio",meta:`${byVV[id]} asignaciones · ${if6Pct(byVV[id],unidadTotal)}%`};
     });
     if6Data.flota.details=topV;
 
