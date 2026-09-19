@@ -5066,20 +5066,20 @@ textarea.form-control{
 .if6-layout{display:grid;grid-template-columns:minmax(420px,1.35fr) minmax(330px,.85fr);gap:16px;align-items:stretch}
 
 .if6-kpis{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px;margin:14px 0 16px}.if6-kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:11px 10px;min-width:0;box-shadow:var(--shadow)}.if6-kpi-label{font-size:8px;font-weight:800;color:#8fa2bb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.if6-kpi-num{font-size:22px;font-weight:900;line-height:1.1;margin-top:6px}.if6-kpi-help{font-size:8px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.if6-main{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:20px;min-height:430px}
+.if6-main{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:20px;height:560px;min-height:560px;overflow:hidden}
 .if6-main-top{display:flex;align-items:flex-start;justify-content:space-between;gap:15px}.if6-title{font-size:14px;font-weight:800}.if6-subtitle{font-size:10px;color:var(--muted);margin-top:4px}
 .if6-main-value{text-align:right}.if6-main-value strong{font-size:28px;font-weight:800;display:block}.if6-main-value span{font-size:9px;color:var(--muted)}
-.if6-main-body{display:grid;grid-template-columns:minmax(280px,.95fr) minmax(250px,1.05fr);gap:20px;align-items:center;margin-top:10px}
+.if6-main-body{display:grid;grid-template-columns:minmax(280px,.95fr) minmax(250px,1.05fr);gap:20px;align-items:center;margin-top:10px;height:285px;min-height:285px}
 .if6-donut{width:min(310px,100%);aspect-ratio:1;margin:auto;position:relative;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--green) 0 100%);box-shadow:0 0 0 1px rgba(255,255,255,.03),0 18px 45px rgba(0,0,0,.20)}
 .if6-donut:after{content:"";position:absolute;inset:22%;border-radius:50%;background:var(--panel);border:1px solid var(--border);box-shadow:inset 0 0 25px rgba(0,0,0,.15)}
 .if6-donut-center{position:relative;z-index:2;text-align:center}.if6-donut-center strong{display:block;font-size:38px;font-weight:800;line-height:1}.if6-donut-center span{display:block;margin-top:7px;color:var(--muted);font-size:10px}
-.if6-legend{display:flex;flex-direction:column;gap:9px}.if6-legend-row{display:grid;grid-template-columns:10px 1fr auto;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.045)}.if6-dot{width:8px;height:8px;border-radius:50%}.if6-legend-name{font-size:10px;font-weight:700}.if6-legend-meta{font-size:9px;color:var(--muted);margin-top:2px}.if6-legend-pct{font-size:11px;font-weight:800}
-.if6-detail{margin-top:17px;padding-top:15px;border-top:1px solid var(--border)}.if6-detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.if6-detail-title{font-size:11px;font-weight:800}.if6-detail-help{font-size:9px;color:var(--muted)}
+.if6-legend{display:flex;flex-direction:column;gap:9px;max-height:285px;overflow-y:auto;overflow-x:hidden;padding-right:4px;scrollbar-width:thin}.if6-legend-row{display:grid;grid-template-columns:10px 1fr auto;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.045)}.if6-dot{width:8px;height:8px;border-radius:50%}.if6-legend-name{font-size:10px;font-weight:700}.if6-legend-meta{font-size:9px;color:var(--muted);margin-top:2px}.if6-legend-pct{font-size:11px;font-weight:800}
+.if6-detail{margin-top:17px;padding-top:15px;border-top:1px solid var(--border);max-height:170px;overflow:hidden}.if6-detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.if6-detail-title{font-size:11px;font-weight:800}.if6-detail-help{font-size:9px;color:var(--muted)}
 .if6-detail-list{display:grid;grid-template-columns:1fr 1fr;gap:7px}.if6-detail-item{padding:9px 10px;border-radius:9px;background:#0c1727;border:1px solid rgba(255,255,255,.05);min-width:0}.if6-detail-item b{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.if6-detail-item span{display:block;color:var(--muted);font-size:9px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .if6-side{display:grid;grid-template-columns:1fr 1fr;gap:12px}.if6-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:14px;cursor:pointer;transition:.16s;min-width:0}.if6-card:hover{transform:translateY(-2px);border-color:#35506f}.if6-card.selected{border-color:rgba(34,197,94,.7);box-shadow:0 0 0 1px rgba(34,197,94,.12),var(--shadow)}.if6-card-head{display:flex;align-items:center;justify-content:space-between;gap:7px}.if6-card-title{font-size:10px;font-weight:800}.if6-card-arrow{font-size:11px;color:#718198}.if6-mini-row{display:flex;align-items:center;gap:10px;margin-top:13px}.if6-mini-donut{width:64px;height:64px;flex:0 0 64px;border-radius:50%;display:grid;place-items:center;position:relative}.if6-mini-donut:after{content:"";position:absolute;inset:19%;background:var(--panel);border-radius:50%}.if6-mini-center{position:relative;z-index:1;font-size:12px;font-weight:800}.if6-mini-info{min-width:0}.if6-mini-info b{font-size:15px}.if6-mini-info span{display:block;color:var(--muted);font-size:8px;margin-top:3px}.if6-card-help{margin-top:10px;color:#718198;font-size:8px;line-height:1.4}
 .if6-bottom{margin-top:16px;background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:15px}.if6-bottom-title{font-size:12px;font-weight:800;margin-bottom:10px}.if6-cross-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.if6-cross{padding:10px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.045)}.if6-cross b{font-size:10px}.if6-cross span{display:block;color:var(--muted);font-size:9px;margin-top:4px;line-height:1.4}
 @media(max-width:1100px){.if6-layout{grid-template-columns:1fr}.if6-side{grid-template-columns:repeat(4,minmax(0,1fr))}.if6-cross-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:760px){.if6-head{align-items:flex-start;flex-direction:column}.if6-main-body{grid-template-columns:1fr}.if6-side{grid-template-columns:1fr 1fr}.if6-detail-list{grid-template-columns:1fr}.if6-live{width:100%}}
+@media(max-width:760px){.if6-head{align-items:flex-start;flex-direction:column}.if6-main{height:auto;min-height:0;overflow:visible}.if6-main-body{grid-template-columns:1fr;height:auto;min-height:0}.if6-legend{max-height:260px}.if6-side{grid-template-columns:1fr 1fr}.if6-detail-list{grid-template-columns:1fr}.if6-detail{max-height:none;overflow:visible}.if6-live{width:100%}}
 @media(max-width:460px){.if6-side{grid-template-columns:1fr}.if6-cross-grid{grid-template-columns:1fr}}
 </style>
 
@@ -5158,11 +5158,11 @@ textarea.form-control{
 
 <div id="ia-flota" class="page">
 <div class="iaf-wrap">
-<div class="iaf-head"><div><h2>🤖 IA de Flota</h2><p>Consultá la operación en lenguaje natural. La IA analiza datos que el Backend Maestro le entrega en tiempo real.</p></div><div class="iaf-live">● Motor: <b>OpenAI</b> · Datos: <b>Backend Maestro</b></div></div>
+<div class="iaf-head"><div><h2>🤖 Pablito</h2><p>Consultá la operación en lenguaje natural con Pablito. Pablito analiza los datos que el Backend Maestro le entrega en tiempo real.</p></div><div class="iaf-live">● Pablito · <b>Gemini</b> · Datos: <b>Backend Maestro</b></div></div>
 <div class="iaf-grid">
 <div class="iaf-chat">
-<div class="iaf-chat-head"><div><div class="iaf-chat-title">Asistente de Operaciones</div><div class="iaf-chat-sub">Responde sobre el contexto operativo recibido por el Backend Maestro.</div></div><div id="iafStatus" class="iaf-status">Listo</div></div>
-<div id="iafMessages" class="iaf-messages"><div class="iaf-msg ai"><small>🤖 IA DE FLOTA</small>Hola. Puedo analizar la flota, servicios, viajes, choferes, unidades, mantenimiento, reportes y VTV. Preguntame qué está pasando con la operación.</div></div>
+<div class="iaf-chat-head"><div><div class="iaf-chat-title">Pablito · Asistente de Operaciones</div><div class="iaf-chat-sub">Responde sobre el contexto operativo recibido por el Backend Maestro.</div></div><div id="iafStatus" class="iaf-status">Listo</div></div>
+<div id="iafMessages" class="iaf-messages"><div class="iaf-msg ai"><small>🤖 PABLITO</small>Hola, soy Pablito. Puedo analizar la flota, servicios, viajes, choferes, unidades, mantenimiento, reportes y VTV. Preguntame qué está pasando con la operación.</div></div>
 <div class="iaf-inputbar"><textarea id="iafInput" class="iaf-input" placeholder="Ej.: ¿Qué unidades tuvieron más actividad y qué choferes las utilizaron?"></textarea><button id="iafSend" class="iaf-send" type="button" onclick="iafEnviar()">Preguntar</button></div>
 </div>
 <div class="iaf-side">
@@ -5173,7 +5173,7 @@ textarea.form-control{
 
 <script id="ia-flota-js">
 function iafEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');}
-function iafAgregar(tipo,texto){const box=document.getElementById('iafMessages');if(!box)return;const div=document.createElement('div');div.className='iaf-msg '+tipo;div.innerHTML='<small>'+(tipo==='user'?'TÚ':'🤖 IA DE FLOTA')+'</small>'+iafEsc(texto);box.appendChild(div);box.scrollTop=box.scrollHeight;}
+function iafAgregar(tipo,texto){const box=document.getElementById('iafMessages');if(!box)return;const div=document.createElement('div');div.className='iaf-msg '+tipo;div.innerHTML='<small>'+(tipo==='user'?'TÚ':'🤖 PABLITO')+'</small>'+iafEsc(texto);box.appendChild(div);box.scrollTop=box.scrollHeight;}
 function iafPregunta(texto){const i=document.getElementById('iafInput');if(!i)return;i.value=texto;i.focus();iafEnviar();}
 async function iafEnviar(){const input=document.getElementById('iafInput'),btn=document.getElementById('iafSend'),status=document.getElementById('iafStatus');const pregunta=String(input?.value||'').trim();if(!pregunta)return;iafAgregar('user',pregunta);input.value='';btn.disabled=true;status.textContent='Analizando…';status.className='iaf-status';try{const r=await llamarBackend('analisisIA',{pregunta:pregunta});if(!r?.ok)throw new Error(r?.error||'El Backend no pudo procesar la consulta.');const respuesta=r.resultado?.respuesta||r.datos?.respuesta||r.respuesta||'Sin respuesta.';iafAgregar('ai',respuesta);status.textContent='Online';status.className='iaf-status ok';}catch(e){console.error('IA de Flota',e);iafAgregar('ai','No pude procesar la consulta. '+(e?.message||e));status.textContent='Error';status.className='iaf-status';}finally{btn.disabled=false;input.focus();}}
 document.addEventListener('keydown',function(e){if(e.target?.id==='iafInput'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();iafEnviar();}});
@@ -10901,6 +10901,92 @@ function esReporteVTV(registro){
     return texto.includes("VTV");
 }
 
+function fechaVTVVehiculo(vehiculo){
+    if(!vehiculo) return null;
+
+    const direct=[
+        vehiculo.FECHA_VTV,
+        vehiculo.FECHA_REALIZACION_VTV,
+        vehiculo.VTV_FECHA,
+        vehiculo.FECHA_VTV_REALIZADA
+    ].find(v=>v!==undefined && v!==null && String(v).trim()!=='');
+
+    if(direct){
+        const d=new Date(direct);
+        if(!isNaN(d.getTime())) return new Date(d.getFullYear(),d.getMonth(),1);
+    }
+
+    const mes=vehiculo.MES_VTV ?? vehiculo.MES_REALIZACION_VTV ?? vehiculo.VTV_MES;
+    const anio=vehiculo.ANIO_VTV ?? vehiculo.AÑO_VTV ?? vehiculo.ANIO_REALIZACION_VTV ?? vehiculo.VTV_ANIO;
+
+    if(mes && anio){
+        const m=Number(String(mes).replace(/[^0-9]/g,'')); 
+        const y=Number(String(anio).replace(/[^0-9]/g,''));
+        if(m>=1 && m<=12 && y>=2000) return new Date(y,m-1,1);
+    }
+
+    // Compatibilidad con registros de REPORTES que ya tengan la VTV cargada.
+    const reporte=obtenerReporteVTVVehiculo(vehiculo);
+    if(reporte){
+        const directR=[
+            reporte.FECHA_VTV,
+            reporte.FECHA_REALIZACION_VTV,
+            reporte.VTV_FECHA,
+            reporte.FECHA_VTV_REALIZADA
+        ].find(v=>v!==undefined && v!==null && String(v).trim()!=='');
+        if(directR){
+            const d=new Date(directR);
+            if(!isNaN(d.getTime())) return new Date(d.getFullYear(),d.getMonth(),1);
+        }
+
+        const mesR=reporte.MES_VTV ?? reporte.MES_REALIZACION_VTV ?? reporte.VTV_MES;
+        const anioR=reporte.ANIO_VTV ?? reporte.AÑO_VTV ?? reporte.ANIO_REALIZACION_VTV ?? reporte.VTV_ANIO;
+        if(mesR && anioR){
+            const m=Number(String(mesR).replace(/[^0-9]/g,'')); 
+            const y=Number(String(anioR).replace(/[^0-9]/g,''));
+            if(m>=1 && m<=12 && y>=2000) return new Date(y,m-1,1);
+        }
+
+        const txt=String(reporte.DESCRIPCION||reporte.OBSERVACIONES||'');
+        const mm=txt.match(/(?:VTV(?:\s+REALIZADA)?|REALIZACI[ÓO]N(?:\s+VTV)?)\s*[:|\-]?\s*(\d{1,2})[\/\-](\d{4})/i);
+        if(mm) return new Date(Number(mm[2]),Number(mm[1])-1,1);
+    }
+
+    return null;
+}
+
+function vencimientoVTVVehiculo(vehiculo){
+    const f=fechaVTVVehiculo(vehiculo);
+    return f ? new Date(f.getFullYear()+1,f.getMonth()+1,0) : null;
+}
+
+function estadoVTVVehiculo(vehiculo){
+    const f=fechaVTVVehiculo(vehiculo);
+    if(!f) return "SIN VTV";
+
+    const ahora=new Date();
+    const venc=new Date(f.getFullYear()+1,f.getMonth(),1);
+
+    const actual=ahora.getFullYear()*12+ahora.getMonth();
+    const mesVenc=venc.getFullYear()*12+venc.getMonth();
+    const diferencia=mesVenc-actual;
+
+    if(diferencia<0) return "VENCIDA";
+    if(diferencia<=2) return "PRÓXIMA A VENCER";
+    return "VIGENTE";
+}
+
+function textoVTVVehiculo(vehiculo){
+    const f=fechaVTVVehiculo(vehiculo);
+    const venc=vencimientoVTVVehiculo(vehiculo);
+    const estado=estadoVTVVehiculo(vehiculo);
+
+    if(!f || !venc) return "SIN VTV";
+
+    const pad=n=>String(n).padStart(2,'0');
+    return `${pad(f.getMonth()+1)}/${f.getFullYear()} · vence ${pad(venc.getMonth()+1)}/${venc.getFullYear()} · ${estado}`;
+}
+
 function obtenerReporteVTVVehiculo(vehiculo){
     return (estadoPanel.reportes||[])
         .filter(r=>registroPerteneceAVehiculo(r,vehiculo) && esReporteVTV(r))
@@ -10912,23 +10998,17 @@ function obtenerReportesVehiculo(vehiculo){
 }
 
 function obtenerTextoVTVVehiculo(vehiculo){
-    const reportes=(estadoPanel.reportes||[]).filter(r=>registroPerteneceAVehiculo(r,vehiculo) && esReporteVTV(r));
-    const reporte=reportes.sort((a,b)=>new Date(b?.FECHA_HORA||0)-new Date(a?.FECHA_HORA||0))[0]||null;
-    if(!reporte){
-        const datoDirecto=vehiculo?.VTV || vehiculo?.VTV_VENCIMIENTO || vehiculo?.VTV_HASTA;
-        return datoDirecto ? String(datoDirecto) : "SIN VTV";
-    }
-    return if6VtvLabel(reporte);
+    return textoVTVVehiculo(vehiculo);
 }
 
 function claseVTVVehiculo(texto){
     const t=normalizar(texto||"");
     if(t.includes("VIGENTE") || t.includes("APROBADA") || t.includes("APTO")) return "online";
     if(t.includes("VENCIDA") || t.includes("RECHAZADA") || t.includes("NO APTO")) return "danger";
-    if(t.includes("PENDIENTE") || t.includes("PRÓXIMA") || t.includes("PROXIMA") || t.includes("OBSERVADA")) return "warning";
-    if(t.includes("SIN VTV")) return "status-neutral";
-    return "warning";
+    if(t.includes("PRÓXIMA") || t.includes("PROXIMA") || t.includes("PENDIENTE") || t.includes("OBSERVADA")) return "warning";
+    return "status-neutral";
 }
+
 
 function etiquetaEstadoDetalle(estado,claseFn){
     const texto=String(estado||"PENDIENTE");
@@ -10958,7 +11038,7 @@ function renderizarVehiculos(vehiculos){
         const gps=v.GPS_ID ? "🛰 ACTIVO" : "—";
         const kmActual=obtenerKMActualVehiculo(v);
         const service=infoServiceVehiculo(v);
-        const vtv=obtenerTextoVTVVehiculo(v);
+        const vtv=textoVTVVehiculo(v);
         const vtvClase=claseVTVVehiculo(vtv);
         const serviceTexto=service.kmProximo===null ? "-" : `${service.kmProximo.toLocaleString("es-AR")} km`;
         const serviceClase=service.estado==="VENCIDO" ? "danger" : service.estado==="PRÓXIMO" ? "warning" : "online";
@@ -10995,7 +11075,7 @@ function verVehiculo(idVehiculo){
     const kmActual=service.kmActual===null ? "-" : service.kmActual.toLocaleString("es-AR");
     const ultimoService=service.kmUltimo===null ? "-" : `${service.kmUltimo.toLocaleString("es-AR")} km`;
     const proximoService=service.kmProximo===null ? "-" : `${service.kmProximo.toLocaleString("es-AR")} km`;
-    const vtv=obtenerTextoVTVVehiculo(v);
+    const vtv=textoVTVVehiculo(v);
 
     const mantenimientoHTML=mantenimientos.length
         ? mantenimientos.map(m=>{
