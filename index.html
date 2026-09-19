@@ -5238,19 +5238,42 @@ function if6VehiculoLabelById(id,veh){const v=if6FindVeh(id,veh);return v?if6Dom
 function if6ChoferLabelById(id,cho){const c=if6FindCho(id,cho);return c?if6NombreChofer(c):"Chofer sin nombre";}
 function if6VtvFecha(r){
   if(!r) return null;
+
   const direct=if6P(r,["FECHA_VTV","FECHA_REALIZACION_VTV","VTV_FECHA","FECHA_VTV_REALIZADA"]);
-  if(direct){ const d=if6Fecha({FECHA:direct}); if(d) return d; }
+  if(direct){ const d=if6Fecha({FECHA:direct}); if(d) return new Date(d.getFullYear(),d.getMonth(),1); }
+
   const mes=if6P(r,["MES_VTV","MES_REALIZACION_VTV","VTV_MES"]);
   const anio=if6P(r,["ANIO_VTV","AÑO_VTV","ANIO_REALIZACION_VTV","VTV_ANIO"]);
   if(mes&&anio){
     const m=Number(String(mes).replace(/[^0-9]/g,"")),y=Number(String(anio).replace(/[^0-9]/g,""));
     if(m>=1&&m<=12&&y>=2000)return new Date(y,m-1,1);
   }
-  const txt=String(if6P(r,["DESCRIPCION","OBSERVACIONES"])||"");
-  const mm=txt.match(/(?:VTV(?:\s+REALIZADA)?|REALIZACI[ÓO]N(?:\s+VTV)?)\s*[:|\-]?\s*(\d{1,2})[\/\-](\d{4})/i);
-  if(mm)return new Date(Number(mm[2]),Number(mm[1])-1,1);
-  return if6Fecha(r);
+
+  // FUENTE REAL DE VTV: REPORTES -> OBSERVACIONES.
+  const txt=[if6P(r,["OBSERVACIONES"]),if6P(r,["DESCRIPCION"])].filter(Boolean).join(" | ");
+  if(/SIN\s+VTV/i.test(txt)) return null;
+
+  let mm=txt.match(/REALIZADA?\s*[:\-]?\s*(\d{1,2})[\/\-](\d{4})/i);
+  if(mm){
+    const m=Number(mm[1]),y=Number(mm[2]);
+    if(m>=1&&m<=12&&y>=2000)return new Date(y,m-1,1);
+  }
+
+  mm=txt.match(/(?:VTV(?:\s+REALIZADA)?|REALIZACI[ÓO]N(?:\s+VTV)?)\s*[:|\-]?\s*(\d{1,2})[\/\-](\d{4})/i);
+  if(mm){
+    const m=Number(mm[1]),y=Number(mm[2]);
+    if(m>=1&&m<=12&&y>=2000)return new Date(y,m-1,1);
+  }
+
+  mm=txt.match(/VENCIMIENTO\s*[:\-]?\s*(\d{1,2})[\/\-](\d{4})/i);
+  if(mm){
+    const m=Number(mm[1]),y=Number(mm[2]);
+    if(m>=1&&m<=12&&y>=2000)return new Date(y-1,m-1,1);
+  }
+
+  return null;
 }
+
 function if6VtvEstado(r){
   const texto=if6N([if6P(r,["RESULTADO","ESTADO_VTV","ESTADO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"])].join(" "));
   if(texto.includes("RECHAZ")||texto.includes("NO APTO"))return "VENCIDA";
@@ -10901,6 +10924,36 @@ function esReporteVTV(registro){
     return texto.includes("VTV");
 }
 
+function extraerFechaVTVDesdeTexto(texto){
+    const txt=String(texto||"").trim();
+    if(!txt || /SIN\s+VTV/i.test(txt)) return null;
+
+    // Formato real de REPORTES -> OBSERVACIONES:
+    // "Realizada: 03/2026 | Vencimiento: 03/2027"
+    // "Realizada 05/2025 | Vencimiento 05/2026"
+    let mm=txt.match(/REALIZADA?\s*[:\-]?\s*(\d{1,2})[\/\-](\d{4})/i);
+    if(mm){
+        const m=Number(mm[1]), y=Number(mm[2]);
+        if(m>=1 && m<=12 && y>=2000) return new Date(y,m-1,1);
+    }
+
+    // Compatibilidad con otras formas de escritura.
+    mm=txt.match(/(?:VTV(?:\s+REALIZADA)?|REALIZACI[ÓO]N(?:\s+VTV)?)\s*[:|\-]?\s*(\d{1,2})[\/\-](\d{4})/i);
+    if(mm){
+        const m=Number(mm[1]), y=Number(mm[2]);
+        if(m>=1 && m<=12 && y>=2000) return new Date(y,m-1,1);
+    }
+
+    // Si solo aparece el vencimiento, reconstruimos la realización un año antes.
+    const venc=txt.match(/VENCIMIENTO\s*[:\-]?\s*(\d{1,2})[\/\-](\d{4})/i);
+    if(venc){
+        const m=Number(venc[1]), y=Number(venc[2]);
+        if(m>=1 && m<=12 && y>=2000) return new Date(y-1,m-1,1);
+    }
+
+    return null;
+}
+
 function fechaVTVVehiculo(vehiculo){
     if(!vehiculo) return null;
 
@@ -10925,7 +10978,7 @@ function fechaVTVVehiculo(vehiculo){
         if(m>=1 && m<=12 && y>=2000) return new Date(y,m-1,1);
     }
 
-    // Compatibilidad con registros de REPORTES que ya tengan la VTV cargada.
+    // FUENTE OFICIAL ACTUAL: REPORTES -> OBSERVACIONES.
     const reporte=obtenerReporteVTVVehiculo(vehiculo);
     if(reporte){
         const directR=[
@@ -10934,6 +10987,7 @@ function fechaVTVVehiculo(vehiculo){
             reporte.VTV_FECHA,
             reporte.FECHA_VTV_REALIZADA
         ].find(v=>v!==undefined && v!==null && String(v).trim()!=='');
+
         if(directR){
             const d=new Date(directR);
             if(!isNaN(d.getTime())) return new Date(d.getFullYear(),d.getMonth(),1);
@@ -10947,9 +11001,9 @@ function fechaVTVVehiculo(vehiculo){
             if(m>=1 && m<=12 && y>=2000) return new Date(y,m-1,1);
         }
 
-        const txt=String(reporte.DESCRIPCION||reporte.OBSERVACIONES||'');
-        const mm=txt.match(/(?:VTV(?:\s+REALIZADA)?|REALIZACI[ÓO]N(?:\s+VTV)?)\s*[:|\-]?\s*(\d{1,2})[\/\-](\d{4})/i);
-        if(mm) return new Date(Number(mm[2]),Number(mm[1])-1,1);
+        const txt=[reporte.OBSERVACIONES,reporte.DESCRIPCION].filter(Boolean).join(" | ");
+        const desdeTexto=extraerFechaVTVDesdeTexto(txt);
+        if(desdeTexto) return desdeTexto;
     }
 
     return null;
