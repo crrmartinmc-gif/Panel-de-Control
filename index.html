@@ -3017,6 +3017,103 @@ textarea.form-control{
 .mantenimiento-estado-select.inspeccion-observada{color:#fbbf24}
 .mantenimiento-estado-select.inspeccion-rechazada{color:#f87171}
 </style>
+
+<style id="mobile-single-row-carousel-final">
+@media(max-width:768px){
+    /* CARRUSEL ÚNICO: toda la navegación inferior es una sola fila */
+    .sidebar{
+        display:flex !important;
+        flex-direction:row !important;
+        align-items:stretch !important;
+        overflow:hidden !important;
+        white-space:nowrap !important;
+    }
+
+    .sidebar .sidebar-scroll{
+        display:flex !important;
+        flex-direction:row !important;
+        align-items:stretch !important;
+        width:100% !important;
+        min-width:0 !important;
+        flex:1 1 auto !important;
+        overflow-x:auto !important;
+        overflow-y:hidden !important;
+        padding:0 4px !important;
+        margin:0 !important;
+        scrollbar-width:none !important;
+        -webkit-overflow-scrolling:touch !important;
+        scroll-behavior:smooth !important;
+        overscroll-behavior-x:contain !important;
+        touch-action:pan-x !important;
+    }
+
+    .sidebar .sidebar-scroll::-webkit-scrollbar{display:none !important;}
+
+    /* Los títulos de grupo no ocupan espacio en la cinta */
+    .sidebar .sidebar-scroll > .menu-label{
+        display:none !important;
+    }
+
+    /* Los distintos nav pasan a formar una única fila continua */
+    .sidebar .sidebar-scroll > .menu{
+        display:flex !important;
+        flex-direction:row !important;
+        flex-wrap:nowrap !important;
+        align-items:stretch !important;
+        width:max-content !important;
+        min-width:max-content !important;
+        flex:0 0 auto !important;
+        gap:3px !important;
+        margin:0 !important;
+    }
+
+    /* Cada opción es un elemento fijo de la fila */
+    .sidebar .sidebar-scroll > .menu button{
+        display:flex !important;
+        flex:0 0 76px !important;
+        width:76px !important;
+        min-width:76px !important;
+        max-width:76px !important;
+        height:61px !important;
+        margin:0 !important;
+        padding:6px 3px 5px !important;
+        flex-direction:column !important;
+        justify-content:center !important;
+        align-items:center !important;
+        gap:3px !important;
+        white-space:normal !important;
+        scroll-snap-align:center;
+    }
+
+    .sidebar .sidebar-scroll > .menu button span:last-child{
+        display:block !important;
+        width:70px !important;
+        max-width:70px !important;
+        white-space:nowrap !important;
+        overflow:hidden !important;
+        text-overflow:ellipsis !important;
+        text-align:center !important;
+    }
+
+    .sidebar .sidebar-scroll > .menu-icon{
+        width:auto !important;
+    }
+}
+
+@media(max-width:380px){
+    .sidebar .sidebar-scroll > .menu button{
+        flex-basis:72px !important;
+        width:72px !important;
+        min-width:72px !important;
+        max-width:72px !important;
+    }
+    .sidebar .sidebar-scroll > .menu button span:last-child{
+        width:68px !important;
+        max-width:68px !important;
+    }
+}
+</style>
+
 </head>
 
 <body>
@@ -3069,6 +3166,11 @@ textarea.form-control{
         <button onclick="mostrarPagina('inteligencia-flota',this)">
             <span class="menu-icon">🧠</span>
             <span>Inteligencia de Flota</span>
+        </button>
+
+        <button onclick="mostrarPagina('ia-flota',this)">
+            <span class="menu-icon">🤖</span>
+            <span>IA de Flota</span>
         </button>
 
     </nav>
@@ -4952,127 +5054,522 @@ textarea.form-control{
 
 </div>
 
-<style id="inteligencia-flota-v5-style">
-.if-wrap{padding:0 0 20px}
-.if-head{display:flex;justify-content:space-between;align-items:end;gap:15px;margin-bottom:18px}
-.if-head h2{margin:0;font-size:22px}.if-sub{color:var(--muted);font-size:11px;margin-top:4px}
-.if-filter{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-size:11px}
-.if-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:15px}
-.if-kpi{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:15px;box-shadow:var(--shadow)}
-.if-label{font-size:10px;color:var(--muted);font-weight:700}.if-num{font-size:26px;font-weight:800;margin-top:8px}.if-help{font-size:9px;color:var(--muted);margin-top:4px}
-.if-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:15px}
-.if-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:17px;box-shadow:var(--shadow);min-width:0}
-.if-title{font-size:13px;font-weight:800;margin-bottom:13px}.if-row{margin:12px 0;font-size:11px}.if-row-top{display:flex;justify-content:space-between}.if-bar{height:7px;background:#1b2a3e;border-radius:20px;margin-top:6px;overflow:hidden}.if-fill{height:100%;border-radius:20px}
-.if-alerts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.if-alert{padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)}.if-alert b{display:block;font-size:11px;margin-bottom:4px}.if-alert span{font-size:9px;color:var(--muted);line-height:1.4}
-.if-wide{grid-column:1/-1}.if-table-wrap{overflow-x:auto}.if-table{width:100%;border-collapse:collapse;font-size:10px}.if-table th,.if-table td{padding:10px 7px;border-bottom:1px solid #1b2a3e;text-align:left;white-space:nowrap}.if-table th{color:var(--muted);font-size:9px}.if-badge{padding:4px 7px;border-radius:6px;background:#1b2a3e}.if-loading{color:var(--muted);font-size:11px}
-@media(max-width:1200px){.if-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:900px){.if-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.if-grid{grid-template-columns:1fr}.if-wide{grid-column:auto}.if-alerts{grid-template-columns:1fr}}
-@media(max-width:520px){.if-kpis{grid-template-columns:1fr}.if-head{align-items:flex-start;flex-direction:column}.if-filter{width:100%}}
+<style id="inteligencia-flota-v6-style">
+/* =========================================================
+   INTELIGENCIA DE FLOTA — VISUAL CIRCULAR V6
+   Capa independiente: no modifica los módulos existentes.
+   ========================================================= */
+.if6-wrap{width:100%;}
+.if6-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:18px}
+.if6-head h2{margin:0;font-size:22px;font-weight:800}.if6-head p{margin:5px 0 0;color:var(--muted);font-size:11px}
+.if6-live{padding:8px 11px;border:1px solid var(--border);border-radius:9px;background:var(--panel);font-size:10px;color:var(--muted);white-space:nowrap}.if6-live b{color:#6ee7a0}
+.if6-layout{display:grid;grid-template-columns:minmax(420px,1.35fr) minmax(330px,.85fr);gap:16px;align-items:stretch}
+
+.if6-kpis{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px;margin:14px 0 16px}.if6-kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:11px 10px;min-width:0;box-shadow:var(--shadow)}.if6-kpi-label{font-size:8px;font-weight:800;color:#8fa2bb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.if6-kpi-num{font-size:22px;font-weight:900;line-height:1.1;margin-top:6px}.if6-kpi-help{font-size:8px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.if6-main{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:20px;min-height:430px}
+.if6-main-top{display:flex;align-items:flex-start;justify-content:space-between;gap:15px}.if6-title{font-size:14px;font-weight:800}.if6-subtitle{font-size:10px;color:var(--muted);margin-top:4px}
+.if6-main-value{text-align:right}.if6-main-value strong{font-size:28px;font-weight:800;display:block}.if6-main-value span{font-size:9px;color:var(--muted)}
+.if6-main-body{display:grid;grid-template-columns:minmax(280px,.95fr) minmax(250px,1.05fr);gap:20px;align-items:center;margin-top:10px}
+.if6-donut{width:min(310px,100%);aspect-ratio:1;margin:auto;position:relative;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--green) 0 100%);box-shadow:0 0 0 1px rgba(255,255,255,.03),0 18px 45px rgba(0,0,0,.20)}
+.if6-donut:after{content:"";position:absolute;inset:22%;border-radius:50%;background:var(--panel);border:1px solid var(--border);box-shadow:inset 0 0 25px rgba(0,0,0,.15)}
+.if6-donut-center{position:relative;z-index:2;text-align:center}.if6-donut-center strong{display:block;font-size:38px;font-weight:800;line-height:1}.if6-donut-center span{display:block;margin-top:7px;color:var(--muted);font-size:10px}
+.if6-legend{display:flex;flex-direction:column;gap:9px}.if6-legend-row{display:grid;grid-template-columns:10px 1fr auto;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.045)}.if6-dot{width:8px;height:8px;border-radius:50%}.if6-legend-name{font-size:10px;font-weight:700}.if6-legend-meta{font-size:9px;color:var(--muted);margin-top:2px}.if6-legend-pct{font-size:11px;font-weight:800}
+.if6-detail{margin-top:17px;padding-top:15px;border-top:1px solid var(--border)}.if6-detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.if6-detail-title{font-size:11px;font-weight:800}.if6-detail-help{font-size:9px;color:var(--muted)}
+.if6-detail-list{display:grid;grid-template-columns:1fr 1fr;gap:7px}.if6-detail-item{padding:9px 10px;border-radius:9px;background:#0c1727;border:1px solid rgba(255,255,255,.05);min-width:0}.if6-detail-item b{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.if6-detail-item span{display:block;color:var(--muted);font-size:9px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.if6-side{display:grid;grid-template-columns:1fr 1fr;gap:12px}.if6-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:14px;cursor:pointer;transition:.16s;min-width:0}.if6-card:hover{transform:translateY(-2px);border-color:#35506f}.if6-card.selected{border-color:rgba(34,197,94,.7);box-shadow:0 0 0 1px rgba(34,197,94,.12),var(--shadow)}.if6-card-head{display:flex;align-items:center;justify-content:space-between;gap:7px}.if6-card-title{font-size:10px;font-weight:800}.if6-card-arrow{font-size:11px;color:#718198}.if6-mini-row{display:flex;align-items:center;gap:10px;margin-top:13px}.if6-mini-donut{width:64px;height:64px;flex:0 0 64px;border-radius:50%;display:grid;place-items:center;position:relative}.if6-mini-donut:after{content:"";position:absolute;inset:19%;background:var(--panel);border-radius:50%}.if6-mini-center{position:relative;z-index:1;font-size:12px;font-weight:800}.if6-mini-info{min-width:0}.if6-mini-info b{font-size:15px}.if6-mini-info span{display:block;color:var(--muted);font-size:8px;margin-top:3px}.if6-card-help{margin-top:10px;color:#718198;font-size:8px;line-height:1.4}
+.if6-bottom{margin-top:16px;background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:15px}.if6-bottom-title{font-size:12px;font-weight:800;margin-bottom:10px}.if6-cross-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.if6-cross{padding:10px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.045)}.if6-cross b{font-size:10px}.if6-cross span{display:block;color:var(--muted);font-size:9px;margin-top:4px;line-height:1.4}
+@media(max-width:1100px){.if6-layout{grid-template-columns:1fr}.if6-side{grid-template-columns:repeat(4,minmax(0,1fr))}.if6-cross-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.if6-head{align-items:flex-start;flex-direction:column}.if6-main-body{grid-template-columns:1fr}.if6-side{grid-template-columns:1fr 1fr}.if6-detail-list{grid-template-columns:1fr}.if6-live{width:100%}}
+@media(max-width:460px){.if6-side{grid-template-columns:1fr}.if6-cross-grid{grid-template-columns:1fr}}
 </style>
 
 <div id="inteligencia-flota" class="page">
-<div class="if-wrap">
-  <div class="if-head">
+<div class="if6-wrap">
+  <div class="if6-head">
     <div>
       <h2>🧠 Inteligencia de Flota</h2>
-      <div class="if-sub">Análisis real de Vehículos + Choferes + Servicios + Asignaciones</div>
+      <p>Servicios, viajes, destinos, tipos de traslado, choferes, unidades y mantenimiento con porcentajes y cruces históricos.</p>
     </div>
-    <div class="if-filter">Datos: <b>Backend Maestro</b></div>
+    <div class="if6-live">● Datos: <b>Backend Maestro</b></div>
   </div>
 
-  <div class="if-kpis">
-    <div class="if-kpi"><div class="if-label">VEHÍCULOS</div><div class="if-num" id="ifTotalVehiculos">—</div><div class="if-help">registrados</div></div>
-    <div class="if-kpi"><div class="if-label">OPERATIVOS</div><div class="if-num" id="ifOperativos">—</div><div class="if-help">estado operativo</div></div>
-    <div class="if-kpi"><div class="if-label">CHOFERES</div><div class="if-num" id="ifTotalChoferes">—</div><div class="if-help">activos registrados</div></div>
-    <div class="if-kpi"><div class="if-label">SERVICIOS</div><div class="if-num" id="ifTotalServicios">—</div><div class="if-help">en la base</div></div>
-    <div class="if-kpi"><div class="if-label">FINALIZADOS</div><div class="if-num" id="ifFinalizados">—</div><div class="if-help">servicios completados</div></div>
-    <div class="if-kpi"><div class="if-label">INCUMPLIDOS</div><div class="if-num" id="ifIncumplidos">—</div><div class="if-help">requieren análisis</div></div>
+  <div class="if6-kpis">
+    <div class="if6-kpi"><div class="if6-kpi-label">VEHÍCULOS</div><div class="if6-kpi-num" id="if6KpiVehiculos">—</div><div class="if6-kpi-help">100% del registro</div></div>
+    <div class="if6-kpi"><div class="if6-kpi-label">OPERATIVOS</div><div class="if6-kpi-num" id="if6KpiOperativos">—</div><div class="if6-kpi-help" id="if6KpiOperativosHelp">estado actual</div></div>
+    <div class="if6-kpi"><div class="if6-kpi-label">EN TALLER</div><div class="if6-kpi-num" id="if6KpiTaller">—</div><div class="if6-kpi-help" id="if6KpiTallerHelp">estado actual</div></div>
+    <div class="if6-kpi"><div class="if6-kpi-label">FUERA DE SERVICIO</div><div class="if6-kpi-num" id="if6KpiFuera">—</div><div class="if6-kpi-help" id="if6KpiFueraHelp">radiados / fuera</div></div>
+    <div class="if6-kpi"><div class="if6-kpi-label">CHOFERES</div><div class="if6-kpi-num" id="if6KpiChoferes">—</div><div class="if6-kpi-help">registrados</div></div>
+    <div class="if6-kpi"><div class="if6-kpi-label">SERVICIOS</div><div class="if6-kpi-num" id="if6KpiServicios">—</div><div class="if6-kpi-help">histórico analizado</div></div>
+    <div class="if6-kpi"><div class="if6-kpi-label">FINALIZADOS</div><div class="if6-kpi-num" id="if6KpiFinalizados">—</div><div class="if6-kpi-help" id="if6KpiFinalizadosHelp">del histórico</div></div>
+    <div class="if6-kpi"><div class="if6-kpi-label">INCUMPLIDOS</div><div class="if6-kpi-num" id="if6KpiIncumplidos">—</div><div class="if6-kpi-help" id="if6KpiIncumplidosHelp">del histórico</div></div>
   </div>
 
-  <div class="if-grid">
-    <div class="if-card">
-      <div class="if-title">📊 Estado operativo de la flota</div>
-      <div class="if-row"><div class="if-row-top"><span>Operativos</span><b id="ifOpTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifOpBar" style="width:0;background:var(--green)"></div></div></div>
-      <div class="if-row"><div class="if-row-top"><span>En taller</span><b id="ifTallerTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifTallerBar" style="width:0;background:var(--yellow)"></div></div></div>
-      <div class="if-row"><div class="if-row-top"><span>Fuera de servicio / radiados</span><b id="ifFueraTxt">—</b></div><div class="if-bar"><div class="if-fill" id="ifFueraBar" style="width:0;background:var(--red)"></div></div></div>
-    </div>
-
-    <div class="if-card">
-      <div class="if-title">📋 Estado de los servicios</div>
-      <div class="if-alerts">
-        <div class="if-alert"><b style="color:var(--blue)">Programados</b><span id="ifProgramados">—</span></div>
-        <div class="if-alert"><b style="color:var(--green)">Finalizados</b><span id="ifFinalizadosBox">—</span></div>
-        <div class="if-alert"><b style="color:var(--red)">Incumplidos</b><span id="ifIncumplidosBox">—</span></div>
+  <div class="if6-layout">
+    <div class="if6-main">
+      <div class="if6-main-top">
+        <div><div class="if6-title" id="if6MainTitle">Estado general de la flota</div><div class="if6-subtitle" id="if6MainSubtitle">Seleccioná un gráfico secundario para profundizar.</div></div>
+        <div class="if6-main-value"><strong id="if6MainTotal">—</strong><span id="if6MainUnit">registros</span></div>
+      </div>
+      <div class="if6-main-body">
+        <div class="if6-donut" id="if6MainDonut">
+          <div class="if6-donut-center"><strong id="if6MainPct">—</strong><span id="if6MainCenterLabel">distribución</span></div>
+        </div>
+        <div class="if6-legend" id="if6MainLegend"><div class="if6-loading">Cargando análisis…</div></div>
+      </div>
+      <div class="if6-detail">
+        <div class="if6-detail-head"><div class="if6-detail-title" id="if6DetailTitle">Detalle</div><div class="if6-detail-help" id="if6DetailHelp">—</div></div>
+        <div class="if6-detail-list" id="if6DetailList"><div class="if6-loading">Esperando datos…</div></div>
       </div>
     </div>
 
-    <div class="if-card">
-      <div class="if-title">🚚 Unidades con mayor carga operativa</div>
-      <div class="if-table-wrap"><table class="if-table">
-        <thead><tr><th>DOMINIO</th><th>INT.</th><th>SERVICIOS</th><th>CHOFERES</th><th>ESTADO</th></tr></thead>
-        <tbody id="ifUnidades"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
-      </table></div>
+    <div class="if6-side">
+      <div class="if6-card selected" data-if6="flota" onclick="if6Seleccionar('flota')"><div class="if6-card-head"><div class="if6-card-title">🚚 Flota</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutFlota"></div><div class="if6-mini-info"><b id="if6FlotaPct">—</b><span>disponibilidad</span></div></div><div class="if6-card-help">Estado operativo de las unidades.</div></div>
+      <div class="if6-card" data-if6="servicios" onclick="if6Seleccionar('servicios')"><div class="if6-card-head"><div class="if6-card-title">📋 Servicios</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutServicios"></div><div class="if6-mini-info"><b id="if6ServiciosPct">—</b><span>cumplimiento</span></div></div><div class="if6-card-help">Programados, finalizados e incumplidos.</div></div>
+      <div class="if6-card" data-if6="choferes" onclick="if6Seleccionar('choferes')"><div class="if6-card-head"><div class="if6-card-title">👤 Choferes</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutChoferes"></div><div class="if6-mini-info"><b id="if6ChoferesPct">—</b><span>con actividad</span></div></div><div class="if6-card-help">Actividad y cantidad de unidades utilizadas.</div></div>
+      <div class="if6-card" data-if6="mantenimiento" onclick="if6Seleccionar('mantenimiento')"><div class="if6-card-head"><div class="if6-card-title">🔧 Mantenimiento</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutMantenimiento"></div><div class="if6-mini-info"><b id="if6MantenimientoPct">—</b><span>control</span></div></div><div class="if6-card-help">Services registrados y unidades con atención.</div></div>
+      <div class="if6-card" data-if6="vtv" onclick="if6Seleccionar('vtv')"><div class="if6-card-head"><div class="if6-card-title">📄 VTV</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutVtv"></div><div class="if6-mini-info"><b id="if6VtvPct">—</b><span>vigentes</span></div></div><div class="if6-card-help">Vigentes, próximas y vencidas.</div></div>
+      <div class="if6-card" data-if6="destinos" onclick="if6Seleccionar('destinos')"><div class="if6-card-head"><div class="if6-card-title">📍 Destinos / servicios</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutDestinos"></div><div class="if6-mini-info"><b id="if6DestinosPct">—</b><span>distribución</span></div></div><div class="if6-card-help">Huella Verde, Día Verde y cada servicio registrado.</div></div>
+      <div class="if6-card" data-if6="tipos" onclick="if6Seleccionar('tipos')"><div class="if6-card-head"><div class="if6-card-title">🔄 Tipo de traslado</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutTipos"></div><div class="if6-mini-info"><b id="if6TiposPct">—</b><span>distribución</span></div></div><div class="if6-card-help">Personal, material y otros tipos de viaje.</div></div>
+      <div class="if6-card" data-if6="unidades" onclick="if6Seleccionar('unidades')"><div class="if6-card-head"><div class="if6-card-title">🚚 Unidades</div><div class="if6-card-arrow">↗</div></div><div class="if6-mini-row"><div class="if6-mini-donut" id="if6DonutUnidades"></div><div class="if6-mini-info"><b id="if6UnidadesPct">—</b><span>participación</span></div></div><div class="if6-card-help">Participación de cada dominio en los viajes.</div></div>
     </div>
+  </div>
 
-    <div class="if-card">
-      <div class="if-title">👤 Choferes con mayor actividad</div>
-      <div class="if-table-wrap"><table class="if-table">
-        <thead><tr><th>CHOFER</th><th>LEGAJO</th><th>SERVICIOS</th><th>UNIDADES</th><th>ACTIVIDAD</th></tr></thead>
-        <tbody id="ifChoferes"><tr><td colspan="5" class="if-loading">Cargando datos reales…</td></tr></tbody>
-      </table></div>
-    </div>
-
-    <div class="if-card if-wide">
-      <div class="if-title">🔗 Cruces automáticos</div>
-      <div class="if-alerts">
-        <div class="if-alert"><b>Vehículo ↔ Servicios</b><span id="ifCruceVeh">Calculando…</span></div>
-        <div class="if-alert"><b>Chofer ↔ Servicios</b><span id="ifCruceChofer">Calculando…</span></div>
-        <div class="if-alert"><b>Chofer ↔ Unidad</b><span id="ifCruceUnidad">Calculando…</span></div>
-      </div>
+  <div class="if6-bottom">
+    <div class="if6-bottom-title">🔗 Cruces operativos</div>
+    <div class="if6-cross-grid">
+      <div class="if6-cross"><b>Vehículo ↔ Servicio</b><span id="if6CrossVeh">—</span></div>
+      <div class="if6-cross"><b>Chofer ↔ Servicio</b><span id="if6CrossChofer">—</span></div>
+      <div class="if6-cross"><b>Chofer ↔ Unidad</b><span id="if6CrossUnidad">—</span></div>
+      <div class="if6-cross"><b>Viajes ↔ KM</b><span id="if6CrossViaje">—</span></div>
+      <div class="if6-cross"><b>Destino más utilizado</b><span id="if6CrossDestino">—</span></div>
+      <div class="if6-cross"><b>Tipo de traslado</b><span id="if6CrossTipo">—</span></div>
+      <div class="if6-cross"><b>Viajes realizados</b><span id="if6CrossRealizados">—</span></div>
+      <div class="if6-cross"><b>Servicios sin viaje</b><span id="if6CrossSinViaje">—</span></div>
     </div>
   </div>
 </div>
 </div>
 
-<script id="inteligencia-flota-v5-js">
-function ifNorm(v){return String(v==null?"":v).trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
-function ifPick(o,n){for(var i=0;i<n.length;i++){if(o&&o[n[i]]!==undefined&&o[n[i]]!==null&&String(o[n[i]]).trim()!=="")return o[n[i]];}return "";}
-function ifEstadoVeh(v){return ifNorm(ifPick(v,["ESTADO_OPERATIVO","ESTADO","SITUACION"]));}
-function ifEstadoServ(s){return ifNorm(ifPick(s,["ESTADO","ESTADO_SERVICIO"]));}
-function ifNombreChofer(c){return ifPick(c,["NOMBRE_COMPLETO","NOMBRE","CHOFER","APELLIDO_NOMBRE"])||ifPick(c,["ID_CHOFER","ID"])||"Sin nombre";}
+<style id="ia-flota-style">
+.iaf-wrap{padding:20px;max-width:1200px;margin:0 auto}.iaf-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px}.iaf-head h2{margin:0;font-size:20px}.iaf-head p{margin:6px 0 0;color:var(--muted);font-size:11px}.iaf-live{padding:8px 11px;border:1px solid var(--border);border-radius:999px;background:#0d1829;color:#9fb0c7;font-size:10px;white-space:nowrap}.iaf-live b{color:#22c55e}.iaf-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px}.iaf-chat,.iaf-sidecard{background:var(--panel);border:1px solid var(--border);border-radius:15px;box-shadow:var(--shadow)}.iaf-chat{min-height:610px;display:flex;flex-direction:column;overflow:hidden}.iaf-chat-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}.iaf-chat-title{font-size:13px;font-weight:800}.iaf-chat-sub{font-size:9px;color:var(--muted);margin-top:3px}.iaf-status{font-size:9px;color:#7f8da3}.iaf-status.ok{color:var(--green)}.iaf-messages{flex:1;padding:16px;overflow:auto;display:flex;flex-direction:column;gap:10px;min-height:440px;max-height:600px}.iaf-msg{max-width:88%;padding:11px 13px;border-radius:12px;font-size:11px;line-height:1.55;white-space:pre-wrap;word-break:break-word}.iaf-msg.ai{align-self:flex-start;background:#0c1727;border:1px solid rgba(255,255,255,.05)}.iaf-msg.user{align-self:flex-end;background:#14365b;border:1px solid #245b92}.iaf-msg small{display:block;color:#718198;font-size:8px;margin-bottom:5px}.iaf-inputbar{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px}.iaf-input{flex:1;min-height:46px;max-height:130px;resize:vertical;background:#091422;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px;font:inherit;font-size:11px;outline:none}.iaf-input:focus{border-color:#35628e}.iaf-send{min-width:94px;border:0;border-radius:10px;background:var(--green2);color:white;font-weight:800;cursor:pointer}.iaf-send:disabled{opacity:.5;cursor:wait}.iaf-side{display:flex;flex-direction:column;gap:12px}.iaf-sidecard{padding:14px}.iaf-side-title{font-size:11px;font-weight:800;margin-bottom:10px}.iaf-q{width:100%;text-align:left;background:#0c1727;color:#dce6f3;border:1px solid rgba(255,255,255,.05);padding:9px 10px;border-radius:9px;margin-top:7px;font-size:10px;cursor:pointer}.iaf-q:hover{border-color:#35506f}.iaf-note{font-size:9px;color:var(--muted);line-height:1.5}.iaf-pill{display:inline-flex;padding:5px 8px;border-radius:999px;background:#10263a;color:#7fd7a0;font-size:8px;margin:3px 3px 0 0}
+@media(max-width:900px){.iaf-grid{grid-template-columns:1fr}.iaf-side{display:grid;grid-template-columns:1fr 1fr}.iaf-chat{min-height:560px}}
+@media(max-width:600px){.iaf-wrap{padding:12px}.iaf-head{align-items:flex-start;flex-direction:column}.iaf-live{width:100%}.iaf-side{grid-template-columns:1fr}.iaf-msg{max-width:94%}.iaf-inputbar{position:sticky;bottom:0;background:var(--panel)}}
+</style>
+
+<div id="ia-flota" class="page">
+<div class="iaf-wrap">
+<div class="iaf-head"><div><h2>🤖 IA de Flota</h2><p>Consultá la operación en lenguaje natural. La IA analiza datos que el Backend Maestro le entrega en tiempo real.</p></div><div class="iaf-live">● Motor: <b>OpenAI</b> · Datos: <b>Backend Maestro</b></div></div>
+<div class="iaf-grid">
+<div class="iaf-chat">
+<div class="iaf-chat-head"><div><div class="iaf-chat-title">Asistente de Operaciones</div><div class="iaf-chat-sub">Responde sobre el contexto operativo recibido por el Backend Maestro.</div></div><div id="iafStatus" class="iaf-status">Listo</div></div>
+<div id="iafMessages" class="iaf-messages"><div class="iaf-msg ai"><small>🤖 IA DE FLOTA</small>Hola. Puedo analizar la flota, servicios, viajes, choferes, unidades, mantenimiento, reportes y VTV. Preguntame qué está pasando con la operación.</div></div>
+<div class="iaf-inputbar"><textarea id="iafInput" class="iaf-input" placeholder="Ej.: ¿Qué unidades tuvieron más actividad y qué choferes las utilizaron?"></textarea><button id="iafSend" class="iaf-send" type="button" onclick="iafEnviar()">Preguntar</button></div>
+</div>
+<div class="iaf-side">
+<div class="iaf-sidecard"><div class="iaf-side-title">⚡ Consultas rápidas</div><button class="iaf-q" onclick="iafPregunta('¿Cómo está la situación general de la flota actualmente?')">¿Cómo está la flota?</button><button class="iaf-q" onclick="iafPregunta('¿Qué servicios históricos presentan más incumplimientos o problemas?')">Servicios con problemas</button><button class="iaf-q" onclick="iafPregunta('¿Qué unidades concentran más viajes y kilómetros?')">Unidades con más actividad</button><button class="iaf-q" onclick="iafPregunta('¿Qué mantenimiento y reportes deberían revisarse primero según los datos disponibles?')">Prioridades de mantenimiento</button><button class="iaf-q" onclick="iafPregunta('¿Qué choferes y unidades aparecen más vinculados en la operación?')">Chofer ↔ unidad</button></div>
+<div class="iaf-sidecard"><div class="iaf-side-title">🧠 Qué puede analizar</div><span class="iaf-pill">Flota</span><span class="iaf-pill">Servicios</span><span class="iaf-pill">Viajes</span><span class="iaf-pill">Choferes</span><span class="iaf-pill">Unidades</span><span class="iaf-pill">Mantenimiento</span><span class="iaf-pill">Reportes</span><span class="iaf-pill">VTV</span><span class="iaf-pill">Cruces</span><div class="iaf-note" style="margin-top:10px">La IA interpreta los indicadores calculados por el sistema. Para una cifra exacta, el Backend es la fuente de datos.</div></div>
+<div class="iaf-sidecard"><div class="iaf-side-title">🔐 Seguridad</div><div class="iaf-note">La clave de OpenAI queda en las Propiedades del Script del Backend y no se coloca en este HTML ni en GitHub.</div></div>
+</div></div></div></div>
+
+<script id="ia-flota-js">
+function iafEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');}
+function iafAgregar(tipo,texto){const box=document.getElementById('iafMessages');if(!box)return;const div=document.createElement('div');div.className='iaf-msg '+tipo;div.innerHTML='<small>'+(tipo==='user'?'TÚ':'🤖 IA DE FLOTA')+'</small>'+iafEsc(texto);box.appendChild(div);box.scrollTop=box.scrollHeight;}
+function iafPregunta(texto){const i=document.getElementById('iafInput');if(!i)return;i.value=texto;i.focus();iafEnviar();}
+async function iafEnviar(){const input=document.getElementById('iafInput'),btn=document.getElementById('iafSend'),status=document.getElementById('iafStatus');const pregunta=String(input?.value||'').trim();if(!pregunta)return;iafAgregar('user',pregunta);input.value='';btn.disabled=true;status.textContent='Analizando…';status.className='iaf-status';try{const r=await llamarBackend('analisisIA',{pregunta:pregunta});if(!r?.ok)throw new Error(r?.error||'El Backend no pudo procesar la consulta.');const respuesta=r.resultado?.respuesta||r.datos?.respuesta||r.respuesta||'Sin respuesta.';iafAgregar('ai',respuesta);status.textContent='Online';status.className='iaf-status ok';}catch(e){console.error('IA de Flota',e);iafAgregar('ai','No pude procesar la consulta. '+(e?.message||e));status.textContent='Error';status.className='iaf-status';}finally{btn.disabled=false;input.focus();}}
+document.addEventListener('keydown',function(e){if(e.target?.id==='iafInput'&&e.key==='Enter'&&!e.shiftKey){e.preventDefault();iafEnviar();}});
+</script>
+
+<script id="inteligencia-flota-v7-js">
+let if6Data={flota:null,servicios:null,choferes:null,mantenimiento:null,vtv:null,destinos:null,tipos:null,unidades:null};
+
+function if6N(v){return String(v==null?"":v).trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+function if6P(o,n){for(const k of n){if(o&&o[k]!==undefined&&o[k]!==null&&String(o[k]).trim()!=="")return o[k];}return "";}
+function if6Pct(n,total){return total?Math.round((n/total)*1000)/10:0;}
+function if6Grad(parts){
+  let total=parts.reduce((s,p)=>s+Number(p.value||0),0);
+  if(!total) return "conic-gradient(#263b57 0 100%)";
+  let cur=0,st=[];
+  parts.forEach(p=>{let end=cur+(Number(p.value||0)/total*100);st.push(`${p.color} ${cur}% ${end}%`);cur=end;});
+  return `conic-gradient(${st.join(",")})`;
+}
+function if6EstadoVeh(v){return if6N(if6P(v,["ESTADO_OPER","ESTADO_OPERATIVO","ESTADO","SITUACION"]));}
+function if6EstadoServ(s){return if6N(if6P(s,["ESTADO","ESTADO_SERVICIO"]));}
+function if6NombreChofer(c){return if6P(c,["NOMBRE","NOMBRE_COMPLETO","APELLIDO_NOMBRE","CHOFER"])||"Sin nombre";}
+function if6IdVeh(v){return String(if6P(v,["ID_VEHICULO","ID"])||"").trim();}
+function if6IdCho(c){return String(if6P(c,["ID_CHOFER","ID"])||"").trim();}
+function if6IdServ(s){return String(if6P(s,["ID_SERVICIO","ID"])||"").trim();}
+function if6IdAsi(a){return String(if6P(a,["ID_ASIGNACION","ID"])||"").trim();}
+function if6Dom(v){return if6P(v,["DOMINIO","PATENTE"])||"Sin dominio";}
+function if6FindVeh(id,veh){const k=String(id||"").trim();return (veh||[]).find(v=>if6IdVeh(v)===k)||null;}
+function if6FindCho(id,cho){const k=String(id||"").trim();return (cho||[]).find(c=>if6IdCho(c)===k)||null;}
+function if6FindAsi(id,asi){const k=String(id||"").trim();return (asi||[]).find(a=>if6IdAsi(a)===k)||null;}
+function if6FindServ(id,ser){const k=String(id||"").trim();return (ser||[]).find(s=>if6IdServ(s)===k)||null;}
+function if6ServicioNombre(s){return if6P(s,["NOMBRE_SERVICIO","NOMBRE","SERVICIO","DESCRIPCION","TIPO_SERVICIO","TIPO"])||"Servicio";}
+function if6FechaValor(o){return if6P(o,["FECHA_SERVICIO","FECHA_PROGRAMADA","FECHA","FECHA_INICIO","FECHA_ASIGNACION","FECHA_CREACION","FECHA_ALTA","FECHA_HORA","DATETIME","TIMESTAMP","INICIO"]);}
+
+function if6Fecha(o){
+  const raw=if6FechaValor(o); if(!raw)return null;
+  if(raw instanceof Date && !isNaN(raw))return raw;
+  const s=String(raw).trim(); if(!s)return null;
+  let d=null;
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) d=new Date(s.replace(" ","T"));
+  if(!d || isNaN(d)){
+    const m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    if(m)d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1]),Number(m[4]||0),Number(m[5]||0),Number(m[6]||0));
+  }
+  return d && !isNaN(d) ? d : null;
+}
+function if6ServicioFechaClasif(s,now){const d=if6Fecha(s);if(!d)return "SIN_FECHA";return d.getTime()>now.getTime()?"FUTURO":"HISTORICO";}
+function if6UltimosDias(arr,dias,now){const desde=new Date(now.getTime()-dias*86400000);return arr.filter(s=>{const d=if6Fecha(s);return d&&d<=now&&d>=desde;});}
+
+function if6ServicioLabel(s,asi,ser){
+  if(!s)return "Servicio";
+  const nombre=if6ServicioNombre(s);
+  const a=if6FindAsi(if6P(s,["ID_ASIGNACION","ASIGNACION_ID"]),asi);
+  if(a){
+    const vid=if6P(a,["ID_VEHICULO","VEHICULO_ID"]);
+    const v=if6FindVeh(vid,window.__if6Vehiculos||[]);
+    const dom=v?if6Dom(v):"";
+    return dom?`${nombre} · ${dom}`:nombre;
+  }
+  return nombre;
+}
+function if6VehiculoLabelById(id,veh){const v=if6FindVeh(id,veh);return v?if6Dom(v):"Unidad sin dominio";}
+function if6ChoferLabelById(id,cho){const c=if6FindCho(id,cho);return c?if6NombreChofer(c):"Chofer sin nombre";}
+function if6VtvFecha(r){
+  if(!r) return null;
+  const direct=if6P(r,["FECHA_VTV","FECHA_REALIZACION_VTV","VTV_FECHA","FECHA_VTV_REALIZADA"]);
+  if(direct){ const d=if6Fecha({FECHA:direct}); if(d) return d; }
+  const mes=if6P(r,["MES_VTV","MES_REALIZACION_VTV","VTV_MES"]);
+  const anio=if6P(r,["ANIO_VTV","AÑO_VTV","ANIO_REALIZACION_VTV","VTV_ANIO"]);
+  if(mes&&anio){
+    const m=Number(String(mes).replace(/[^0-9]/g,"")),y=Number(String(anio).replace(/[^0-9]/g,""));
+    if(m>=1&&m<=12&&y>=2000)return new Date(y,m-1,1);
+  }
+  const txt=String(if6P(r,["DESCRIPCION","OBSERVACIONES"])||"");
+  const mm=txt.match(/(?:VTV(?:\s+REALIZADA)?|REALIZACI[ÓO]N(?:\s+VTV)?)\s*[:|\-]?\s*(\d{1,2})[\/\-](\d{4})/i);
+  if(mm)return new Date(Number(mm[2]),Number(mm[1])-1,1);
+  return if6Fecha(r);
+}
+function if6VtvEstado(r){
+  const texto=if6N([if6P(r,["RESULTADO","ESTADO_VTV","ESTADO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"])].join(" "));
+  if(texto.includes("RECHAZ")||texto.includes("NO APTO"))return "VENCIDA";
+  const fecha=if6VtvFecha(r);
+  if(fecha){
+    const ahora=new Date(),venc=new Date(fecha.getFullYear()+1,fecha.getMonth(),1);
+    const actual=ahora.getFullYear()*12+ahora.getMonth(),vi=venc.getFullYear()*12+venc.getMonth(),diff=vi-actual;
+    if(diff<0)return "VENCIDA";
+    if(diff<=2)return "PROXIMA";
+    return "VIGENTE";
+  }
+  if(texto.includes("VENC"))return "VENCIDA";
+  if(texto.includes("PROX"))return "PROXIMA";
+  if(texto.includes("VIGENTE")||texto.includes("APROBADA")||texto.includes("APTO"))return "VIGENTE";
+  return "PROXIMA";
+}
+function if6VtvVencimiento(r){const f=if6VtvFecha(r);return f?new Date(f.getFullYear()+1,f.getMonth()+1,0):null;}
+function if6VtvLabel(r){
+  const f=if6VtvFecha(r),v=if6VtvVencimiento(r),e=if6VtvEstado(r),pad=n=>String(n).padStart(2,"0");
+  return f&&v?`${pad(f.getMonth()+1)}/${f.getFullYear()} · vence ${pad(v.getMonth()+1)}/${v.getFullYear()} · ${e}`:e;
+}
+
+function if6RenderMain(key){
+  const d=if6Data[key];if(!d)return;
+  document.querySelectorAll(".if6-card").forEach(c=>c.classList.toggle("selected",c.dataset.if6===key));
+  document.getElementById("if6MainTitle").textContent=d.title;
+  document.getElementById("if6MainSubtitle").textContent=d.subtitle;
+  document.getElementById("if6MainTotal").textContent=d.total;
+  document.getElementById("if6MainUnit").textContent=d.unit;
+  document.getElementById("if6MainDonut").style.background=if6Grad(d.parts);
+  document.getElementById("if6MainPct").textContent=d.total?if6Pct(d.focus,d.total)+"%":"—";
+  document.getElementById("if6MainCenterLabel").textContent=d.focusLabel||"distribución";
+  document.getElementById("if6MainLegend").innerHTML=d.parts.map(p=>{
+    const pct=d.total?if6Pct(p.value,d.total):0;
+    return `<div class="if6-legend-row"><span class="if6-dot" style="background:${p.color}"></span><div><div class="if6-legend-name">${escaparHTML(p.label)}</div><div class="if6-legend-meta">${p.value} ${d.itemWord||"registros"}</div></div><div class="if6-legend-pct">${pct}%</div></div>`;
+  }).join("");
+  document.getElementById("if6DetailTitle").textContent=d.detailTitle||"Detalle";
+  document.getElementById("if6DetailHelp").textContent=d.detailHelp||"";
+  document.getElementById("if6DetailList").innerHTML=(d.details&&d.details.length)
+    ?d.details.map(x=>`<div class="if6-detail-item"><b>${escaparHTML(x.name)}</b><span>${escaparHTML(x.meta)}</span></div>`).join("")
+    :"<div class=\"if6-detail-item\"><b>Sin datos suficientes</b><span>La información aparecerá cuando exista relación en el Backend.</span></div>";
+}
+function if6Seleccionar(key){if(if6Data[key])if6RenderMain(key);}
+function if6Mini(key,idPct,idDonut){
+  const d=if6Data[key];if(!d)return;
+  const pct=d.total?if6Pct(d.focus,d.total):0;
+  const pe=document.getElementById(idPct),de=document.getElementById(idDonut);
+  if(pe)pe.textContent=pct+"%";if(de)de.style.background=if6Grad(d.parts);
+}
+function if6Agrupar(arr,keyFn){
+  const m={};
+  (arr||[]).forEach(x=>{const k=String(keyFn(x)||"").trim()||"Sin dato";m[k]=(m[k]||0)+1;});
+  return m;
+}
+function if6TopDetalles(mapa,labelFn,limit=12){
+  return Object.keys(mapa).sort((a,b)=>mapa[b]-mapa[a]).slice(0,limit).map(k=>({name:labelFn(k),meta:`${mapa[k]} viajes`}));
+}
+function if6TipoTraslado(s,a){
+  const obs=String(a?.OBSERVACIONES||"");
+  const match=obs.match(/TIPO\s+DE\s+TRASLADO\s*:\s*([^|]+)/i);
+  return String(match?.[1]||if6P(s,["TIPO_SERVICIO","TIPO","TIPO_VIAJE","TIPO_TRASLADO"])||"Otros").trim()||"Otros";
+}
+function if6NombreDestino(s){
+  // FUENTE OFICIAL PARA "DISTRIBUCIÓN POR DESTINO / SERVICIO":
+  // Hoja SERVICIOS del Google Sheet -> columna E -> NOMBRE_SERVICIO.
+  // No usamos NOMBRE, DESTINO, DESCRIPCION ni ningún otro campo como respaldo.
+  const nombre = s && s.NOMBRE_SERVICIO !== undefined && s.NOMBRE_SERVICIO !== null
+    ? String(s.NOMBRE_SERVICIO).trim()
+    : "";
+  return nombre || "SIN NOMBRE_SERVICIO";
+}
+
 async function cargarInteligenciaFlota(){
   try{
-    var r=await Promise.all([leerBackend("vehiculos"),leerBackend("choferes"),leerBackend("servicios"),leerBackend("asignaciones")]);
-    var veh=r[0]?.ok&&Array.isArray(r[0].datos)?r[0].datos:[];
-    var cho=r[1]?.ok&&Array.isArray(r[1].datos)?r[1].datos:[];
-    var ser=r[2]?.ok&&Array.isArray(r[2].datos)?r[2].datos:[];
-    var asi=r[3]?.ok&&Array.isArray(r[3].datos)?r[3].datos:[];
-    estadoPanel.vehiculos=veh;estadoPanel.choferes=cho;estadoPanel.servicios=ser;estadoPanel.asignaciones=asi;
-    var oper=veh.filter(v=>["OPERATIVO","OPERATIVOS","ACTIVO","ACTIVA","FUNCIONANDO","FUNCIONA"].includes(ifEstadoVeh(v))).length;
-    var taller=veh.filter(v=>["TALLER","EN TALLER","MANTENIMIENTO"].includes(ifEstadoVeh(v))).length;
-    var fuera=Math.max(0,veh.length-oper-taller), total=veh.length||1;
-    var fin=ser.filter(s=>["FINALIZADO","FINALIZADOS","COMPLETADO","COMPLETADOS"].includes(ifEstadoServ(s))).length;
-    var inc=ser.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(ifEstadoServ(s))).length;
-    var prog=ser.filter(s=>["PROGRAMADO","PROGRAMADOS","PENDIENTE","PENDIENTES","EN CURSO","EN_CURSO"].includes(ifEstadoServ(s))).length;
-    [["ifTotalVehiculos",veh.length],["ifOperativos",oper],["ifTotalChoferes",cho.length],["ifTotalServicios",ser.length],["ifFinalizados",fin],["ifIncumplidos",inc],["ifOpTxt",oper],["ifTallerTxt",taller],["ifFueraTxt",fuera],["ifProgramados",prog+" servicios"],["ifFinalizadosBox",fin+" servicios"],["ifIncumplidosBox",inc+" servicios"]].forEach(x=>{var e=document.getElementById(x[0]);if(e)e.textContent=x[1];});
-    document.getElementById("ifOpBar").style.width=(oper/total*100)+"%";document.getElementById("ifTallerBar").style.width=(taller/total*100)+"%";document.getElementById("ifFueraBar").style.width=(fuera/total*100)+"%";
-    var vmap={};veh.forEach(v=>vmap[String(ifPick(v,["ID_VEHICULO","ID"]))]=v);
-    var cmap={};cho.forEach(c=>cmap[String(ifPick(c,["ID_CHOFER","ID"]))]=c);
-    var byV={},byC={},byVC={};
-    asi.forEach(a=>{
-      var vid=String(ifPick(a,["ID_VEHICULO","VEHICULO_ID"])),cid=String(ifPick(a,["ID_CHOFER","CHOFER_ID"]));
-      if(vid){byV[vid]??={n:0,cho:{}};byV[vid].n++;if(cid)byV[vid].cho[cid]=1;}
-      if(cid){byC[cid]??={n:0,veh:{}};byC[cid].n++;if(vid)byC[cid].veh[vid]=1;}
-      if(vid&&cid)byVC[vid+"|"+cid]=(byVC[vid+"|"+cid]||0)+1;
+    const rs=await Promise.allSettled([
+      leerBackend("vehiculos"),leerBackend("servicios"),leerBackend("choferes"),
+      leerBackend("asignaciones"),leerBackend("viajes"),leerBackend("mantenimiento"),
+      leerBackend("reportes")
+    ]);
+    const get=i=>rs[i].status==="fulfilled"&&rs[i].value?.ok&&Array.isArray(rs[i].value.datos)?rs[i].value.datos:[];
+    const veh=get(0),ser=get(1),cho=get(2),asi=get(3),via=get(4),mant=get(5),rep=get(6);
+
+    estadoPanel.vehiculos=veh;estadoPanel.servicios=ser;estadoPanel.choferes=cho;
+    estadoPanel.asignaciones=asi;estadoPanel.viajes=via;estadoPanel.mantenimiento=mant;estadoPanel.reportes=rep;
+    window.__if6Vehiculos=veh;window.__if6Choferes=cho;window.__if6Servicios=ser;window.__if6Asignaciones=asi;
+
+    const oper=veh.filter(v=>["DISPONIBLE","OPERATIVO","OPERATIVOS","ACTIVO","FUNCIONANDO","FUNCIONA"].includes(if6EstadoVeh(v))).length;
+    const taller=veh.filter(v=>["EN TALLER","TALLER","MANTENIMIENTO"].includes(if6EstadoVeh(v))).length;
+    const fuera=Math.max(0,veh.length-oper-taller);
+    const setKpi=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+    setKpi("if6KpiVehiculos",veh.length);setKpi("if6KpiOperativos",oper);setKpi("if6KpiTaller",taller);setKpi("if6KpiFuera",fuera);setKpi("if6KpiChoferes",cho.length);
+    setKpi("if6KpiOperativosHelp",`${if6Pct(oper,veh.length)}% del total`);setKpi("if6KpiTallerHelp",`${if6Pct(taller,veh.length)}% del total`);setKpi("if6KpiFueraHelp",`${if6Pct(fuera,veh.length)}% del total`);
+    if6Data.flota={
+      title:"Estado general de la flota",subtitle:"Distribución actual de las unidades registradas.",
+      total:veh.length,unit:"vehículos",focus:oper,focusLabel:"operativos",
+      parts:[
+        {label:"Operativos",value:oper,color:"var(--green)"},
+        {label:"En taller",value:taller,color:"var(--yellow)"},
+        {label:"Fuera de servicio / radiados",value:fuera,color:"var(--red)"}
+      ],
+      detailTitle:"Unidades que concentran la operación",
+      detailHelp:"Ordenadas por cantidad de viajes registrados.",details:[]
+    };
+
+    // SERVICIOS HISTÓRICOS: se excluyen fechas futuras.
+    const ahora=new Date();
+    const serHistorico=ser.filter(s=>if6ServicioFechaClasif(s,ahora)!=="FUTURO");
+    const serFuturos=ser.filter(s=>if6ServicioFechaClasif(s,ahora)==="FUTURO");
+    const serSinFecha=serHistorico.filter(s=>if6ServicioFechaClasif(s,ahora)==="SIN_FECHA").length;
+    const sf=serHistorico.filter(s=>["FINALIZADO","FINALIZADOS","COMPLETADO","COMPLETADOS"].includes(if6EstadoServ(s))).length;
+    const si=serHistorico.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(if6EstadoServ(s))).length;
+    const sc=serHistorico.filter(s=>["EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).length;
+    const sp=Math.max(0,serHistorico.length-sf-si-sc);
+    setKpi("if6KpiServicios",serHistorico.length);setKpi("if6KpiFinalizados",sf);setKpi("if6KpiIncumplidos",si);setKpi("if6KpiFinalizadosHelp",`${if6Pct(sf,serHistorico.length)}% del histórico`);setKpi("if6KpiIncumplidosHelp",`${if6Pct(si,serHistorico.length)}% del histórico`);
+    const ult30=if6UltimosDias(ser,30,ahora),ult90=if6UltimosDias(ser,90,ahora),ult7=if6UltimosDias(ser,7,ahora);
+
+    const serDetalles=serHistorico.slice().sort((a,b)=>(if6Fecha(b)?.getTime()||0)-(if6Fecha(a)?.getTime()||0)).slice(0,12).map(s=>{
+      const a=if6FindAsi(if6P(s,["ID_ASIGNACION","ASIGNACION_ID"]),asi);
+      const vid=a?if6P(a,["ID_VEHICULO","VEHICULO_ID"]):if6P(s,["ID_VEHICULO","VEHICULO_ID"]);
+      const v=if6FindVeh(vid,veh),dom=v?if6Dom(v):"";
+      const choId=a?if6P(a,["ID_CHOFER","CHOFER_ID"]):if6P(s,["ID_CHOFER","CHOFER_ID"]);
+      const c=if6FindCho(choId,cho),choTxt=c?if6NombreChofer(c):"";
+      const d=if6Fecha(s),fechaTxt=d?d.toLocaleDateString("es-AR"):"Sin fecha";
+      return {name:if6ServicioNombre(s),meta:[fechaTxt,dom,choTxt,(if6EstadoServ(s)||"SIN ESTADO")].filter(Boolean).join(" · ")};
     });
-    var vr=Object.keys(byV).map(id=>{var v=vmap[id]||{};return{id,n:byV[id].n,cho:Object.keys(byV[id].cho).length,dom:ifPick(v,["DOMINIO","PATENTE"])||id,int:ifPick(v,["INTERNO"])||"—",estado:ifPick(v,["ESTADO_OPERATIVO","ESTADO"])||"—"}}).sort((a,b)=>b.n-a.n).slice(0,10);
-    document.getElementById("ifUnidades").innerHTML=vr.length?vr.map(x=>`<tr><td><b>${escaparHTML(x.dom)}</b></td><td>${escaparHTML(x.int)}</td><td>${x.n}</td><td>${x.cho}</td><td><span class="if-badge">${escaparHTML(x.estado)}</span></td></tr>`).join(""):`<tr><td colspan="5" class="if-loading">No hay asignaciones relacionadas todavía.</td></tr>`;
-    var cr=Object.keys(byC).map(id=>{var c=cmap[id]||{};return{n:byC[id].n,veh:Object.keys(byC[id].veh).length,nombre:ifNombreChofer(c),leg:ifPick(c,["LEGAJO","DNI"])||"—"}}).sort((a,b)=>b.n-a.n).slice(0,10);
-    document.getElementById("ifChoferes").innerHTML=cr.length?cr.map(x=>`<tr><td><b>${escaparHTML(x.nombre)}</b></td><td>${escaparHTML(x.leg)}</td><td>${x.n}</td><td>${x.veh}</td><td><span class="if-badge">Activa</span></td></tr>`).join(""):`<tr><td colspan="5" class="if-loading">No hay asignaciones relacionadas todavía.</td></tr>`;
-    document.getElementById("ifCruceVeh").textContent=Object.keys(byV).length+" unidades con actividad vinculada";
-    document.getElementById("ifCruceChofer").textContent=Object.keys(byC).length+" choferes con actividad vinculada";
-    document.getElementById("ifCruceUnidad").textContent=Object.keys(byVC).length+" relaciones chofer ↔ unidad detectadas";
-  }catch(e){console.error("Inteligencia de Flota",e);}
+    if6Data.servicios={
+      title:"Historial de servicios",
+      subtitle:`Desde la actualidad hacia atrás · ${serFuturos.length} futuros excluidos del histórico.`,
+      total:serHistorico.length,unit:"servicios históricos",focus:sf,focusLabel:"finalizados",
+      parts:[
+        {label:"Finalizados",value:sf,color:"var(--green)"},
+        {label:"En curso",value:sc,color:"var(--blue)"},
+        {label:"Programados / pendientes",value:sp,color:"var(--yellow)"},
+        {label:"Incumplidos",value:si,color:"var(--red)"}
+      ],
+      detailTitle:"Actividad histórica de servicios",
+      detailHelp:`Últimos 7 días: ${ult7.length} · 30 días: ${ult30.length} · 90 días: ${ult90.length} · Sin fecha: ${serSinFecha}.`,
+      details:serDetalles
+    };
+
+    // CHOFERES
+    const aid=new Set(asi.map(a=>String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim()).filter(Boolean));
+    const choAct=cho.filter(c=>aid.has(if6IdCho(c))).length,choIna=Math.max(0,cho.length-choAct);
+    const byC={};asi.forEach(a=>{const id=String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim();if(id)byC[id]=(byC[id]||0)+1;});
+    const topC=Object.keys(byC).sort((a,b)=>byC[b]-byC[a]).slice(0,8).map(id=>{
+      const c=if6FindCho(id,cho);return {name:c?if6NombreChofer(c):"Chofer sin nombre",meta:`${byC[id]} asignaciones`};
+    });
+    if6Data.choferes={
+      title:"Actividad de los choferes",subtitle:"Choferes con actividad vinculada mediante asignaciones.",
+      total:cho.length,unit:"choferes",focus:choAct,focusLabel:"con actividad",
+      parts:[{label:"Con actividad",value:choAct,color:"var(--green)"},{label:"Sin actividad vinculada",value:choIna,color:"var(--muted)"}],
+      detailTitle:"Choferes con mayor actividad",detailHelp:"Cantidad de asignaciones vinculadas.",details:topC
+    };
+
+    // MANTENIMIENTO
+    const mSvc=mant.filter(m=>{const x=if6N(if6P(m,["TIPO","TIPO_MANTENIMIENTO","TIPO_SERVICIO"]));return x.includes("SERVICE")||x.includes("PREVENTIVO")||x.includes("MANTENIMIENTO")}).length;
+    const mAver=mant.filter(m=>if6N(if6P(m,["TIPO","TIPO_MANTENIMIENTO"])).includes("AVERIA")).length;
+    const mOtros=Math.max(0,mant.length-mSvc-mAver);
+    if6Data.mantenimiento={
+      title:"Mantenimiento",subtitle:"Distribución de los registros de mantenimiento del Backend.",
+      total:mant.length,unit:"registros",focus:mSvc,focusLabel:"services / preventivos",
+      parts:[{label:"Service / preventivo",value:mSvc,color:"var(--green)"},{label:"Averías",value:mAver,color:"var(--red)"},{label:"Otros",value:mOtros,color:"var(--yellow)"}],
+      detailTitle:"Últimos registros de mantenimiento",detailHelp:"Referencia por unidad cuando está disponible.",
+      details:mant.slice(-8).reverse().map(m=>{
+        const vid=if6P(m,["ID_VEHICULO","VEHICULO_ID"]),v=if6FindVeh(vid,veh);
+        const dom=v?if6Dom(v):if6P(m,["DOMINIO","PATENTE"])||"Unidad";
+        return {name:dom,meta:if6P(m,["TIPO","TIPO_MANTENIMIENTO","TIPO_SERVICIO"])||"Mantenimiento"};
+      })
+    };
+
+    // VTV
+    const vtvs=rep.filter(r=>{
+      const x=if6N([if6P(r,["TIPO_REPORTE","TIPO"]),if6P(r,["DESCRIPCION","OBSERVACIONES"]),if6P(r,["RESULTADO","ESTADO_VTV"])].join(" "));
+      return x.includes("VTV")||x.includes("VERIFICACION TECNICA")||x.includes("CONTROL_VEHICULO");
+    });
+    const vv=vtvs.filter(r=>if6VtvEstado(r)==="VIGENTE").length,vp=vtvs.filter(r=>if6VtvEstado(r)==="PROXIMA").length,vx=vtvs.filter(r=>if6VtvEstado(r)==="VENCIDA").length;
+    if6Data.vtv={
+      title:"Estado de VTV",subtitle:"Vigencia calculada desde la fecha mensual de realización.",
+      total:vtvs.length,unit:"registros VTV",focus:vv,focusLabel:"vigentes",
+      parts:[{label:"Vigentes",value:vv,color:"var(--green)"},{label:"Próximas",value:vp,color:"var(--yellow)"},{label:"Vencidas",value:vx,color:"var(--red)"}],
+      detailTitle:"VTV identificadas",detailHelp:"Dominio y estado detectado.",
+      details:vtvs.slice(0,8).map(r=>{
+        const vid=if6P(r,["ID_VEHICULO","VEHICULO_ID"]),v=if6FindVeh(vid,veh);
+        const dom=v?if6Dom(v):if6P(r,["DOMINIO","PATENTE"])||"Unidad sin dominio";
+        return {name:dom,meta:if6VtvLabel(r)};
+      })
+    };
+
+    // ============================================================
+    // NUEVO: CRUCES OPERATIVOS DE SERVICIOS Y VIAJES
+    // ============================================================
+    // 1) DISTRIBUCIÓN POR DESTINO / SERVICIO
+    //    Fuente única y explícita: SERVICIOS -> columna E -> NOMBRE_SERVICIO.
+    //    Cada valor distinto de NOMBRE_SERVICIO es una categoría independiente.
+    //    No agrupamos categorías en "Otros" y no usamos otros campos.
+    const byDestino=if6Agrupar(serHistorico, s=>if6NombreDestino(s));
+    const totalDestinos=serHistorico.length;
+    const destKeys=Object.keys(byDestino).sort((a,b)=>byDestino[b]-byDestino[a]);
+    const destTop=destKeys[0]||"Sin datos";
+    const destFocus=destKeys.length?byDestino[destTop]:0;
+    const destPalette=["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)","#f97316","#14b8a6","#eab308","#ec4899","#84cc16","#a855f7"];
+    const destParts=destKeys.map((k,i)=>({
+      label:k,
+      value:byDestino[k],
+      color:destPalette[i%destPalette.length]
+    }));
+    if6Data.destinos={
+      title:"Distribución por destino / servicio",
+      subtitle:`SERVICIOS · columna E (NOMBRE_SERVICIO) · histórico hasta hoy · ${serFuturos.length} servicios futuros excluidos · ${destKeys.length} categorías.`,
+      total:totalDestinos,unit:"servicios históricos",focus:destFocus,focusLabel:destTop,
+      parts:destParts,
+      detailTitle:"Detalle completo de NOMBRE_SERVICIO",
+      detailHelp:"Fuente: hoja SERVICIOS, columna E. Cada categoría se muestra por separado y todas juntas representan el 100% del histórico.",
+      details:destKeys.map(k=>({name:k,meta:`${byDestino[k]} servicios · ${if6Pct(byDestino[k],totalDestinos)}%`}))
+    };
+
+    // 2) Tipo de traslado: preferimos el tipo explícito de la asignación; si no existe,
+    //    usamos TIPO_SERVICIO del servicio.
+    const tipoReg=serHistorico.map(s=>{
+      const a=if6FindAsi(if6P(s,["ID_ASIGNACION","ASIGNACION_ID"]),asi);
+      return {s,a,tipo:if6TipoTraslado(s,a)};
+    });
+    const byTipo=if6Agrupar(tipoReg,x=>x.tipo);
+    const tipoKeys=Object.keys(byTipo).sort((a,b)=>byTipo[b]-byTipo[a]);
+    const tipoFocus=tipoKeys.length?byTipo[tipoKeys[0]]:0;
+    if6Data.tipos={
+      title:"Distribución por tipo de traslado",
+      subtitle:"Clasificación histórica de los servicios según tipo de traslado.",
+      total:tipoReg.length,unit:"servicios históricos",focus:tipoFocus,focusLabel:tipoKeys[0]||"sin datos",
+      parts:tipoKeys.slice(0,6).map((k,i)=>({label:k,value:byTipo[k],color:["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)"][i]})),
+      detailTitle:"Tipos de traslado",
+      detailHelp:"Personal, material y demás categorías encontradas en la base.",
+      details:tipoKeys.slice(0,12).map(k=>({name:k,meta:`${byTipo[k]} servicios · ${if6Pct(byTipo[k],tipoReg.length)}%`}))
+    };
+
+    // 3) Vehículos: la participación principal se calcula sobre ASIGNACIONES históricas.
+    //    VIAJES queda como segunda medida para contrastar asignado vs realizado.
+    const asiHistorico=asi.filter(a=>{const d=if6Fecha(a);return !d||d<=ahora;});
+    const byUnidad={};
+    asiHistorico.forEach(a=>{
+      const id=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();
+      if(id)byUnidad[id]=(byUnidad[id]||0)+1;
+    });
+    const unidadKeys=Object.keys(byUnidad).sort((a,b)=>byUnidad[b]-byUnidad[a]);
+    const unidadTotal=asiHistorico.length;
+    const unidadFocus=unidadKeys.length?byUnidad[unidadKeys[0]]:0;
+    if6Data.unidades={
+      title:"Participación de las unidades en las asignaciones",
+      subtitle:"Distribución de las asignaciones históricas por dominio.",
+      total:unidadTotal,unit:"asignaciones históricas",focus:unidadFocus,focusLabel:(if6FindVeh(unidadKeys[0],veh)?if6Dom(if6FindVeh(unidadKeys[0],veh)):"Sin dominio"),
+      parts:unidadKeys.slice(0,6).map((k,i)=>({label:if6FindVeh(k,veh)?if6Dom(if6FindVeh(k,veh)):"Unidad sin dominio",value:byUnidad[k],color:["var(--green)","var(--blue)","var(--yellow)","var(--red)","var(--purple)","var(--cyan)"][i]})),
+      detailTitle:"Dominios con mayor participación",
+      detailHelp:"Porcentaje calculado sobre las asignaciones históricas.",
+      details:unidadKeys.slice(0,12).map(k=>{
+        const v=if6FindVeh(k,veh);
+        return {name:v?if6Dom(v):"Unidad sin dominio",meta:`${byUnidad[k]} asignaciones · ${if6Pct(byUnidad[k],unidadTotal)}%`};
+      })
+    };
+    const viaHistorico=via.filter(v=>{const d=if6Fecha(v);return !d||d<=ahora;});
+
+    // 4) Choferes: se mantiene la tarjeta original y además calculamos participación
+    //    real sobre viajes para los cruces.
+    const byChoferViajes={};
+    viaHistorico.forEach(v=>{
+      const id=String(v?.ID_CHOFER||"").trim();
+      if(id)byChoferViajes[id]=(byChoferViajes[id]||0)+1;
+    });
+    const choViajeKeys=Object.keys(byChoferViajes).sort((a,b)=>byChoferViajes[b]-byChoferViajes[a]);
+    const choViajesTotal=viaHistorico.length;
+
+    // Cruces resumen
+    const viajeIds=new Set(viaHistorico.map(v=>String(v?.ID_SERVICIO||"").trim()).filter(Boolean));
+    const serviciosConViaje=serHistorico.filter(s=>viajeIds.has(if6IdServ(s))).length;
+    const serviciosSinViaje=Math.max(0,serHistorico.length-serviciosConViaje);
+
+    document.getElementById("if6CrossDestino").textContent=
+      destTop==="Sin datos"?"Sin datos":`${destTop} · ${destFocus} servicios · ${if6Pct(destFocus,totalDestinos)}%`;
+    document.getElementById("if6CrossTipo").textContent=
+      tipoKeys.length?`${tipoKeys[0]} · ${byTipo[tipoKeys[0]]} · ${if6Pct(byTipo[tipoKeys[0]],tipoReg.length)}%`:"Sin datos";
+    document.getElementById("if6CrossRealizados").textContent=
+      `${viaHistorico.length} viajes históricos registrados`;
+    document.getElementById("if6CrossSinViaje").textContent=
+      `${serviciosSinViaje} servicios históricos sin viaje vinculado`;
+
+    const byV={};asi.forEach(a=>{const id=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();if(id)byV[id]=(byV[id]||0)+1;});
+    const byVV=byUnidad;
+    const topV=unidadKeys.slice(0,8).map(id=>{
+      const v=if6FindVeh(id,veh);return {name:v?if6Dom(v):"Unidad sin dominio",meta:`${byVV[id]} viajes registrados`};
+    });
+    if6Data.flota.details=topV;
+
+    document.getElementById("if6CrossVeh").textContent=
+      `${Object.keys(byV).length} unidades con asignaciones y ${Object.keys(byVV).length} con viajes. · Asignaciones históricas: ${asiHistorico.length} · Servicios históricos: ${serHistorico.length}`;
+    document.getElementById("if6CrossChofer").textContent=
+      `${Object.keys(byC).length} choferes vinculados a asignaciones. · ${choViajeKeys.length} con viajes registrados`;
+    const pairs=new Set();
+    asi.forEach(a=>{
+      const c=String(if6P(a,["ID_CHOFER","CHOFER_ID"])||"").trim();
+      const v=String(if6P(a,["ID_VEHICULO","VEHICULO_ID"])||"").trim();
+      if(c&&v)pairs.add(c+"|"+v);
+    });
+    document.getElementById("if6CrossUnidad").textContent=`${pairs.size} relaciones chofer ↔ unidad detectadas.`;
+    const km=viaHistorico.reduce((s,v)=>s+(Number(String(v?.KM_RECORRIDO??0).replace(",","."))||0),0);
+    document.getElementById("if6CrossViaje").textContent=
+      `${viaHistorico.length} viajes registrados · ${Math.round(km).toLocaleString("es-AR")} km informados.`;
+
+    if6Mini("flota","if6FlotaPct","if6DonutFlota");
+    if6Mini("servicios","if6ServiciosPct","if6DonutServicios");
+    if6Mini("choferes","if6ChoferesPct","if6DonutChoferes");
+    if6Mini("mantenimiento","if6MantenimientoPct","if6DonutMantenimiento");
+    if6Mini("vtv","if6VtvPct","if6DonutVtv");
+    if6Mini("destinos","if6DestinosPct","if6DonutDestinos");
+    if6Mini("tipos","if6TiposPct","if6DonutTipos");
+    if6Mini("unidades","if6UnidadesPct","if6DonutUnidades");
+
+    if6RenderMain("flota");
+  }catch(e){
+    console.error("Inteligencia de Flota V7",e);
+  }
 }
 </script>
 
@@ -5377,6 +5874,11 @@ function mostrarPagina(id, boton){
 
     if(id === "inteligencia-flota"){
         cargarInteligenciaFlota();
+    }
+
+    if(id === "ia-flota") {
+        const st=document.getElementById("iafStatus");
+        if(st) st.textContent="Listo";
     }
 
     /*
@@ -10409,74 +10911,14 @@ function obtenerReportesVehiculo(vehiculo){
     return (estadoPanel.reportes||[]).filter(r=>registroPerteneceAVehiculo(r,vehiculo) && !esReporteVTV(r));
 }
 
-function parsearFechaVTVTexto(valor){
-    const s=String(valor||'').trim();
-    let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if(m) return new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));
-    m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(m) return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
-    return null;
-}
-
-function extraerDatosVTVVehiculo(vehiculo){
-    const reporte=obtenerReporteVTVVehiculo(vehiculo);
-    const texto=reporte ? String(reporte.DESCRIPCION||reporte.OBSERVACIONES||'') : '';
-
-    let realizada=String(vehiculo?.VTV_REALIZADA||'').trim();
-    let vencimiento=String(vehiculo?.VTV_VENCIMIENTO||vehiculo?.VTV_HASTA||'').trim();
-    let resultado=String(vehiculo?.VTV_RESULTADO||'').trim();
-
-    let m=texto.match(/VTV_REALIZADA\s*:\s*(\d{2}\/\d{4})/i);
-    if(!realizada && m) realizada=m[1];
-    m=texto.match(/VTV_VENCIMIENTO\s*:\s*(\d{2}\/\d{2}\/\d{4})/i);
-    if(!vencimiento && m) vencimiento=m[1];
-    m=texto.match(/VTV_RESULTADO\s*:\s*([^|;\n]+)/i);
-    if(!resultado && m) resultado=m[1].trim();
-
-    // Compatibilidad con registros VTV anteriores.
-    if(!resultado){
-        m=texto.match(/VTV\s*\|?\s*ESTADO\s*:\s*([^|;\n]+)/i);
-        if(m) resultado=m[1].trim();
-    }
-
-    if(!vencimiento && realizada){
-        const rm=realizada.match(/^(\d{2})\/(\d{4})$/);
-        if(rm){
-            const mes=Number(rm[1]), anio=Number(rm[2]);
-            const d=new Date(anio+1,mes,0);
-            vencimiento=String(d.getDate()).padStart(2,'0')+'/'+String(mes).padStart(2,'0')+'/'+d.getFullYear();
-        }
-    }
-
-    const fechaVenc=parsearFechaVTVTexto(vencimiento);
-    return {reporte,realizada,vencimiento,resultado,fechaVenc};
-}
-
-function estadoAutomaticoVTV(datos){
-    if(!datos) return 'SIN REGISTRO';
-    const resultado=normalizar(datos.resultado||'');
-    if(resultado.includes('RECHAZ')) return 'RECHAZADA';
-    if(!datos.fechaVenc || Number.isNaN(datos.fechaVenc.getTime())){
-        if(resultado.includes('VIGENTE') || resultado.includes('APROB')) return 'VIGENTE';
-        if(resultado.includes('VENCID')) return 'VENCIDA';
-        return 'REGISTRADA';
-    }
-
-    const hoy=new Date();
-    hoy.setHours(0,0,0,0);
-    const venc=new Date(datos.fechaVenc.getTime());
-    venc.setHours(0,0,0,0);
-
-    if(venc < hoy) return 'VENCIDA';
-
-    const meses=(venc.getFullYear()-hoy.getFullYear())*12+(venc.getMonth()-hoy.getMonth());
-    if(meses<=2) return 'PRÓXIMA A VENCER';
-    return 'VIGENTE';
-}
-
 function obtenerTextoVTVVehiculo(vehiculo){
-    const datos=extraerDatosVTVVehiculo(vehiculo);
-    return estadoAutomaticoVTV(datos);
+    const reportes=(estadoPanel.reportes||[]).filter(r=>registroPerteneceAVehiculo(r,vehiculo) && esReporteVTV(r));
+    const reporte=reportes.sort((a,b)=>new Date(b?.FECHA_HORA||0)-new Date(a?.FECHA_HORA||0))[0]||null;
+    if(!reporte){
+        const datoDirecto=vehiculo?.VTV || vehiculo?.VTV_VENCIMIENTO || vehiculo?.VTV_HASTA;
+        return datoDirecto ? String(datoDirecto) : "SIN VTV";
+    }
+    return if6VtvLabel(reporte);
 }
 
 function claseVTVVehiculo(texto){
@@ -10484,7 +10926,8 @@ function claseVTVVehiculo(texto){
     if(t.includes("VIGENTE") || t.includes("APROBADA") || t.includes("APTO")) return "online";
     if(t.includes("VENCIDA") || t.includes("RECHAZADA") || t.includes("NO APTO")) return "danger";
     if(t.includes("PENDIENTE") || t.includes("PRÓXIMA") || t.includes("PROXIMA") || t.includes("OBSERVADA")) return "warning";
-    return "status-neutral";
+    if(t.includes("SIN VTV")) return "status-neutral";
+    return "warning";
 }
 
 function etiquetaEstadoDetalle(estado,claseFn){
@@ -10615,23 +11058,16 @@ function verVehiculo(idVehiculo){
         <div class="detalle-vehiculo-seccion detalle-vehiculo-vtv-seccion">
             <div class="detalle-vehiculo-seccion-head"><div class="detalle-vehiculo-seccion-title">📄 VTV de la unidad</div><div class="detalle-vehiculo-seccion-count">${reporteVTV ? "1 registro" : "Sin registro"}</div></div>
             <div class="detalle-vehiculo-lista">
-                ${reporteVTV ? (()=>{
-                    const datosVTV=extraerDatosVTVVehiculo(v);
-                    return `<div class="detalle-vehiculo-item">
+                ${reporteVTV ? `<div class="detalle-vehiculo-item">
                     <div class="detalle-vehiculo-item-top">
-                        <div class="detalle-vehiculo-item-title">VERIFICACIÓN TÉCNICA · VTV</div>
+                        <div class="detalle-vehiculo-item-title">CONTROL DE VEHÍCULO · VTV</div>
                         <div class="detalle-vehiculo-item-date">${escaparHTML(formatearFecha(reporteVTV.FECHA_HORA))}</div>
                     </div>
-                    <div class="detalle-vehiculo-item-desc">
-                        Realizada: <strong>${escaparHTML(datosVTV.realizada||"No registrada")}</strong><br>
-                        Vencimiento: <strong>${escaparHTML(datosVTV.vencimiento||"No calculado")}</strong>
-                    </div>
+                    <div class="detalle-vehiculo-item-desc">${escaparHTML(reporteVTV.DESCRIPCION||reporteVTV.OBSERVACIONES||"VTV registrada")}</div>
                     <div class="detalle-vehiculo-item-meta">
-                        <span class="table-status ${claseVTVVehiculo(vtv)}">${escaparHTML(vtv)}</span>
-                        ${datosVTV.resultado ? `<span class="table-status status-neutral">Resultado: ${escaparHTML(datosVTV.resultado)}</span>` : ""}
+                        <span class="table-status online">${escaparHTML(vtv)}</span>
                     </div>
-                </div>`;
-                })() : `<div class="detalle-vehiculo-empty">No hay información de VTV registrada para esta unidad.</div>`}
+                </div>` : `<div class="detalle-vehiculo-empty">No hay información de VTV registrada para esta unidad.</div>`}
             </div>
         </div>
 
