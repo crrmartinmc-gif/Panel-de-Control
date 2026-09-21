@@ -3945,8 +3945,8 @@ textarea.form-control{
         <div class="servicio-toolbar">
             <select id="filtroFechaServicio" class="filter servicio-date-filter"
                     onchange="filtrarServicios()" title="Filtrar servicios por fecha">
-                <option value="hoy">📅 Servicios de hoy</option>
-                 <option value="todos" selected>📋 Todas las fechas</option>
+                <option value="hoy" selected>📅 Servicios de hoy</option>
+                <option value="todos">📋 Todas las fechas</option>
                 <option value="manana">📅 Servicios de mañana</option>
                 <option value="ayer">📅 Servicios de ayer</option>
                 <option value="7">📅 Últimos 7 días</option>
@@ -5614,32 +5614,36 @@ async function cargarInteligenciaFlota(){
 
 let asignacionReasignacionActual = null;
 
+function esFueraDeServicioReasignacion(estado){
+    const e=normalizar(estado||"").replace(/_/g," ").trim();
+    return e==="FUERA DE SERVICIO";
+}
+
 function disponibilidadChoferReasignacion(idActual){
     const id=String(idActual||"").trim();
-    const activos=(estadoPanel.asignaciones||[]).filter(a =>
-        normalizar(a.ESTADO)==="ACTIVA" &&
-        String(a.ID_ASIGNACION||"").trim()!==String(asignacionReasignacionActual?.ID_ASIGNACION||"").trim()
-    );
-    const usado=activos.some(a=>String(a.ID_CHOFER||"").trim()===id);
-    return usado ? "NO DISPONIBLE — ya tiene una asignación activa" : "";
+    const chofer=(estadoPanel.choferes||[]).find(c=>String(c.ID_CHOFER||"").trim()===id);
+    if(!chofer) return "NO DISPONIBLE — no encontrado";
+
+    // En REASIGNACIÓN todos los choferes se pueden seleccionar,
+    // incluso si figuran ACTIVO, DISPONIBLE u otro estado.
+    // La única excepción es FUERA DE SERVICIO.
+    if(esFueraDeServicioReasignacion(chofer.ESTADO))
+        return `NO DISPONIBLE — ${chofer.ESTADO}`;
+
+    return "";
 }
 
 function disponibilidadVehiculoReasignacion(idActual){
     const id=String(idActual||"").trim();
     const veh=(estadoPanel.vehiculos||[]).find(v=>String(v.ID_VEHICULO||"").trim()===id);
     if(!veh) return "NO DISPONIBLE — no encontrado";
-    const estado=normalizar(veh.ESTADO_OPERATIVO||"");
-    const activo=normalizar(veh.ACTIVO||"");
-    if(["TALLER","FUERA DE SERVICIO","FUERA_SERVICIO","BAJA","INACTIVO"].includes(estado))
+
+    // En REASIGNACIÓN todos los vehículos se pueden seleccionar,
+    // independientemente de ACTIVO, TALLER, BAJA u otro indicador.
+    // La única excepción es FUERA DE SERVICIO.
+    if(esFueraDeServicioReasignacion(veh.ESTADO_OPERATIVO))
         return `NO DISPONIBLE — ${veh.ESTADO_OPERATIVO}`;
-    if(["FALSE","NO","0","INACTIVO"].includes(activo))
-        return "NO DISPONIBLE — vehículo inactivo";
-    const usados=(estadoPanel.asignaciones||[]).filter(a =>
-        normalizar(a.ESTADO)==="ACTIVA" &&
-        String(a.ID_ASIGNACION||"").trim()!==String(asignacionReasignacionActual?.ID_ASIGNACION||"").trim()
-    );
-    if(usados.some(a=>String(a.ID_VEHICULO||"").trim()===id))
-        return "NO DISPONIBLE — ya tiene una asignación activa";
+
     return "";
 }
 
@@ -5672,11 +5676,12 @@ function abrirModalReasignacion(idAsignacion){
         (estadoPanel.choferes||[]).map(c=>{
             const id=c.ID_CHOFER||"";
             const nombre=c.NOMBRE||id;
-            const estado=normalizar(c.ESTADO||"");
-            const bloqueado=(estado!=="ACTIVO" && id!==a.ID_CHOFER) || !!disponibilidadChoferReasignacion(id);
+            const estado=String(c.ESTADO||"").trim();
+            const motivo=disponibilidadChoferReasignacion(id);
+            const bloqueado=!!motivo;
             const texto=bloqueado
-                ? `${nombre} — ${estado||"NO DISPONIBLE"}`
-                : `${nombre} — DISPONIBLE`;
+                ? `${nombre} — ${motivo.replace("NO DISPONIBLE — ","")}`
+                : `${nombre} — ${estado||"DISPONIBLE"}`;
             return `<option value="${escaparHTML(id)}" ${bloqueado?"disabled":""}>${escaparHTML(texto)}</option>`;
         }).join("");
     sc.value=a.ID_CHOFER||"";
@@ -5685,11 +5690,12 @@ function abrirModalReasignacion(idAsignacion){
         (estadoPanel.vehiculos||[]).map(v=>{
             const id=v.ID_VEHICULO||"";
             const nombre=v.DOMINIO||id;
+            const estado=String(v.ESTADO_OPERATIVO||"").trim();
             const motivo=disponibilidadVehiculoReasignacion(id);
-            const bloqueado=!!motivo && id!==a.ID_VEHICULO;
+            const bloqueado=!!motivo;
             const texto=bloqueado
                 ? `${nombre} — ${motivo.replace("NO DISPONIBLE — ","")}`
-                : `${nombre} — DISPONIBLE`;
+                : `${nombre} — ${estado||"DISPONIBLE"}`;
             return `<option value="${escaparHTML(id)}" ${bloqueado?"disabled":""}>${escaparHTML(texto)}</option>`;
         }).join("");
     sv.value=a.ID_VEHICULO||"";
@@ -5918,7 +5924,19 @@ function mostrarPagina(id, boton){
         cargarChoferes();
     }
 
+    if(id === "servicios"){
+        const filtroServicios = document.getElementById("filtroFechaServicio");
+        if(filtroServicios){
+            filtroServicios.value = "hoy";
+        }
+        cargarServicios();
+    }
+
     if(id === "asignaciones"){
+        const filtroAsignaciones = document.getElementById("filtroAsignacionDias");
+        if(filtroAsignaciones){
+            filtroAsignaciones.value = "HOY";
+        }
         cargarAsignaciones();
     }
 
@@ -7064,7 +7082,7 @@ function convertirHoraOrdenServicio(valor){
 }
 
 function filtrarServicios(){
-    const modoVista = String(document.getElementById("filtroFechaServicio")?.value || "todos");
+    const modoVista = String(document.getElementById("filtroFechaServicio")?.value || "hoy");
     const tituloVista = document.getElementById("tituloServiciosVista");
     const subtituloVista = document.getElementById("subtituloServiciosVista");
     if(tituloVista){
