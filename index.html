@@ -5716,56 +5716,168 @@ async function guardarReasignacion(){
     const a=asignacionReasignacionActual;
     if(!a) return;
 
-    const nuevoChofer=document.getElementById("reasignacionChofer")?.value||"";
-    const nuevoVehiculo=document.getElementById("reasignacionVehiculo")?.value||"";
+    const nuevoChofer=String(document.getElementById("reasignacionChofer")?.value||"").trim();
+    const nuevoVehiculo=String(document.getElementById("reasignacionVehiculo")?.value||"").trim();
     const boton=document.getElementById("btnGuardarReasignacion");
     const msg=document.getElementById("reasignacionMensaje");
 
+    const mostrarMensaje=(texto,color)=>{
+        if(!msg) return;
+        msg.style.display="block";
+        msg.textContent=String(texto||"");
+        msg.style.color=color||"#aebdce";
+    };
+
     if(!nuevoChofer || !nuevoVehiculo){
-        if(msg){msg.style.display="block";msg.textContent="Seleccioná chofer y vehículo.";msg.style.color="#f87171";}
+        mostrarMensaje("Seleccioná chofer y vehículo.","#f87171");
         return;
     }
 
-    if(boton){boton.disabled=true;boton.textContent="Reasignando...";}
+    const idAsignacion=String(a.ID_ASIGNACION||"").trim();
+    const choferActual=String(a.ID_CHOFER||"").trim();
+    const vehiculoActual=String(a.ID_VEHICULO||"").trim();
+
+    if(!idAsignacion){
+        mostrarMensaje("La asignación no tiene ID_ASIGNACION.","#f87171");
+        return;
+    }
+
+    if(nuevoChofer===choferActual && nuevoVehiculo===vehiculoActual){
+        mostrarMensaje("No hay cambios para guardar.","#fbbf24");
+        return;
+    }
+
+    if(nuevoChofer!==choferActual){
+        const motivoChofer=disponibilidadChoferReasignacion(nuevoChofer);
+        if(motivoChofer){
+            mostrarMensaje(motivoChofer,"#f87171");
+            return;
+        }
+    }
+
+    if(nuevoVehiculo!==vehiculoActual){
+        const motivoVehiculo=disponibilidadVehiculoReasignacion(nuevoVehiculo);
+        if(motivoVehiculo){
+            mostrarMensaje(motivoVehiculo,"#f87171");
+            return;
+        }
+    }
+
+    if(boton){
+        boton.disabled=true;
+        boton.textContent="GUARDANDO...";
+    }
+    if(msg){
+        msg.style.display="block";
+        msg.textContent="Guardando reasignación en el Backend Maestro...";
+        msg.style.color="#60a5fa";
+    }
 
     try{
+        /*
+         * IMPORTANTE:
+         * Google Apps Script recibe este POST como text/plain.
+         * No usamos application/json porque puede provocar preflight CORS.
+         */
+        const payload={
+            accion:"actualizarAsignacion",
+            idAsignacion:idAsignacion,
+            cambios:{
+                ID_CHOFER:nuevoChofer,
+                ID_VEHICULO:nuevoVehiculo,
+                OBSERVACIONES:
+                    String(a.OBSERVACIONES||"").trim() +
+                    (String(a.OBSERVACIONES||"").trim() ? " | " : "") +
+                    "REASIGNACION: Chofer="+choferActual+" > "+nuevoChofer+
+                    "; Vehiculo="+vehiculoActual+" > "+nuevoVehiculo
+            }
+        };
+
         const respuesta=await fetch(BACKEND_URL,{
             method:"POST",
-            body:JSON.stringify({
-                accion:"actualizarAsignacion",
-                idAsignacion:a.ID_ASIGNACION,
-                cambios:{
-                    ID_CHOFER:nuevoChofer,
-                    ID_VEHICULO:nuevoVehiculo,
-                    OBSERVACIONES:(String(a.OBSERVACIONES||"").trim() + (String(a.OBSERVACIONES||"").trim()?" | ":"") + "REASIGNACION: Chofer="+nuevoChofer+"; Vehiculo="+nuevoVehiculo)
-                }
-            })
+            headers:{"Content-Type":"text/plain;charset=utf-8"},
+            cache:"no-store",
+            body:JSON.stringify(payload)
         });
-        const resultado=await respuesta.json();
-        if(!resultado?.ok) throw new Error(resultado?.error||"No se pudo reasignar.");
 
-        cerrarModalReasignacion();
+        const texto=await respuesta.text();
+
+        if(!respuesta.ok){
+            throw new Error("Backend HTTP "+respuesta.status);
+        }
+
+        let resultado;
+        try{
+            resultado=JSON.parse(texto);
+        }catch(e){
+            throw new Error("El Backend no devolvió JSON válido: "+String(texto||"").slice(0,180));
+        }
+
+        if(!resultado?.ok){
+            throw new Error(
+                resultado?.error ||
+                resultado?.mensaje ||
+                resultado?.resultado?.error ||
+                "El Backend Maestro rechazó la reasignación."
+            );
+        }
+
+        /*
+         * VERIFICACIÓN REAL:
+         * volvemos a leer ASIGNACIONES desde el Backend Maestro.
+         * Así no damos la operación por aplicada solamente porque el POST respondió OK.
+         */
+        const verificacion=await leerBackend("listarAsignaciones",{_ : Date.now()});
+
+        if(!verificacion?.ok || !Array.isArray(verificacion.datos)){
+            throw new Error("La reasignación fue enviada, pero no se pudo verificar la actualización en el Backend Maestro.");
+        }
+
+        const asignacionVerificada=verificacion.datos.find(x =>
+            String(x.ID_ASIGNACION||"").trim()===idAsignacion
+        );
+
+        if(!asignacionVerificada){
+            throw new Error("La reasignación fue enviada, pero la asignación no apareció al volver a leer el Backend.");
+        }
+
+        const choferVerificado=String(asignacionVerificada.ID_CHOFER||"").trim();
+        const vehiculoVerificado=String(asignacionVerificada.ID_VEHICULO||"").trim();
+
+        if(choferVerificado!==nuevoChofer || vehiculoVerificado!==nuevoVehiculo){
+            throw new Error(
+                "El Backend respondió OK, pero la asignación no quedó con los nuevos datos. "+
+                "Actual: chofer="+choferVerificado+" / vehículo="+vehiculoVerificado
+            );
+        }
+
+        /* Actualizamos el estado local con lo que realmente devolvió el Backend. */
+        estadoPanel.asignaciones=verificacion.datos;
+        renderizarAsignaciones(estadoPanel.asignaciones);
+
         await Promise.allSettled([
-            cargarAsignaciones(),
             cargarServicios(),
             cargarResumenPanel()
         ]);
+
         filtrarAsignaciones();
+
+        mostrarMensaje("✓ Reasignación guardada y verificada correctamente.","#6ee7a0");
+
+        setTimeout(()=>{
+            cerrarModalReasignacion();
+        },500);
 
     }catch(e){
         console.error("Error reasignando asignación:",e);
-        if(msg){msg.style.display="block";msg.textContent=e.message;msg.style.color="#f87171";}
+        mostrarMensaje(e?.message || "No se pudo reasignar la asignación.","#f87171");
     }finally{
-        if(boton){boton.disabled=false;boton.textContent="Confirmar reasignación";}
+        if(boton){
+            boton.disabled=false;
+            boton.textContent="Confirmar reasignación";
+        }
     }
 }
-
-/* Exponer estas funciones al HTML (onclick). */
-window.abrirModalReasignacion = abrirModalReasignacion;
-window.cerrarModalReasignacion = cerrarModalReasignacion;
-window.guardarReasignacion = guardarReasignacion;
-
-
 
 /* =========================================================
    FUNCIONES AUXILIARES
