@@ -2857,8 +2857,193 @@ textarea.form-control{
 .detalle-vehiculo-scroll{max-height:290px;overflow:auto}
 @media(max-width:760px){.detalle-vehiculo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.detalle-vehiculo-hero{align-items:flex-start;flex-direction:column}.detalle-vehiculo-state{align-self:flex-start}}
 
-.report-status-select{width:100%;min-width:145px;padding:7px 9px;border:1px solid var(--border,#d9dee7);border-radius:8px;background:#fff;color:inherit;font:inherit;font-size:12px;cursor:pointer;}
-.report-status-select:focus{outline:2px solid rgba(37,99,235,.18);border-color:#2563eb;}
+/* =========================================================
+   REPORTES — INTEGRACIÓN VISUAL PANEL 2.0
+   ========================================================= */
+.reportes-table-wrap{
+    overflow:auto;
+}
+
+.reportes-table{
+    min-width:1180px;
+}
+
+.reportes-table th{
+    background:#0f1b2c;
+    position:sticky;
+    top:0;
+    z-index:2;
+}
+
+.reportes-table td{
+    vertical-align:middle;
+}
+
+.reportes-table tbody tr{
+    transition:background .16s ease,box-shadow .16s ease;
+}
+
+.reportes-table tbody tr:hover td{
+    background:#142238;
+}
+
+.reportes-fecha{
+    color:#cbd5e1;
+    font-size:10px;
+    white-space:nowrap;
+}
+
+.reportes-tipo{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    min-width:125px;
+}
+
+.reportes-tipo-main{
+    color:#eef4fb;
+    font-size:10px;
+    font-weight:800;
+}
+
+.reportes-id{
+    color:#667991;
+    font-size:8px;
+    white-space:nowrap;
+}
+
+.reportes-descripcion{
+    min-width:220px;
+    max-width:310px;
+    color:#cbd5e1;
+    font-size:10px;
+    line-height:1.35;
+}
+
+.report-status-select{
+    width:142px;
+    min-width:142px;
+    height:31px;
+    padding:0 28px 0 10px;
+    border:1px solid #263852;
+    border-radius:8px;
+    background:#101d2e;
+    color:#dce7f3;
+    font-family:inherit;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.25px;
+    cursor:pointer;
+    outline:none;
+    appearance:none;
+    -webkit-appearance:none;
+    background-image:linear-gradient(45deg,transparent 50%,#718198 50%),linear-gradient(135deg,#718198 50%,transparent 50%);
+    background-position:calc(100% - 12px) 12px,calc(100% - 8px) 12px;
+    background-size:4px 4px,4px 4px;
+    background-repeat:no-repeat;
+    transition:border-color .16s ease,background .16s ease,box-shadow .16s ease;
+}
+
+.report-status-select:hover{
+    background-color:#16253a;
+    border-color:#36506f;
+}
+
+.report-status-select:focus{
+    border-color:rgba(34,197,94,.65);
+    box-shadow:0 0 0 3px rgba(34,197,94,.09);
+}
+
+.report-status-select.status-pendiente,
+.report-status-select.status-analisis{
+    color:#fbbf24;
+    border-color:rgba(245,158,11,.28);
+    background-color:rgba(245,158,11,.08);
+}
+
+.report-status-select.status-taller{
+    color:#60a5fa;
+    border-color:rgba(59,130,246,.30);
+    background-color:rgba(59,130,246,.08);
+}
+
+.report-status-select.status-resuelto,
+.report-status-select.status-finalizado{
+    color:#6ee7a0;
+    border-color:rgba(34,197,94,.28);
+    background-color:rgba(34,197,94,.08);
+}
+
+.report-status-select.status-cancelado{
+    color:#f87171;
+    border-color:rgba(239,68,68,.28);
+    background-color:rgba(239,68,68,.08);
+}
+
+.report-action-cell{
+    width:148px;
+    min-width:148px;
+    text-align:right;
+}
+
+.report-action-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    min-width:136px;
+    height:31px;
+    padding:0 10px;
+    border:1px solid #2a3c56;
+    border-radius:8px;
+    background:#101d2e;
+    color:#cbd8e7;
+    font-family:inherit;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.15px;
+    cursor:pointer;
+    transition:.16s ease;
+}
+
+.report-action-btn:hover{
+    background:#16253a;
+    border-color:#3b82f6;
+    color:#eff6ff;
+    transform:translateY(-1px);
+}
+
+.report-action-btn.is-taller{
+    color:#60a5fa;
+    border-color:rgba(59,130,246,.30);
+    background:rgba(59,130,246,.07);
+}
+
+.report-action-icon{
+    font-size:12px;
+    line-height:1;
+}
+
+.reportes-toolbar{
+    display:flex;
+    gap:8px;
+    align-items:center;
+}
+
+.reportes-toolbar .filter{
+    min-width:270px;
+}
+
+@media(max-width:900px){
+    .reportes-toolbar{
+        width:100%;
+        flex-wrap:wrap;
+    }
+    .reportes-toolbar .filter{
+        min-width:220px;
+        flex:1 1 220px;
+    }
+}
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
@@ -4569,7 +4754,7 @@ textarea.form-control{
             <p>Incidentes, novedades y prioridades</p>
         </div>
 
-        <div style="display:flex;gap:8px;align-items:center">
+        <div class="reportes-toolbar">
             <input id="filtroReportes" class="filter"
                    placeholder="Buscar reporte, vehículo, chofer..."
                    oninput="filtrarReportes()">
@@ -4610,8 +4795,8 @@ textarea.form-control{
             <span id="contadorReportes" class="inspeccion-count">0 reportes</span>
         </div>
 
-        <div class="inspeccion-table-wrap">
-            <table class="inspeccion-table">
+        <div class="inspeccion-table-wrap reportes-table-wrap">
+            <table class="inspeccion-table reportes-table">
                 <thead>
                     <tr>
                         <th>Fecha</th>
@@ -4622,6 +4807,7 @@ textarea.form-control{
                         <th>Descripción</th>
                         <th>Prioridad</th>
                         <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tablaReportes">
@@ -12815,6 +13001,22 @@ function actualizarKPIsReportes(reportes){
     set("kpiReportesResueltos",resueltos);
 }
 
+function claseVisualEstadoReporte(valor){
+    const e=normalizar(valor);
+    if(e === "PENDIENTE") return "status-pendiente";
+    if(e === "EN ANALISIS" || e === "EN ANÁLISIS") return "status-analisis";
+    if(e === "EN TALLER") return "status-taller";
+    if(e === "RESUELTO") return "status-resuelto";
+    if(e === "FINALIZADO") return "status-finalizado";
+    if(e === "CANCELADO") return "status-cancelado";
+    return "";
+}
+
+function actualizarVisualEstadoReporte(select){
+    if(!select) return;
+    select.className="report-status-select "+claseVisualEstadoReporte(select.value);
+}
+
 function opcionesEstadoReporte(estadoActual){
     const actual=normalizar(estadoActual)||"PENDIENTE";
     const estados=["PENDIENTE","EN ANÁLISIS","EN TALLER","RESUELTO","FINALIZADO","CANCELADO"];
@@ -12926,13 +13128,14 @@ function renderizarReportes(reportes){
             <td style="white-space:normal;min-width:220px">${escaparHTML(r.DESCRIPCION || "-")}</td>
             <td><span class="table-status ${clasePrioridadReporte(r.PRIORIDAD)}">${escaparHTML(r.PRIORIDAD || "MEDIA")}</span></td>
             <td>
-                <select class="report-status-select" onchange="cambiarEstadoReporte('${encId}',this.value)" title="Cambiar estado del reporte">
+                <select class="report-status-select ${claseVisualEstadoReporte(estado)}" onchange="actualizarVisualEstadoReporte(this);cambiarEstadoReporte('${encId}',this.value)" title="Cambiar estado del reporte">
                     ${opcionesEstadoReporte(estado)}
                 </select>
             </td>
-            <td style="min-width:170px">
-                <button type="button" class="btn btn-secondary" style="padding:7px 10px;font-size:12px" onclick="avisarTallerReporte('${encId}')">
-                    ${enTaller?'📧 REENVIAR':'📧 ENVIAR A TALLER'}
+            <td class="report-action-cell">
+                <button type="button" class="report-action-btn ${enTaller?'is-taller':''}" onclick="avisarTallerReporte('${encId}')" title="${enTaller?'Reenviar aviso al taller':'Enviar reporte al taller'}">
+                    <span class="report-action-icon">✉</span>
+                    <span>${enTaller?'REENVIAR':'ENVIAR A TALLER'}</span>
                 </button>
             </td>
         </tr>`;
