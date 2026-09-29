@@ -2856,6 +2856,9 @@ textarea.form-control{
 .detalle-vehiculo-empty{padding:16px 4px;color:#718198;font-size:10px;text-align:center}
 .detalle-vehiculo-scroll{max-height:290px;overflow:auto}
 @media(max-width:760px){.detalle-vehiculo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.detalle-vehiculo-hero{align-items:flex-start;flex-direction:column}.detalle-vehiculo-state{align-self:flex-start}}
+
+.report-status-select{width:100%;min-width:145px;padding:7px 9px;border:1px solid var(--border,#d9dee7);border-radius:8px;background:#fff;color:inherit;font:inherit;font-size:12px;cursor:pointer;}
+.report-status-select:focus{outline:2px solid rgba(37,99,235,.18);border-color:#2563eb;}
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
@@ -4395,6 +4398,7 @@ textarea.form-control{
                         <th>Fin</th>
                         <th>KM recorrido</th>
                         <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
 
@@ -4621,7 +4625,7 @@ textarea.form-control{
                     </tr>
                 </thead>
                 <tbody id="tablaReportes">
-                    <tr><td colspan="8"><div class="empty">Cargando reportes...</div></td></tr>
+                    <tr><td colspan="9"><div class="empty">Cargando reportes...</div></td></tr>
                 </tbody>
             </table>
         </div>
@@ -12741,7 +12745,7 @@ async function cargarReportes(){
         if(tbody){
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8">
+                    <td colspan="9">
                         <div class="empty">No se pudieron cargar los reportes.</div>
                     </td>
                 </tr>`;
@@ -12779,6 +12783,7 @@ function clasePrioridadReporte(valor){
 function claseEstadoReporte(valor){
     const e = normalizar(valor);
     if(e === "RESUELTO" || e === "FINALIZADO") return "inspeccion-aprobada";
+    if(e === "EN TALLER") return "viaje-neutral";
     if(e === "PENDIENTE" || e === "EN ANALISIS" || e === "EN ANÁLISIS") return "inspeccion-observada";
     if(e === "CANCELADO") return "inspeccion-rechazada";
     return "viaje-neutral";
@@ -12794,7 +12799,10 @@ function actualizarKPIsReportes(reportes){
         const p = normalizar(r.PRIORIDAD);
         return p === "ALTA" || p === "CRITICA" || p === "CRÍTICA";
     }).length;
-    const resueltos = reportes.filter(r => normalizar(r.ESTADO) === "RESUELTO").length;
+    const resueltos = reportes.filter(r => {
+        const e=normalizar(r.ESTADO);
+        return e === "RESUELTO" || e === "FINALIZADO";
+    }).length;
 
     const set = (id,valor) => {
         const el = document.getElementById(id);
@@ -12807,6 +12815,71 @@ function actualizarKPIsReportes(reportes){
     set("kpiReportesResueltos",resueltos);
 }
 
+function opcionesEstadoReporte(estadoActual){
+    const actual=normalizar(estadoActual)||"PENDIENTE";
+    const estados=["PENDIENTE","EN ANÁLISIS","EN TALLER","RESUELTO","FINALIZADO","CANCELADO"];
+    return estados.map(e=>`<option value="${escaparHTML(e)}" ${normalizar(e)===actual?'selected':''}>${escaparHTML(e)}</option>`).join("");
+}
+
+async function cambiarEstadoReporte(idReporte,nuevoEstado){
+    const id=decodeURIComponent(String(idReporte||''));
+    const estado=String(nuevoEstado||'').trim();
+    if(!id||!estado)return;
+
+    try{
+        const resultado=await llamarBackend("actualizarReporte",{
+            idReporte:id,
+            cambios:{ESTADO:estado}
+        });
+        if(!resultado?.ok) throw new Error(resultado?.error||"No se pudo actualizar el estado.");
+
+        const item=(estadoPanel.reportes||[]).find(r=>String(r.ID_REPORTE||'').trim()===id);
+        if(item)item.ESTADO=estado;
+        actualizarKPIsReportes(estadoPanel.reportes||[]);
+        filtrarReportes();
+    }catch(error){
+        alert("No se pudo actualizar el estado: "+(error?.message||error));
+        await cargarReportes();
+    }
+}
+
+async function avisarTallerReporte(idReporte){
+    const id=decodeURIComponent(String(idReporte||''));
+    const reporte=(estadoPanel.reportes||[]).find(r=>String(r.ID_REPORTE||'').trim()===id);
+    if(!reporte){alert("No se encontró el reporte.");return;}
+
+    const vehiculo=obtenerVehiculoPorId(reporte.ID_VEHICULO);
+    const dominio=vehiculo?.DOMINIO||reporte.DOMINIO||reporte.ID_VEHICULO||"el vehículo";
+    const estado=normalizar(reporte.ESTADO)||"PENDIENTE";
+    const mensaje=estado==="EN TALLER"
+        ? `¿Reenviar el reporte ${id} al taller para ${dominio}?`
+        : `¿Enviar el reporte ${id} al taller para ${dominio}?\n\nEl reporte quedará automáticamente en estado EN TALLER.`;
+
+    if(!confirm(mensaje))return;
+
+    try{
+        const resultado=await llamarBackend("enviarAvisoTaller",{
+            tipo:"REPORTE",
+            idReporte:id,
+            idVehiculo:String(reporte.ID_VEHICULO||''),
+            idChofer:String(reporte.ID_CHOFER||''),
+            tipoReporte:String(reporte.TIPO_REPORTE||''),
+            prioridad:String(reporte.PRIORIDAD||'MEDIA'),
+            estado:String(reporte.ESTADO||'PENDIENTE'),
+            motivo:String(reporte.DESCRIPCION||'')
+        });
+
+        if(!resultado?.ok) throw new Error(resultado?.error||"No se pudo enviar el aviso al taller.");
+
+        if(reporte)reporte.ESTADO="EN TALLER";
+        actualizarKPIsReportes(estadoPanel.reportes||[]);
+        filtrarReportes();
+        alert("Reporte enviado al taller correctamente.\nEstado: EN TALLER");
+    }catch(error){
+        alert("No se pudo enviar el reporte al taller: "+(error?.message||error));
+    }
+}
+
 function renderizarReportes(reportes){
     const tbody = document.getElementById("tablaReportes");
     if(!tbody) return;
@@ -12816,7 +12889,7 @@ function renderizarReportes(reportes){
 
     if(!reportes.length){
         tbody.innerHTML = `
-            <tr><td colspan="8"><div class="empty">Sin reportes registrados</div></td></tr>`;
+            <tr><td colspan="9"><div class="empty">Sin reportes registrados</div></td></tr>`;
         return;
     }
 
@@ -12826,30 +12899,44 @@ function renderizarReportes(reportes){
         return fb-fa;
     });
 
-    tbody.innerHTML = ordenados.map(r => `
+    tbody.innerHTML = ordenados.map(r => {
+        const id=String(r.ID_REPORTE||'');
+        const estado=String(r.ESTADO||'PENDIENTE');
+        const encId=encodeURIComponent(id);
+        const enTaller=normalizar(estado)==='EN TALLER';
+        return `
         <tr data-reporte="${escaparHTML(JSON.stringify({
-            id:r.ID_REPORTE || "",
+            id:id,
             tipo:r.TIPO_REPORTE || "",
             origen:r.ORIGEN || "",
             vehiculo:r.ID_VEHICULO || "",
             chofer:r.ID_CHOFER || "",
             descripcion:r.DESCRIPCION || "",
             prioridad:r.PRIORIDAD || "",
-            estado:r.ESTADO || ""
+            estado:estado
         }))}">
             <td>${escaparHTML(formatearFecha(r.FECHA_HORA))}</td>
             <td>
                 <span class="inspeccion-main">${escaparHTML(r.TIPO_REPORTE || "-")}</span>
-                <span class="inspeccion-sub">${escaparHTML(r.ID_REPORTE || "")}</span>
+                <span class="inspeccion-sub">${escaparHTML(id)}</span>
             </td>
             <td>${escaparHTML(r.ORIGEN || "-")}</td>
             <td>${escaparHTML((obtenerVehiculoPorId(r.ID_VEHICULO)?.DOMINIO || r.DOMINIO || r.PATENTE || r.ID_VEHICULO || "-"))}</td>
             <td>${escaparHTML(r.ID_CHOFER || "-")}</td>
             <td style="white-space:normal;min-width:220px">${escaparHTML(r.DESCRIPCION || "-")}</td>
             <td><span class="table-status ${clasePrioridadReporte(r.PRIORIDAD)}">${escaparHTML(r.PRIORIDAD || "MEDIA")}</span></td>
-            <td><span class="table-status ${claseEstadoReporte(r.ESTADO)}">${escaparHTML(r.ESTADO || "PENDIENTE")}</span></td>
-        </tr>
-    `).join("");
+            <td>
+                <select class="report-status-select" onchange="cambiarEstadoReporte('${encId}',this.value)" title="Cambiar estado del reporte">
+                    ${opcionesEstadoReporte(estado)}
+                </select>
+            </td>
+            <td style="min-width:170px">
+                <button type="button" class="btn btn-secondary" style="padding:7px 10px;font-size:12px" onclick="avisarTallerReporte('${encId}')">
+                    ${enTaller?'📧 REENVIAR':'📧 ENVIAR A TALLER'}
+                </button>
+            </td>
+        </tr>`;
+    }).join("");
 }
 
 function filtrarReportes(){
