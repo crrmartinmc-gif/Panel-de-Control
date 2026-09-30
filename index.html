@@ -6431,59 +6431,124 @@ let estadoPanel = {
    LECTURAS DEL BACKEND
    ========================================================= */
 
-async function leerBackend(accion, parametros={}){
+/* =========================================================
+   LECTOR ROBUSTO DEL BACKEND
+   - Máximo 4 lecturas simultáneas.
+   - Timeout por lectura.
+   - Reintentos cortos para fallos transitorios.
+   - Cache de última respuesta válida por acción.
+   - No reemplaza datos válidos por [] ante un fallo.
+   ========================================================= */
+const ESTABILIDAD_BACKEND = {
+    CONCURRENCIA_MAXIMA: 4,
+    TIMEOUT_MS: 15000,
+    REINTENTOS: 2,
+    RETRASO_REINTENTO_MS: 700,
+    CACHE_TTL_MS: 10 * 60 * 1000
+};
 
-    if(!BACKEND_URL){
-        return null;
+const backendCache = new Map();
+let backendActivas = 0;
+const backendCola = [];
+
+function dormirBackend(ms){
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function ejecutarConCupoBackend(fn){
+    if(backendActivas >= ESTABILIDAD_BACKEND.CONCURRENCIA_MAXIMA){
+        await new Promise(resolve => backendCola.push(resolve));
     }
-
+    backendActivas++;
     try{
-
-        const query = new URLSearchParams();
-
-        query.set("accion",accion);
-
-        Object.entries(parametros || {}).forEach(([clave,valor]) => {
-
-            if(valor !== undefined && valor !== null && valor !== ""){
-                query.set(clave,String(valor));
-            }
-
-        });
-
-        const respuesta = await fetch(
-            BACKEND_URL + "?" + query.toString(),
-            {
-                method:"GET",
-                cache:"no-store"
-            }
-        );
-
-        if(!respuesta.ok){
-            throw new Error("HTTP " + respuesta.status);
-        }
-
-        const resultado = await respuesta.json();
-
-        if(!resultado?.ok){
-            throw new Error(
-                resultado?.error ||
-                "El Backend Maestro respondió con error."
-            );
-        }
-
-        return resultado;
-
-    }catch(error){
-
-        console.error(
-            "Error leyendo Backend Maestro:",
-            accion,
-            error
-        );
-
-        return null;
+        return await fn();
+    }finally{
+        backendActivas--;
+        const liberar = backendCola.shift();
+        if(liberar) liberar();
     }
+}
+
+async function fetchBackendConTimeout(url, opciones={}, timeoutMs=ESTABILIDAD_BACKEND.TIMEOUT_MS){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try{
+        return await fetch(url,{...opciones,signal:controller.signal});
+    }finally{
+        clearTimeout(timer);
+    }
+}
+
+function claveCacheBackend(accion,parametros){
+    let parametrosOrdenados = {};
+    Object.keys(parametros || {}).sort().forEach(k => {
+        parametrosOrdenados[k] = parametros[k];
+    });
+    return accion + "::" + JSON.stringify(parametrosOrdenados);
+}
+
+function guardarCacheBackend(clave,resultado){
+    if(resultado?.ok){
+        backendCache.set(clave,{
+            resultado,
+            timestamp:Date.now()
+        });
+    }
+}
+
+function obtenerCacheBackend(clave){
+    const item = backendCache.get(clave);
+    if(!item) return null;
+    return item;
+}
+
+async function leerBackend(accion, parametros={}){
+    if(!BACKEND_URL) return null;
+
+    const claveCache = claveCacheBackend(accion,parametros);
+    let ultimoError = null;
+
+    return ejecutarConCupoBackend(async () => {
+        for(let intento=0; intento<=ESTABILIDAD_BACKEND.REINTENTOS; intento++){
+            try{
+                const query = new URLSearchParams();
+                query.set("accion",accion);
+                Object.entries(parametros || {}).forEach(([clave,valor]) => {
+                    if(valor !== undefined && valor !== null && valor !== "") query.set(clave,String(valor));
+                });
+
+                const respuesta = await fetchBackendConTimeout(
+                    BACKEND_URL + "?" + query.toString(),
+                    {method:"GET",cache:"no-store"}
+                );
+
+                if(!respuesta.ok) throw new Error("HTTP " + respuesta.status);
+
+                const resultado = await respuesta.json();
+                if(!resultado?.ok){
+                    throw new Error(resultado?.error || "El Backend Maestro respondió con error.");
+                }
+
+                guardarCacheBackend(claveCache,resultado);
+                return resultado;
+
+            }catch(error){
+                ultimoError = error;
+                if(intento < ESTABILIDAD_BACKEND.REINTENTOS){
+                    await dormirBackend(ESTABILIDAD_BACKEND.RETRASO_REINTENTO_MS * (intento + 1));
+                }
+            }
+        }
+
+        const cache = obtenerCacheBackend(claveCache);
+        if(cache?.resultado){
+            console.warn("Backend temporalmente no disponible; usando última respuesta válida:",accion,ultimoError);
+            return {...cache.resultado,__desdeCache:true,__cacheTimestamp:cache.timestamp};
+        }
+
+        console.error("Error leyendo Backend Maestro:",accion,ultimoError);
+        return null;
+    });
 }
 
 
@@ -13311,7 +13376,16 @@ async function guardarReporte(event){
    ACTUALIZAR TODO
    ========================================================= */
 
+let cargaPanelEnCurso = null;
+
 async function actualizarDatos(){
+
+    if(cargaPanelEnCurso){
+        console.info("Actualización del Panel ya en curso; se reutiliza la misma carga.");
+        return cargaPanelEnCurso;
+    }
+
+    cargaPanelEnCurso = (async()=>{
 
     const botonActualizar =
         document.querySelector(
@@ -13368,6 +13442,14 @@ async function actualizarDatos(){
         if(botonActualizar){
             botonActualizar.classList.remove("refreshing");
         }
+    }
+
+    })();
+
+    try{
+        return await cargaPanelEnCurso;
+    }finally{
+        cargaPanelEnCurso = null;
     }
 }
 
@@ -15294,6 +15376,12 @@ function iniciarMapaDiaVerde(){
 
 
 async function actualizarDatosTurboInicial(){
+    if(cargaPanelEnCurso){
+        console.info("Carga inicial ya en curso; se evita una segunda inicialización.");
+        return cargaPanelEnCurso;
+    }
+
+    cargaPanelEnCurso = (async()=>{
     try{
         const conectado=await probarConexion();
         if(!conectado) return;
@@ -15307,6 +15395,13 @@ async function actualizarDatosTurboInicial(){
         ]).catch(e=>console.warn("Carga secundaria Panel Turbo",e)),150);
         estadoPanel.ultimaActualizacion=new Date();
     }catch(e){console.warn("Carga inicial Turbo",e);}
+    })();
+
+    try{
+        return await cargaPanelEnCurso;
+    }finally{
+        cargaPanelEnCurso = null;
+    }
 }
 
 /* =========================================================
