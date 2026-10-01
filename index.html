@@ -12838,9 +12838,9 @@ async function abrirModalMantenimiento(modo="MANTENIMIENTO"){
     const prioridad=document.getElementById("mantenimientoPrioridad");if(prioridad)prioridad.value="MEDIA";
     const estado=document.getElementById("mantenimientoEstado");if(estado)estado.value="PENDIENTE";
     const tipo=document.getElementById("mantenimientoTipo");if(tipo)tipo.value=normalizar(modo)==="AVERIA"?"AVERIA":normalizar(modo)==="SERVICE"?"SERVICE":"";
-    actualizarCampoKMService();
+    actualizarFormularioTipoMantenimiento();
     const titulo=modal.querySelector(".modal-title");if(titulo)titulo.textContent=normalizar(modo)==="AVERIA"?"Nueva avería":normalizar(modo)==="SERVICE"?"Nuevo service":"Nuevo mantenimiento";
-    const boton=document.getElementById("btnGuardarMantenimiento");if(boton)boton.textContent=normalizar(modo)==="AVERIA"?"Guardar avería":"Guardar mantenimiento";
+    const boton=document.getElementById("btnGuardarMantenimiento");if(boton)boton.textContent=normalizar(modo)==="AVERIA"?"Guardar avería":normalizar(modo)==="SERVICE"?"Registrar Service":"Guardar mantenimiento";
     const mensaje=document.getElementById("mantenimientoMensaje");if(mensaje){mensaje.style.display="none";mensaje.textContent="";}
     await prepararFormularioMantenimiento();
     modal.classList.add("open");
@@ -12862,6 +12862,32 @@ function actualizarCampoKMService(){
     input.placeholder=esService?"Kilometraje del service realizado":"Kilometraje actual";
     input.required=esService;
     input.setAttribute("aria-required",esService?"true":"false");
+}
+
+function actualizarFormularioTipoMantenimiento(){
+    const tipo=normalizar(document.getElementById("mantenimientoTipo")?.value||"");
+    const esService=tipo==="SERVICE";
+    const grupoPrioridad=document.getElementById("grupoPrioridadMantenimiento");
+    const estado=document.getElementById("mantenimientoEstado");
+    const boton=document.getElementById("btnGuardarMantenimiento");
+
+    if(grupoPrioridad) grupoPrioridad.style.display=esService?"none":"";
+
+    if(estado){
+        if(esService){
+            estado.value="FINALIZADO";
+            estado.disabled=true;
+        }else{
+            estado.disabled=false;
+            if(!estado.value || estado.value==="FINALIZADO") estado.value="PENDIENTE";
+        }
+    }
+
+    if(boton){
+        boton.textContent=esService?"Registrar Service":tipo==="AVERIA"?"Guardar avería":"Guardar mantenimiento";
+    }
+
+    actualizarCampoKMService();
 }
 
 function mostrarMensajeMantenimiento(texto,tipo="info"){
