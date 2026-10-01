@@ -6431,124 +6431,59 @@ let estadoPanel = {
    LECTURAS DEL BACKEND
    ========================================================= */
 
-/* =========================================================
-   LECTOR ROBUSTO DEL BACKEND
-   - Máximo 4 lecturas simultáneas.
-   - Timeout por lectura.
-   - Reintentos cortos para fallos transitorios.
-   - Cache de última respuesta válida por acción.
-   - No reemplaza datos válidos por [] ante un fallo.
-   ========================================================= */
-const ESTABILIDAD_BACKEND = {
-    CONCURRENCIA_MAXIMA: 4,
-    TIMEOUT_MS: 15000,
-    REINTENTOS: 2,
-    RETRASO_REINTENTO_MS: 700,
-    CACHE_TTL_MS: 10 * 60 * 1000
-};
-
-const backendCache = new Map();
-let backendActivas = 0;
-const backendCola = [];
-
-function dormirBackend(ms){
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function ejecutarConCupoBackend(fn){
-    if(backendActivas >= ESTABILIDAD_BACKEND.CONCURRENCIA_MAXIMA){
-        await new Promise(resolve => backendCola.push(resolve));
-    }
-    backendActivas++;
-    try{
-        return await fn();
-    }finally{
-        backendActivas--;
-        const liberar = backendCola.shift();
-        if(liberar) liberar();
-    }
-}
-
-async function fetchBackendConTimeout(url, opciones={}, timeoutMs=ESTABILIDAD_BACKEND.TIMEOUT_MS){
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try{
-        return await fetch(url,{...opciones,signal:controller.signal});
-    }finally{
-        clearTimeout(timer);
-    }
-}
-
-function claveCacheBackend(accion,parametros){
-    let parametrosOrdenados = {};
-    Object.keys(parametros || {}).sort().forEach(k => {
-        parametrosOrdenados[k] = parametros[k];
-    });
-    return accion + "::" + JSON.stringify(parametrosOrdenados);
-}
-
-function guardarCacheBackend(clave,resultado){
-    if(resultado?.ok){
-        backendCache.set(clave,{
-            resultado,
-            timestamp:Date.now()
-        });
-    }
-}
-
-function obtenerCacheBackend(clave){
-    const item = backendCache.get(clave);
-    if(!item) return null;
-    return item;
-}
-
 async function leerBackend(accion, parametros={}){
-    if(!BACKEND_URL) return null;
 
-    const claveCache = claveCacheBackend(accion,parametros);
-    let ultimoError = null;
-
-    return ejecutarConCupoBackend(async () => {
-        for(let intento=0; intento<=ESTABILIDAD_BACKEND.REINTENTOS; intento++){
-            try{
-                const query = new URLSearchParams();
-                query.set("accion",accion);
-                Object.entries(parametros || {}).forEach(([clave,valor]) => {
-                    if(valor !== undefined && valor !== null && valor !== "") query.set(clave,String(valor));
-                });
-
-                const respuesta = await fetchBackendConTimeout(
-                    BACKEND_URL + "?" + query.toString(),
-                    {method:"GET",cache:"no-store"}
-                );
-
-                if(!respuesta.ok) throw new Error("HTTP " + respuesta.status);
-
-                const resultado = await respuesta.json();
-                if(!resultado?.ok){
-                    throw new Error(resultado?.error || "El Backend Maestro respondió con error.");
-                }
-
-                guardarCacheBackend(claveCache,resultado);
-                return resultado;
-
-            }catch(error){
-                ultimoError = error;
-                if(intento < ESTABILIDAD_BACKEND.REINTENTOS){
-                    await dormirBackend(ESTABILIDAD_BACKEND.RETRASO_REINTENTO_MS * (intento + 1));
-                }
-            }
-        }
-
-        const cache = obtenerCacheBackend(claveCache);
-        if(cache?.resultado){
-            console.warn("Backend temporalmente no disponible; usando última respuesta válida:",accion,ultimoError);
-            return {...cache.resultado,__desdeCache:true,__cacheTimestamp:cache.timestamp};
-        }
-
-        console.error("Error leyendo Backend Maestro:",accion,ultimoError);
+    if(!BACKEND_URL){
         return null;
-    });
+    }
+
+    try{
+
+        const query = new URLSearchParams();
+
+        query.set("accion",accion);
+
+        Object.entries(parametros || {}).forEach(([clave,valor]) => {
+
+            if(valor !== undefined && valor !== null && valor !== ""){
+                query.set(clave,String(valor));
+            }
+
+        });
+
+        const respuesta = await fetch(
+            BACKEND_URL + "?" + query.toString(),
+            {
+                method:"GET",
+                cache:"no-store"
+            }
+        );
+
+        if(!respuesta.ok){
+            throw new Error("HTTP " + respuesta.status);
+        }
+
+        const resultado = await respuesta.json();
+
+        if(!resultado?.ok){
+            throw new Error(
+                resultado?.error ||
+                "El Backend Maestro respondió con error."
+            );
+        }
+
+        return resultado;
+
+    }catch(error){
+
+        console.error(
+            "Error leyendo Backend Maestro:",
+            accion,
+            error
+        );
+
+        return null;
+    }
 }
 
 
@@ -12903,6 +12838,7 @@ async function abrirModalMantenimiento(modo="MANTENIMIENTO"){
     const prioridad=document.getElementById("mantenimientoPrioridad");if(prioridad)prioridad.value="MEDIA";
     const estado=document.getElementById("mantenimientoEstado");if(estado)estado.value="PENDIENTE";
     const tipo=document.getElementById("mantenimientoTipo");if(tipo)tipo.value=normalizar(modo)==="AVERIA"?"AVERIA":normalizar(modo)==="SERVICE"?"SERVICE":"";
+    actualizarCampoKMService();
     const titulo=modal.querySelector(".modal-title");if(titulo)titulo.textContent=normalizar(modo)==="AVERIA"?"Nueva avería":normalizar(modo)==="SERVICE"?"Nuevo service":"Nuevo mantenimiento";
     const boton=document.getElementById("btnGuardarMantenimiento");if(boton)boton.textContent=normalizar(modo)==="AVERIA"?"Guardar avería":"Guardar mantenimiento";
     const mensaje=document.getElementById("mantenimientoMensaje");if(mensaje){mensaje.style.display="none";mensaje.textContent="";}
@@ -12913,6 +12849,19 @@ async function abrirModalMantenimiento(modo="MANTENIMIENTO"){
 function cerrarModalMantenimiento(event){
     if(event&&event.target&&event.target.id!=="modalMantenimiento")return;
     document.getElementById("modalMantenimiento")?.classList.remove("open");
+}
+
+function actualizarCampoKMService(){
+    const tipo=normalizar(document.getElementById("mantenimientoTipo")?.value||"");
+    const input=document.getElementById("mantenimientoKM");
+    if(!input)return;
+    const grupo=input.closest(".form-group");
+    const label=grupo?.querySelector(".form-label");
+    const esService=tipo==="SERVICE";
+    if(label)label.textContent=esService?"KM en que se realizó el service *":"KM";
+    input.placeholder=esService?"Kilometraje del service realizado":"Kilometraje actual";
+    input.required=esService;
+    input.setAttribute("aria-required",esService?"true":"false");
 }
 
 function mostrarMensajeMantenimiento(texto,tipo="info"){
@@ -12936,6 +12885,14 @@ async function guardarMantenimiento(event){
     };
     if(!datos.idVehiculo){mostrarMensajeMantenimiento("Seleccioná el vehículo.","error");if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}return;}
     if(!datos.tipo){mostrarMensajeMantenimiento("Seleccioná el tipo.","error");if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}return;}
+    if(normalizar(datos.tipo)==="SERVICE"){
+        const kmService=Number(String(datos.km||"").replace(/\./g,""));
+        if(!String(datos.km||"").trim() || !Number.isFinite(kmService) || kmService<=0){
+            mostrarMensajeMantenimiento("Para registrar un SERVICE tenés que indicar el KM en que se realizó.","error");
+            if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}
+            return;
+        }
+    }
     if(!datos.descripcion){mostrarMensajeMantenimiento("La descripción es obligatoria.","error");if(boton){boton.disabled=false;boton.textContent="Guardar mantenimiento";}return;}
     mostrarMensajeMantenimiento("Guardando en el Backend Maestro...");
     const resultado=await llamarBackend("crearMantenimiento",datos);
@@ -13376,16 +13333,7 @@ async function guardarReporte(event){
    ACTUALIZAR TODO
    ========================================================= */
 
-let cargaPanelEnCurso = null;
-
 async function actualizarDatos(){
-
-    if(cargaPanelEnCurso){
-        console.info("Actualización del Panel ya en curso; se reutiliza la misma carga.");
-        return cargaPanelEnCurso;
-    }
-
-    cargaPanelEnCurso = (async()=>{
 
     const botonActualizar =
         document.querySelector(
@@ -13442,14 +13390,6 @@ async function actualizarDatos(){
         if(botonActualizar){
             botonActualizar.classList.remove("refreshing");
         }
-    }
-
-    })();
-
-    try{
-        return await cargaPanelEnCurso;
-    }finally{
-        cargaPanelEnCurso = null;
     }
 }
 
@@ -15376,12 +15316,6 @@ function iniciarMapaDiaVerde(){
 
 
 async function actualizarDatosTurboInicial(){
-    if(cargaPanelEnCurso){
-        console.info("Carga inicial ya en curso; se evita una segunda inicialización.");
-        return cargaPanelEnCurso;
-    }
-
-    cargaPanelEnCurso = (async()=>{
     try{
         const conectado=await probarConexion();
         if(!conectado) return;
@@ -15395,13 +15329,6 @@ async function actualizarDatosTurboInicial(){
         ]).catch(e=>console.warn("Carga secundaria Panel Turbo",e)),150);
         estadoPanel.ultimaActualizacion=new Date();
     }catch(e){console.warn("Carga inicial Turbo",e);}
-    })();
-
-    try{
-        return await cargaPanelEnCurso;
-    }finally{
-        cargaPanelEnCurso = null;
-    }
 }
 
 /* =========================================================
@@ -16854,7 +16781,7 @@ function dvOrdenarCapasMapa(){
                     </div>
                     <div class="form-group">
                         <label class="form-label">Tipo *</label>
-                        <select id="mantenimientoTipo" class="form-control" required>
+                        <select id="mantenimientoTipo" class="form-control" required onchange="actualizarCampoKMService()">
                             <option value="">Seleccionar...</option>
                             <option value="AVERIA">AVERÍA</option>
                             <option value="SERVICE">SERVICE</option>
