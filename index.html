@@ -16781,7 +16781,7 @@ function dvOrdenarCapasMapa(){
                     </div>
                     <div class="form-group">
                         <label class="form-label">Tipo *</label>
-                        <select id="mantenimientoTipo" class="form-control" required onchange="actualizarCampoKMService()">
+                        <select id="mantenimientoTipo" class="form-control" required onchange="actualizarFormularioTipoMantenimiento()">
                             <option value="">Seleccionar...</option>
                             <option value="AVERIA">AVERÍA</option>
                             <option value="SERVICE">SERVICE</option>
@@ -16794,7 +16794,7 @@ function dvOrdenarCapasMapa(){
                             <option value="OTRO">OTRO</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div id="grupoPrioridadMantenimiento" class="form-group">
                         <label class="form-label">Prioridad</label>
                         <select id="mantenimientoPrioridad" class="form-control">
                             <option value="BAJA">BAJA</option><option value="MEDIA" selected>MEDIA</option><option value="ALTA">ALTA</option><option value="CRITICA">CRÍTICA</option>
