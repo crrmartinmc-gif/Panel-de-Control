@@ -5683,7 +5683,8 @@ async function cargarInteligenciaFlota(){
     const sf=serHistorico.filter(s=>["FINALIZADO","FINALIZADOS","COMPLETADO","COMPLETADOS"].includes(if6EstadoServ(s))).length;
     const si=serHistorico.filter(s=>["INCUMPLIDO","INCUMPLIDOS"].includes(if6EstadoServ(s))).length;
     const sc=serHistorico.filter(s=>["EN CURSO","EN_CURSO","INICIADO"].includes(if6EstadoServ(s))).length;
-    const sp=Math.max(0,serHistorico.length-sf-si-sc);
+    const sx=serHistorico.filter(s=>["CANCELADO","CANCELADOS","CANCELADA","CANCELADAS"].includes(if6EstadoServ(s))).length;
+    const sp=Math.max(0,serHistorico.length-sf-si-sc-sx);
     setKpi("if6KpiServicios",serHistorico.length);setKpi("if6KpiFinalizados",sf);setKpi("if6KpiIncumplidos",si);setKpi("if6KpiFinalizadosHelp",`${if6Pct(sf,serHistorico.length)}% del histórico`);setKpi("if6KpiIncumplidosHelp",`${if6Pct(si,serHistorico.length)}% del histórico`);
     const ult30=if6UltimosDias(ser,30,ahora),ult90=if6UltimosDias(ser,90,ahora),ult7=if6UltimosDias(ser,7,ahora);
 
@@ -5704,7 +5705,8 @@ async function cargarInteligenciaFlota(){
         {label:"Finalizados",value:sf,color:"var(--green)"},
         {label:"En curso",value:sc,color:"var(--blue)"},
         {label:"Programados / pendientes",value:sp,color:"var(--yellow)"},
-        {label:"Incumplidos",value:si,color:"var(--red)"}
+        {label:"Incumplidos",value:si,color:"var(--red)"},
+        {label:"Cancelados",value:sx,color:"var(--muted)"}
       ],
       detailTitle:"Actividad histórica de servicios",
       detailHelp:`Últimos 7 días: ${ult7.length} · 30 días: ${ult30.length} · 90 días: ${ult90.length} · Sin fecha: ${serSinFecha}.`,
