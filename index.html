@@ -5308,6 +5308,7 @@ textarea.form-control{
       <option value="ayer">Ayer</option>
       <option value="7">Últimos 7 días</option>
       <option value="30">Último mes</option>
+      <option value="mespasado">Mes pasado</option>
       <option value="todos">Todos</option>
     </select>
   </div>
@@ -5422,6 +5423,10 @@ function if6RangoPeriodo(modo){
     inicio.setDate(inicio.getDate()-6);
   }else if(modo==="30"){
     inicio.setDate(inicio.getDate()-29);
+  }else if(modo==="mespasado"){
+    // Mes calendario completo anterior: desde el día 1 hasta el último día del mes anterior.
+    inicio = new Date(fin.getFullYear(), fin.getMonth()-1, 1);
+    fin.setDate(0);
   }
 
   return {inicio,fin};
@@ -5445,6 +5450,7 @@ function if6PeriodoTexto(modo=if6Periodo){
     ayer:"ayer",
     "7":"los últimos 7 días",
     "30":"el último mes",
+    mespasado:"el mes pasado (mes calendario completo)",
     todos:"todo el histórico disponible"
   })[modo] || "hoy";
 }
@@ -5458,7 +5464,7 @@ function if6ActualizarPeriodoUI(){
 }
 
 async function if6CambiarPeriodo(modo){
-  if(!["hoy","ayer","7","30","todos"].includes(String(modo))) modo="hoy";
+  if(!["hoy","ayer","7","30","mespasado","todos"].includes(String(modo))) modo="hoy";
   if6Periodo=String(modo);
   if6ActualizarPeriodoUI();
 
@@ -5706,7 +5712,7 @@ async function cargarInteligenciaFlota(){
         {label:"En curso",value:sc,color:"var(--blue)"},
         {label:"Programados / pendientes",value:sp,color:"var(--yellow)"},
         {label:"Incumplidos",value:si,color:"var(--red)"},
-        {label:"Cancelados",value:sx,color:"var(--muted)"}
+        {label:"Cancelados",value:sx,color:"#94a3b8"}
       ],
       detailTitle:"Actividad histórica de servicios",
       detailHelp:`Últimos 7 días: ${ult7.length} · 30 días: ${ult30.length} · 90 días: ${ult90.length} · Sin fecha: ${serSinFecha}.`,
