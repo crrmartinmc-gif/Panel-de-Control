@@ -3350,12 +3350,12 @@ textarea.form-control{
 <div id="panelLoginCover" role="dialog" aria-modal="true" aria-labelledby="panelLoginHeading">
   <div class="panel-login-shell">
     <section class="panel-login-hero">
-      <div class="panel-login-brand"><div class="panel-login-emblem">⌁</div><div><div>PANEL DE CONTROL</div><div style="font-size:11px;font-weight:500;letter-spacing:.12em;color:#9fb4c9;margin-top:4px">GESTIÓN OPERATIVA</div></div></div>
-      <div class="panel-login-copy"><div class="panel-login-kicker">Centro de operaciones</div><h1 class="panel-login-title">Toda la operación, bajo control.</h1><p class="panel-login-desc">Accedé a la información de flota, servicios, mantenimiento, recorridos y seguimiento operativo desde un único lugar.</p></div>
+      <div class="panel-login-brand"><div class="panel-login-emblem">⌁</div><div><div>MUNICIPIO DE LOMAS DE ZAMORA</div><div style="font-size:10px;font-weight:600;letter-spacing:.08em;color:#9fb4c9;margin-top:4px">DIRECCIÓN MUNICIPAL DE LOGÍSTICA AMBIENTAL</div><div style="font-size:10px;font-weight:800;letter-spacing:.14em;color:#50dfa8;margin-top:5px">CENTRO DE GESTIÓN OPERATIVA</div></div></div>
+      <div class="panel-login-copy"><div class="panel-login-kicker">Centro de Gestión Operativa</div><h1 class="panel-login-title">Gestión, coordinación y control operativo.</h1><p class="panel-login-desc">Plataforma de seguimiento de flota, servicios, mantenimiento y recorridos de la Dirección Municipal de Logística Ambiental del Municipio de Lomas de Zamora.</p></div>
       <div class="panel-login-foot panel-login-status"><span class="panel-login-status-dot"></span> Acceso seguro · Sesión personal</div>
     </section>
     <section class="panel-login-form-side"><form class="panel-login-form" id="panelLoginForm" autocomplete="on">
-      <h2 id="panelLoginHeading">Bienvenido</h2><p class="panel-login-subtitle">Ingresá con tu usuario habilitado para continuar.</p>
+      <h2 id="panelLoginHeading">Acceso al sistema</h2><p class="panel-login-subtitle">Ingresá tus credenciales institucionales para acceder al Centro de Gestión Operativa.</p>
       <label class="panel-login-field"><span>Usuario</span><input id="panelLoginUser" name="username" autocomplete="username" required maxlength="120" placeholder="Tu usuario"></label>
       <label class="panel-login-field"><span>Contraseña</span><input id="panelLoginPassword" name="password" type="password" autocomplete="current-password" required maxlength="256" placeholder="Tu contraseña"></label>
       <button id="panelLoginSubmit" type="submit">Ingresar al panel <span aria-hidden="true">→</span></button>
@@ -17333,7 +17333,7 @@ function dvOrdenarCapasMapa(){
       const result = await response.json();
       const data = result && result.resultado ? result.resultado : result;
       if(!result || result.ok === false || !data || data.ok === false || !data.token){
-        throw new Error((result && result.error) || (data && data.error) || 'No se pudo iniciar sesión. Verificá tus datos y permisos.');
+        throw new Error((result && result.error) || (data && data.error) || 'No se pudo iniciar sesión. Verificá usuario, contraseña, estado ACTIVO y aplicación PANEL/TODAS en la hoja USUARIOS. Si los datos son correctos, comprobá que el backend actualizado esté implementado como aplicación web y que el panel apunte a esa URL /exec.');
       }
       sessionStorage.setItem(TOKEN_KEY, data.token);
       sessionStorage.setItem(USER_KEY, JSON.stringify(data.usuario || {}));
