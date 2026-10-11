@@ -11594,13 +11594,6 @@ function renderizarVehiculos(vehiculos){
         const kmActual=obtenerKMActualVehiculo(v);
         const service=infoServiceVehiculo(v);
         const vtv=textoVTVVehiculo(v);
-    const ultimasFotos=obtenerUltimasFotosVehiculo(v);
-    const fotosVehiculoHTML=ultimasFotos.length ? `<div class="detalle-vehiculo-fotos">${ultimasFotos.map((e,i)=>{
-        const url=urlFotoEvidenciaVehiculo(e);
-        const tipo=String(e?.TIPO_EVIDENCIA||e?.tipoEvidencia||"Foto del vehículo").replace(/_/g," ");
-        const fecha=formatearFecha(e?.FECHA_HORA||e?.fechaHora||"");
-        return `<a class="detalle-vehiculo-foto" href="${escaparAtributo(url)}" target="_blank" rel="noopener noreferrer" title="Abrir foto en tamaño completo"><img src="${escaparAtributo(url)}" alt="${escaparAtributo(tipo)}" loading="lazy" onerror="this.style.display='none';this.parentElement.querySelector('.detalle-vehiculo-foto-pie').textContent='No se pudo cargar la imagen';"><div class="detalle-vehiculo-foto-pie">${escaparHTML(tipo)}${fecha ? `<br>${escaparHTML(fecha)}` : ""}</div></a>`;
-    }).join("")}</div>` : `<div class="detalle-vehiculo-empty">No hay fotos de inspección registradas para esta unidad.</div>`;
         const vtvClase=claseVTVVehiculo(vtv);
         const serviceTexto=service.kmProximo===null ? "-" : `${service.kmProximo.toLocaleString("es-AR")} km`;
         const serviceClase=service.estado==="VENCIDO" ? "danger" : service.estado==="PRÓXIMO" ? "warning" : "online";
@@ -11650,6 +11643,14 @@ function verVehiculo(idVehiculo){
     const id=String(idVehiculo||"").trim();
     const v=obtenerVehiculoPorId(id);
     if(!v) return;
+
+    const ultimasFotos=obtenerUltimasFotosVehiculo(v);
+    const fotosVehiculoHTML=ultimasFotos.length ? `<div class="detalle-vehiculo-fotos">${ultimasFotos.map(e=>{
+        const url=urlFotoEvidenciaVehiculo(e);
+        const tipo=String(e?.TIPO_EVIDENCIA||e?.tipoEvidencia||"Foto del vehículo").replace(/_/g," ");
+        const fecha=formatearFecha(e?.FECHA_HORA||e?.fechaHora||"");
+        return `<a class="detalle-vehiculo-foto" href="${escaparAtributo(url)}" target="_blank" rel="noopener noreferrer" title="Abrir foto en tamaño completo"><img src="${escaparAtributo(url)}" alt="${escaparAtributo(tipo)}" loading="lazy" onerror="this.style.display='none';this.parentElement.querySelector('.detalle-vehiculo-foto-pie').textContent='No se pudo cargar la imagen';"><div class="detalle-vehiculo-foto-pie">${escaparHTML(tipo)}${fecha ? `<br>${escaparHTML(fecha)}` : ""}</div></a>`;
+    }).join("")}</div>` : `<div class="detalle-vehiculo-empty">No hay fotos de inspección registradas para esta unidad.</div>`;
 
     const service=infoServiceVehiculo(v);
     const mantenimientos=obtenerMantenimientosVehiculo(v).sort((a,b)=>new Date(b?.FECHA_ALTA||0)-new Date(a?.FECHA_ALTA||0));
