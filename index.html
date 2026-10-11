@@ -2854,6 +2854,13 @@ textarea.form-control{
 .detalle-vehiculo-item-desc{margin-top:5px;color:#c4d0de;font-size:10px;line-height:1.45;white-space:normal}
 .detalle-vehiculo-item-meta{margin-top:6px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .detalle-vehiculo-empty{padding:16px 4px;color:#718198;font-size:10px;text-align:center}
+
+.detalle-vehiculo-fotos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;padding:12px}
+.detalle-vehiculo-foto{display:block;min-width:0;border:1px solid rgba(255,255,255,.09);border-radius:10px;overflow:hidden;background:#091423;color:#dce5ef;text-decoration:none}
+.detalle-vehiculo-foto img{display:block;width:100%;height:105px;object-fit:cover;background:#101d2d}
+.detalle-vehiculo-foto-pie{padding:7px 6px;font-size:9px;line-height:1.35;color:#9aabc0;overflow-wrap:anywhere}
+@media(max-width:560px){.detalle-vehiculo-fotos{grid-template-columns:repeat(2,minmax(0,1fr))}.detalle-vehiculo-foto img{height:125px}}
+
 .detalle-vehiculo-scroll{max-height:290px;overflow:auto}
 @media(max-width:760px){.detalle-vehiculo-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.detalle-vehiculo-hero{align-items:flex-start;flex-direction:column}.detalle-vehiculo-state{align-self:flex-start}}
 
@@ -6585,6 +6592,7 @@ let estadoPanel = {
     eventos:[],
     choferes:[],
     reportes:[],
+    evidencias:[],
     mantenimiento:[],
     asignaciones:[],
     ultimaActualizacion:null
@@ -11278,10 +11286,11 @@ async function cargarComplementosVehiculos(){
             leerBackend("viajes"),
             leerBackend("mantenimiento"),
             leerBackend("reportes"),
-            leerBackend("inspecciones")
+            leerBackend("inspecciones"),
+            leerBackend("evidencias")
         ]);
 
-        const [viajes,mantenimiento,reportes,inspecciones] = resultados;
+        const [viajes,mantenimiento,reportes,inspecciones,evidencias] = resultados;
 
         if(viajes.status === "fulfilled" && viajes.value?.ok && Array.isArray(viajes.value.datos)){
             estadoPanel.viajes = viajes.value.datos;
@@ -11294,6 +11303,9 @@ async function cargarComplementosVehiculos(){
         }
         if(inspecciones.status === "fulfilled" && inspecciones.value?.ok && Array.isArray(inspecciones.value.datos)){
             estadoPanel.inspecciones = inspecciones.value.datos;
+        }
+        if(evidencias.status === "fulfilled" && evidencias.value?.ok && Array.isArray(evidencias.value.datos)){
+            estadoPanel.evidencias = evidencias.value.datos;
         }
 
         // Nunca reemplazamos la flota por [] si una lectura secundaria falla.
@@ -11582,6 +11594,13 @@ function renderizarVehiculos(vehiculos){
         const kmActual=obtenerKMActualVehiculo(v);
         const service=infoServiceVehiculo(v);
         const vtv=textoVTVVehiculo(v);
+    const ultimasFotos=obtenerUltimasFotosVehiculo(v);
+    const fotosVehiculoHTML=ultimasFotos.length ? `<div class="detalle-vehiculo-fotos">${ultimasFotos.map((e,i)=>{
+        const url=urlFotoEvidenciaVehiculo(e);
+        const tipo=String(e?.TIPO_EVIDENCIA||e?.tipoEvidencia||"Foto del vehículo").replace(/_/g," ");
+        const fecha=formatearFecha(e?.FECHA_HORA||e?.fechaHora||"");
+        return `<a class="detalle-vehiculo-foto" href="${escaparAtributo(url)}" target="_blank" rel="noopener noreferrer" title="Abrir foto en tamaño completo"><img src="${escaparAtributo(url)}" alt="${escaparAtributo(tipo)}" loading="lazy" onerror="this.style.display='none';this.parentElement.querySelector('.detalle-vehiculo-foto-pie').textContent='No se pudo cargar la imagen';"><div class="detalle-vehiculo-foto-pie">${escaparHTML(tipo)}${fecha ? `<br>${escaparHTML(fecha)}` : ""}</div></a>`;
+    }).join("")}</div>` : `<div class="detalle-vehiculo-empty">No hay fotos de inspección registradas para esta unidad.</div>`;
         const vtvClase=claseVTVVehiculo(vtv);
         const serviceTexto=service.kmProximo===null ? "-" : `${service.kmProximo.toLocaleString("es-AR")} km`;
         const serviceClase=service.estado==="VENCIDO" ? "danger" : service.estado==="PRÓXIMO" ? "warning" : "online";
@@ -11602,6 +11621,29 @@ function renderizarVehiculos(vehiculos){
             <td><div class="vehiculo-acciones"><button class="btn btn-secondary btn-vehiculo-accion" type="button" onclick="verVehiculo('${escaparAtributo(v.ID_VEHICULO)}')">Ver</button>${serviceBtn}</div></td>
         </tr>`;
     }).join("");
+}
+
+function urlFotoEvidenciaVehiculo(evidencia){
+    const original=String(evidencia?.URL_DRIVE||evidencia?.urlDrive||evidencia?.URL||evidencia?.url||evidencia?.FOTO||evidencia?.foto||"").trim();
+    if(!original) return "";
+    if(original.startsWith("data:image/")) return original;
+    let match=original.match(/\/file\/d\/([^/?]+)/) || original.match(/[?&]id=([^&]+)/) || original.match(/\/d\/([^/?]+)/);
+    if(match && match[1]) return "https://drive.google.com/thumbnail?id="+encodeURIComponent(match[1])+"&sz=w1000";
+    return original;
+}
+
+function obtenerUltimasFotosVehiculo(vehiculo){
+    const id=String(vehiculo?.ID_VEHICULO||"").trim();
+    const dominio=String(vehiculo?.DOMINIO||"").trim().toUpperCase();
+    return (estadoPanel.evidencias||[]).filter(e=>{
+        const idEv=String(e?.ID_VEHICULO||e?.idVehiculo||"").trim();
+        const tipo=normalizar(e?.TIPO_EVIDENCIA||e?.tipoEvidencia||"");
+        const origen=normalizar(e?.ORIGEN||e?.origen||"");
+        const url=urlFotoEvidenciaVehiculo(e);
+        // Las fotos de inspección/salida son las cuatro vistas del vehículo.
+        const esFotoVehiculo=/FRENTE|TRASERA|LATERAL|INSPECCION|INSPECCIÓN|SALIDA/.test(tipo) || /CHOFERES|DIA VERDE/.test(origen);
+        return url && ((id && idEv===id) || (!idEv && dominio && String(e?.DOMINIO||"").trim().toUpperCase()===dominio)) && esFotoVehiculo;
+    }).sort((a,b)=>new Date(b?.FECHA_HORA||b?.fechaHora||0)-new Date(a?.FECHA_HORA||a?.fechaHora||0)).slice(0,4);
 }
 
 function verVehiculo(idVehiculo){
@@ -11671,6 +11713,11 @@ function verVehiculo(idVehiculo){
             <div class="detalle-vehiculo-kpi"><div class="detalle-vehiculo-kpi-label">Último service</div><div class="detalle-vehiculo-kpi-value">${escaparHTML(ultimoService)}</div></div>
             <div class="detalle-vehiculo-kpi"><div class="detalle-vehiculo-kpi-label">Próximo service</div><div class="detalle-vehiculo-kpi-value">${escaparHTML(proximoService)}</div></div>
             <div class="detalle-vehiculo-kpi"><div class="detalle-vehiculo-kpi-label">VTV</div><div class="detalle-vehiculo-kpi-value">${escaparHTML(vtv)}</div></div>
+        </div>
+
+        <div class="detalle-vehiculo-seccion">
+            <div class="detalle-vehiculo-seccion-head"><div class="detalle-vehiculo-seccion-title">📸 Últimas fotos del vehículo</div><div class="detalle-vehiculo-seccion-count">${ultimasFotos.length} de 4 fotos</div></div>
+            ${fotosVehiculoHTML}
         </div>
 
         <div class="detalle-vehiculo-seccion">
