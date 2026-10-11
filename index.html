@@ -3307,9 +3307,63 @@ textarea.form-control{
 }
 </style>
 
+
+<style id="panel-auth-responsive-styles">
+  body.panel-auth-locked .app { display:none !important; }
+  #panelLoginCover { position:fixed; inset:0; z-index:999999; display:flex; align-items:stretch; justify-content:center; padding:clamp(12px,3vw,32px); overflow:auto; background:radial-gradient(circle at 12% 8%,rgba(41,196,135,.20),transparent 30%),radial-gradient(circle at 90% 88%,rgba(51,125,255,.20),transparent 30%),#07111f; color:#eef5ff; font-family:inherit; }
+  #panelLoginCover[hidden] { display:none !important; }
+  .panel-login-shell { width:min(1080px,100%); min-height:min(680px,calc(100dvh - 24px)); margin:auto; display:grid; grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr); overflow:hidden; border:1px solid rgba(255,255,255,.12); border-radius:26px; background:rgba(13,27,45,.92); box-shadow:0 28px 90px rgba(0,0,0,.45); }
+  .panel-login-hero { position:relative; display:flex; flex-direction:column; justify-content:space-between; gap:32px; padding:clamp(28px,5vw,58px); overflow:hidden; background:linear-gradient(145deg,rgba(15,40,63,.95),rgba(8,20,34,.98)); }
+  .panel-login-hero:before,.panel-login-hero:after { content:""; position:absolute; border:1px solid rgba(65,225,163,.20); border-radius:50%; pointer-events:none; }
+  .panel-login-hero:before { width:420px;height:420px;right:-155px;top:12%;box-shadow:0 0 0 32px rgba(65,225,163,.035),0 0 0 68px rgba(65,225,163,.025); }
+  .panel-login-hero:after { width:220px;height:220px;right:8%;bottom:-125px;background:rgba(50,190,140,.06); }
+  .panel-login-brand,.panel-login-copy,.panel-login-foot { position:relative; z-index:1; }
+  .panel-login-brand { display:flex;align-items:center;gap:14px;font-weight:800;letter-spacing:.08em; }
+  .panel-login-emblem { width:48px;height:48px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(135deg,#35d49a,#13865f);color:#06261b;font-size:23px;box-shadow:0 10px 28px rgba(35,205,140,.22); }
+  .panel-login-kicker { color:#50dfa8;text-transform:uppercase;letter-spacing:.17em;font-size:11px;font-weight:800;margin-bottom:16px; }
+  .panel-login-title { font-size:clamp(30px,4vw,48px);line-height:1.08;letter-spacing:-.04em;font-weight:850;margin:0 0 18px;max-width:480px; }
+  .panel-login-desc { max-width:440px;color:#b8c7d9;line-height:1.7;font-size:15px; }
+  .panel-login-status { display:flex;align-items:center;gap:9px;color:#c4d4e5;font-size:12px; }
+  .panel-login-status-dot { width:8px;height:8px;border-radius:50%;background:#39d69a;box-shadow:0 0 0 5px rgba(57,214,154,.12); }
+  .panel-login-form-side { display:flex;align-items:center;justify-content:center;padding:clamp(24px,4vw,54px);background:linear-gradient(160deg,rgba(14,29,48,.96),rgba(10,20,34,.98)); }
+  .panel-login-form { width:100%;max-width:370px; }
+  .panel-login-form h2 { margin:0 0 9px;font-size:27px;letter-spacing:-.03em;color:#f3f7fc; }
+  .panel-login-form .panel-login-subtitle { margin:0 0 30px;color:#91a5bb;font-size:14px;line-height:1.6; }
+  .panel-login-field { display:block;margin:0 0 18px; }
+  .panel-login-field span { display:block;margin-bottom:8px;color:#dbe6f2;font-size:13px;font-weight:650; }
+  .panel-login-field input { width:100%;min-height:49px;padding:12px 14px;border:1px solid #2b4057;border-radius:11px;background:#0a1727;color:#f7fbff;font:inherit;outline:none;box-sizing:border-box;transition:border-color .18s,box-shadow .18s; }
+  .panel-login-field input:focus { border-color:#36ce94;box-shadow:0 0 0 3px rgba(54,206,148,.14); }
+  #panelLoginSubmit { width:100%;min-height:49px;border:0;border-radius:11px;background:linear-gradient(90deg,#32d19a,#20b77f);color:#05291d;font-weight:850;font-size:14px;cursor:pointer;box-shadow:0 10px 25px rgba(32,183,127,.17); }
+  #panelLoginSubmit:disabled { opacity:.65;cursor:wait; }
+  #panelLoginError { min-height:22px;margin:12px 0 0;color:#ff9c9c;font-size:13px;line-height:1.5; }
+  .panel-login-security { margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,.08);color:#7f93aa;font-size:11px;line-height:1.6; }
+  #panelLogoutButton { margin-left:12px;border:1px solid rgba(255,255,255,.25);border-radius:8px;background:transparent;color:inherit;padding:7px 10px;cursor:pointer; }
+  @media(max-width:760px){ #panelLoginCover{padding:0;align-items:stretch;} .panel-login-shell{grid-template-columns:1fr;min-height:100dvh;border-radius:0;border:0;} .panel-login-hero{min-height:210px;padding:26px 24px 30px;gap:20px;} .panel-login-title{font-size:30px;margin-bottom:10px;} .panel-login-desc{font-size:13px;line-height:1.5;} .panel-login-foot{display:none;} .panel-login-form-side{padding:30px 24px 42px;align-items:flex-start;} .panel-login-form{max-width:440px;margin:auto;} .panel-login-form h2{font-size:25px;} }
+  @media(max-width:380px){ .panel-login-hero{padding:22px 18px;} .panel-login-form-side{padding:26px 18px 34px;} .panel-login-title{font-size:27px;} }
+  @media(min-width:761px) and (max-height:700px){ .panel-login-shell{min-height:600px;} .panel-login-hero{padding:32px;} .panel-login-form-side{padding:32px;} }
+</style>
+
 </head>
 
-<body>
+<body class="panel-auth-locked">
+
+<div id="panelLoginCover" role="dialog" aria-modal="true" aria-labelledby="panelLoginHeading">
+  <div class="panel-login-shell">
+    <section class="panel-login-hero">
+      <div class="panel-login-brand"><div class="panel-login-emblem">⌁</div><div><div>PANEL DE CONTROL</div><div style="font-size:11px;font-weight:500;letter-spacing:.12em;color:#9fb4c9;margin-top:4px">GESTIÓN OPERATIVA</div></div></div>
+      <div class="panel-login-copy"><div class="panel-login-kicker">Centro de operaciones</div><h1 class="panel-login-title">Toda la operación, bajo control.</h1><p class="panel-login-desc">Accedé a la información de flota, servicios, mantenimiento, recorridos y seguimiento operativo desde un único lugar.</p></div>
+      <div class="panel-login-foot panel-login-status"><span class="panel-login-status-dot"></span> Acceso seguro · Sesión personal</div>
+    </section>
+    <section class="panel-login-form-side"><form class="panel-login-form" id="panelLoginForm" autocomplete="on">
+      <h2 id="panelLoginHeading">Bienvenido</h2><p class="panel-login-subtitle">Ingresá con tu usuario habilitado para continuar.</p>
+      <label class="panel-login-field"><span>Usuario</span><input id="panelLoginUser" name="username" autocomplete="username" required maxlength="120" placeholder="Tu usuario"></label>
+      <label class="panel-login-field"><span>Contraseña</span><input id="panelLoginPassword" name="password" type="password" autocomplete="current-password" required maxlength="256" placeholder="Tu contraseña"></label>
+      <button id="panelLoginSubmit" type="submit">Ingresar al panel <span aria-hidden="true">→</span></button>
+      <p id="panelLoginError" role="alert" aria-live="polite"></p>
+      <div class="panel-login-security">Tu sesión es personal y tiene una duración limitada. Cerrá la sesión al terminar de trabajar.</div>
+    </form></section>
+  </div>
+</div>
 
 <div class="app">
 
@@ -15496,6 +15550,7 @@ document.addEventListener(
     "DOMContentLoaded",
     async () => {
 
+        if (!window.__PANEL_AUTH_READY__) return;
         actualizarTitulo("inicio");
 
         /*
@@ -17167,6 +17222,144 @@ function dvOrdenarCapasMapa(){
 
 
 
+
+
+<script id="panel-auth-controller">
+(function(){
+  'use strict';
+  const BACKEND = (typeof BACKEND_URL !== 'undefined') ? BACKEND_URL : '';
+  const TOKEN_KEY = 'PANEL_CONTROL_SESSION_V1';
+  const USER_KEY = 'PANEL_CONTROL_USER_V1';
+  const rawFetch = window.fetch.bind(window);
+  window.__PANEL_AUTH_READY__ = false;
+  window.__PANEL_RAW_FETCH__ = rawFetch;
+  document.body.classList.add('panel-auth-locked');
+
+  function respuestaLocal(obj){
+    return new Response(JSON.stringify(obj), {status:200, headers:{'Content-Type':'application/json;charset=utf-8'}});
+  }
+  function tokenActual(){ return sessionStorage.getItem(TOKEN_KEY) || ''; }
+  function peticionEsBackend(input){
+    try { const u = new URL(typeof input === 'string' ? input : input.url, location.href); return !!BACKEND && u.href.indexOf(BACKEND) === 0; }
+    catch(e){ return false; }
+  }
+  function accionExenta(accion){ return ['loginPanelV1','logoutPanelV1','validarSesionPanelV1'].includes(String(accion||'')); }
+  window.fetch = async function(input, init){
+    if(!peticionEsBackend(input)) return rawFetch(input, init);
+    let url;
+    try { url = new URL(typeof input === 'string' ? input : input.url, location.href); }
+    catch(e){ return rawFetch(input, init); }
+    const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+    if(method === 'GET'){
+      const action = url.searchParams.get('accion') || 'estado';
+      if(accionExenta(action)) return rawFetch(input, init);
+      const token = tokenActual();
+      if(!token) return respuestaLocal({ok:false,error:'SESION_REQUERIDA'});
+      url.searchParams.set('accion','panelGet');
+      url.searchParams.set('accionInterna',action);
+      url.searchParams.set('token',token);
+      return rawFetch(url.toString(), {...(init||{}), method:'GET'});
+    }
+    if(method === 'POST'){
+      let body = init && init.body;
+      if(body == null && input && typeof input.clone === 'function'){
+        try { body = await input.clone().text(); } catch(e) {}
+      }
+      let parsed;
+      try { parsed = typeof body === 'string' ? JSON.parse(body) : body; }
+      catch(e){ return rawFetch(input, init); }
+      const action = String(parsed && parsed.accion || '');
+      if(accionExenta(action)) return rawFetch(input, init);
+      const token = tokenActual();
+      if(!token) return respuestaLocal({ok:false,error:'SESION_REQUERIDA'});
+      const wrapped = {accion:'panelPost', accionInterna:action, token:token, datosOriginal:parsed};
+      const nextInit = {...(init||{}), method:'POST', body:JSON.stringify(wrapped)};
+      return rawFetch(BACKEND, nextInit);
+    }
+    return rawFetch(input, init);
+  };
+
+  const cover = document.getElementById('panelLoginCover');
+  const form = document.getElementById('panelLoginForm');
+  const submit = document.getElementById('panelLoginSubmit');
+  const errorBox = document.getElementById('panelLoginError');
+  const userInput = document.getElementById('panelLoginUser');
+  const passInput = document.getElementById('panelLoginPassword');
+
+  function iniciarPanel(){
+    window.__PANEL_AUTH_READY__ = true;
+    document.body.classList.remove('panel-auth-locked');
+    cover.hidden = true;
+    const user = JSON.parse(sessionStorage.getItem(USER_KEY) || '{}');
+    const subtitle = document.querySelector('.brand-sub');
+    if(subtitle && user && (user.nombre || user.usuario)) subtitle.textContent = (user.nombre || user.usuario) + ' · Gestión Operativa';
+    if(!document.getElementById('panelLogoutButton')){
+      const logout = document.createElement('button'); logout.id = 'panelLogoutButton'; logout.type = 'button'; logout.setAttribute('data-panel-logout',''); logout.textContent = 'Cerrar sesión';
+      const brand = document.querySelector('.sidebar .brand'); if(brand) brand.appendChild(logout); else document.body.appendChild(logout);
+    }
+    if(typeof actualizarTitulo === 'function') actualizarTitulo('inicio');
+    if(typeof actualizarDatosTurboInicial === 'function') actualizarDatosTurboInicial();
+    setTimeout(function(){ if(document.getElementById('dvMap') && typeof dvActivarMapaEnInicio === 'function') dvActivarMapaEnInicio(); }, 300);
+  }
+  function mostrarLogin(mensaje){
+    window.__PANEL_AUTH_READY__ = false;
+    document.body.classList.add('panel-auth-locked');
+    cover.hidden = false;
+    if(errorBox) errorBox.textContent = mensaje || '';
+  }
+  async function validarSesionExistente(){
+    const token = tokenActual();
+    if(!token) { mostrarLogin(''); return; }
+    try{
+      const r = await rawFetch(BACKEND + '?accion=validarSesionPanelV1&token=' + encodeURIComponent(token), {cache:'no-store'});
+      const data = await r.json();
+      if(data && data.ok && data.datos && data.datos.ok){
+        const old = JSON.parse(sessionStorage.getItem(USER_KEY) || '{}');
+        if(data.datos.usuario) sessionStorage.setItem(USER_KEY, JSON.stringify({...old,...data.datos.usuario}));
+        iniciarPanel();
+      } else {
+        sessionStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(USER_KEY); mostrarLogin('Tu sesión venció. Ingresá nuevamente.');
+      }
+    }catch(e){ mostrarLogin('No se pudo validar la sesión. Revisá tu conexión e intentá nuevamente.'); }
+  }
+  form.addEventListener('submit', async function(ev){
+    ev.preventDefault();
+    if(submit.disabled) return;
+    errorBox.textContent = '';
+    submit.disabled = true;
+    submit.textContent = 'Verificando acceso…';
+    try{
+      const response = await rawFetch(BACKEND, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({accion:'loginPanelV1', aplicacion:'PANEL', usuario:userInput.value.trim(), contrasena:passInput.value})});
+      const result = await response.json();
+      const data = result && result.resultado ? result.resultado : result;
+      if(!result || result.ok === false || !data || data.ok === false || !data.token){
+        throw new Error((result && result.error) || (data && data.error) || 'No se pudo iniciar sesión. Verificá tus datos y permisos.');
+      }
+      sessionStorage.setItem(TOKEN_KEY, data.token);
+      sessionStorage.setItem(USER_KEY, JSON.stringify(data.usuario || {}));
+      passInput.value = '';
+      iniciarPanel();
+    }catch(e){
+      errorBox.textContent = (e && e.message) ? e.message.replace(/^Error:\s*/,'') : 'No se pudo iniciar sesión. Intentá nuevamente.';
+    }finally{
+      submit.disabled = false;
+      submit.innerHTML = 'Ingresar al panel <span aria-hidden="true">→</span>';
+    }
+  });
+
+  // Logout helper disponible para enlazarlo a la navegación sin alterar los módulos existentes.
+  window.cerrarSesionPanel = async function(){
+    const token = tokenActual();
+    try { if(token) await rawFetch(BACKEND, {method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({accion:'logoutPanelV1',token:token})}); } catch(e) {}
+    sessionStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(USER_KEY);
+    mostrarLogin('Sesión cerrada.');
+    if(userInput) userInput.focus();
+  };
+  document.addEventListener('click', function(ev){ const b = ev.target && ev.target.closest ? ev.target.closest('[data-panel-logout]') : null; if(b){ ev.preventDefault(); window.cerrarSesionPanel(); } });
+  window.addEventListener('keydown', function(ev){ if(ev.key === 'Escape' && !cover.hidden) { ev.preventDefault(); } });
+  validarSesionExistente();
+})();
+</script>
 
 </body>
 </html>
