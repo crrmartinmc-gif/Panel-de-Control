@@ -11628,21 +11628,40 @@ function urlFotoEvidenciaVehiculo(evidencia){
 function obtenerUltimasFotosVehiculo(vehiculo){
     const id=String(vehiculo?.ID_VEHICULO||"").trim();
     const dominio=String(vehiculo?.DOMINIO||"").trim().toUpperCase();
+    const normalizarDominio=x=>String(x||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
+    const claveFecha=e=>e?.FECHA_HORA||e?.fechaHora||e?.FECHA||e?.fecha||e?.TIMESTAMP||e?.timestamp||e?.CREADO_EN||e?.createdAt||0;
     return (estadoPanel.evidencias||[]).filter(e=>{
-        const idEv=String(e?.ID_VEHICULO||e?.idVehiculo||"").trim();
-        const tipo=normalizar(e?.TIPO_EVIDENCIA||e?.tipoEvidencia||"");
+        const idEv=String(e?.ID_VEHICULO||e?.idVehiculo||e?.ID_VEHICULO_ASOCIADO||"").trim();
+        const dominioEv=normalizarDominio(e?.DOMINIO||e?.dominio||e?.PATENTE||e?.patente||"");
+        const tipo=normalizar(e?.TIPO_EVIDENCIA||e?.tipoEvidencia||e?.TIPO||e?.tipo||"");
         const origen=normalizar(e?.ORIGEN||e?.origen||"");
         const url=urlFotoEvidenciaVehiculo(e);
-        // Las fotos de inspección/salida son las cuatro vistas del vehículo.
-        const esFotoVehiculo=/FRENTE|TRASERA|LATERAL|INSPECCION|INSPECCIÓN|SALIDA/.test(tipo) || /CHOFERES|DIA VERDE/.test(origen);
-        return url && ((id && idEv===id) || (!idEv && dominio && String(e?.DOMINIO||"").trim().toUpperCase()===dominio)) && esFotoVehiculo;
-    }).sort((a,b)=>new Date(b?.FECHA_HORA||b?.fechaHora||0)-new Date(a?.FECHA_HORA||a?.fechaHora||0)).slice(0,4);
+        const esFotoVehiculo=/FRENTE|TRASERA|LATERAL|INSPECCION|SALIDA|VEHICULO|VEHICULAR|FOTO/.test(tipo) || /CHOFERES|DIA VERDE/.test(origen);
+        const coincideId=id && idEv && idEv===id;
+        const coincideDominio=dominio && dominioEv && normalizarDominio(dominio)===dominioEv;
+        return Boolean(url && (coincideId || coincideDominio) && esFotoVehiculo);
+    }).sort((a,b)=>{
+        const fa=Date.parse(claveFecha(a))||0;
+        const fb=Date.parse(claveFecha(b))||0;
+        return fb-fa;
+    }).slice(0,4);
 }
 
-function verVehiculo(idVehiculo){
+async function verVehiculo(idVehiculo){
     const id=String(idVehiculo||"").trim();
     const v=obtenerVehiculoPorId(id);
     if(!v) return;
+
+    // Refrescar evidencias al abrir la ficha: no depender de la carga inicial
+    // del panel, que puede haber quedado en memoria antes de subir la última foto.
+    try{
+        const evidenciasActualizadas=await leerBackend("evidencias");
+        if(evidenciasActualizadas?.ok && Array.isArray(evidenciasActualizadas.datos)){
+            estadoPanel.evidencias=evidenciasActualizadas.datos;
+        }
+    }catch(error){
+        console.warn("No se pudieron actualizar las fotos del vehículo:",error);
+    }
 
     const ultimasFotos=obtenerUltimasFotosVehiculo(v);
     const fotosVehiculoHTML=ultimasFotos.length ? `<div class="detalle-vehiculo-fotos">${ultimasFotos.map(e=>{
