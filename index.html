@@ -3350,6 +3350,33 @@ textarea.form-control{
   @media(min-width:761px) and (max-height:700px){ .panel-login-shell{min-height:600px;} .panel-login-hero{padding:32px;} .panel-login-form-side{padding:32px;} }
 </style>
 
+
+<style id="panel-role-servicios-css">
+/* Perfil de consulta: solo permite visualizar el módulo Servicios. */
+body.panel-role-servicios .sidebar-scroll .menu-label,
+body.panel-role-servicios .sidebar-scroll .menu button:not([onclick*="'servicios'"]) {
+  display: none !important;
+}
+body.panel-role-servicios .sidebar-scroll nav.menu {
+  display: block !important;
+}
+body.panel-role-servicios .sidebar-scroll nav.menu button[onclick*="'servicios'"] {
+  display: flex !important;
+}
+body.panel-role-servicios .page:not(#servicios) {
+  display: none !important;
+}
+body.panel-role-servicios #servicios .servicio-toolbar button,
+body.panel-role-servicios #servicios button[onclick*="abrirModalServicio"],
+body.panel-role-servicios #servicios button[onclick*="abrirPlanificacion"],
+body.panel-role-servicios #servicios button[onclick*="crear"],
+body.panel-role-servicios #modalServicio,
+body.panel-role-servicios #modalPlanificacionServicio {
+  display: none !important;
+}
+/* Los filtros y el buscador siguen activos; solo se ocultan controles de edición. */
+</style>
+
 </head>
 
 <body class="panel-auth-locked">
@@ -6348,7 +6375,58 @@ function dvActivarMapaPaginaCompleta(){
     },80);
 }
 
+
+/* =========================================================
+   PERMISOS DE INTERFAZ — PERFIL CONSULTA_SERVICIOS
+   NOTA: la autorización real también debe validarse en Backend Maestro.
+   ========================================================= */
+window.panelUsuarioActual = window.panelUsuarioActual || null;
+
+function panelEsConsultaServicios(){
+    const u = window.panelUsuarioActual || {};
+    const rol = String(u.ROL || u.rol || u.ROLE || u.role || u.PERFIL || u.perfil || u.TIPO_USUARIO || u.tipoUsuario || u.tipo_usuario || "").trim().toUpperCase();
+    const permisos = u.permisos || u.permissions || {};
+    const modulos = u.MODULOS || u.modulos || u.MODULES || u.modules || permisos.MODULOS || permisos.modulos || permisos.MODULES || permisos.modules || [];
+    return rol === "CONSULTA_SERVICIOS" ||
+           rol === "SERVICIOS_LECTURA" ||
+           rol === "LECTOR_SERVICIOS" ||
+           (Array.isArray(modulos) && modulos.length === 1 &&
+             String(modulos[0]).toLowerCase() === "servicios" &&
+             (u.soloLectura === true || u.solo_lectura === true || permisos.soloLectura === true));
+}
+
+function panelAplicarPermisosInterfaz(){
+    const usuario = window.panelUsuarioActual || {};
+    if(panelEsConsultaServicios()){
+        document.body.classList.add("panel-role-servicios");
+        document.querySelectorAll(".page").forEach(p => {
+            if(p.id !== "servicios") p.classList.remove("active");
+        });
+        const pagina = document.getElementById("servicios");
+        if(pagina) pagina.classList.add("active");
+        document.querySelectorAll(".menu button").forEach(b => {
+            const esServicios = (b.getAttribute("onclick") || "").includes("'servicios'");
+            b.style.display = esServicios ? "flex" : "none";
+        });
+        const titulo = document.getElementById("topTitle");
+        const descripcion = document.getElementById("topDescription");
+        if(titulo) titulo.textContent = "Servicios";
+        if(descripcion) descripcion.textContent = "Consulta de servicios · Solo lectura";
+    } else {
+        document.body.classList.remove("panel-role-servicios");
+        document.querySelectorAll(".menu button").forEach(b => b.style.removeProperty("display"));
+    }
+}
+
+
 function mostrarPagina(id, boton){
+
+    if(panelEsConsultaServicios() && id !== "servicios"){
+        id = "servicios";
+        boton = [...document.querySelectorAll('.menu button')]
+            .find(b => (b.getAttribute('onclick') || '').includes("'servicios'")) || null;
+    }
+
 
     document
         .querySelectorAll('.page')
@@ -17318,6 +17396,20 @@ function dvOrdenarCapasMapa(){
     try { url = new URL(typeof input === 'string' ? input : input.url, location.href); }
     catch(e){ return rawFetch(input, init); }
     const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+    const storedUser = (() => { try { return JSON.parse(sessionStorage.getItem(USER_KEY) || '{}'); } catch(e) { return {}; } })();
+    const role = String(storedUser.ROL || storedUser.rol || storedUser.ROLE || storedUser.role || storedUser.PERFIL || storedUser.perfil || storedUser.TIPO_USUARIO || storedUser.tipoUsuario || storedUser.tipo_usuario || '').trim().toUpperCase();
+    const perms = storedUser.permisos || storedUser.permissions || {};
+    const mods = storedUser.MODULOS || storedUser.modulos || storedUser.MODULES || storedUser.modules || perms.MODULOS || perms.modulos || perms.MODULES || perms.modules || [];
+    const isServicesReader = ['CONSULTA_SERVICIOS','SERVICIOS_LECTURA','LECTOR_SERVICIOS'].includes(role) ||
+      (Array.isArray(mods) && mods.length === 1 && String(mods[0]).toLowerCase() === 'servicios' &&
+       (storedUser.soloLectura === true || storedUser.solo_lectura === true || perms.soloLectura === true));
+    if(isServicesReader && !accionExenta(url.searchParams.get('accion') || '')){
+      if(method === 'POST') return respuestaLocal({ok:false,error:'PERMISO_DENEGADO: perfil de consulta, sin modificaciones.'});
+      if(method === 'GET'){
+        const requestedAction = url.searchParams.get('accion') || 'estado';
+        if(requestedAction !== 'servicios') return respuestaLocal({ok:false,error:'PERMISO_DENEGADO: este usuario solo puede consultar Servicios.'});
+      }
+    }
     if(method === 'GET'){
       const action = url.searchParams.get('accion') || 'estado';
       if(accionExenta(action)) return rawFetch(input, init);
@@ -17359,11 +17451,19 @@ function dvOrdenarCapasMapa(){
     document.body.classList.remove('panel-auth-locked');
     cover.hidden = true;
     const user = JSON.parse(sessionStorage.getItem(USER_KEY) || '{}');
+    window.panelUsuarioActual = user;
+    panelAplicarPermisosInterfaz();
     const subtitle = document.querySelector('.brand-sub');
     if(subtitle && user && (user.nombre || user.usuario)) subtitle.textContent = (user.nombre || user.usuario) + ' · Gestión Operativa';
     if(!document.getElementById('panelLogoutButton')){
       const logout = document.createElement('button'); logout.id = 'panelLogoutButton'; logout.type = 'button'; logout.setAttribute('data-panel-logout',''); logout.textContent = 'Cerrar sesión';
       const brand = document.querySelector('.sidebar .brand'); if(brand) brand.appendChild(logout); else document.body.appendChild(logout);
+    }
+    if(panelEsConsultaServicios()){
+      if(typeof mostrarPaginaPorNombre === 'function') mostrarPaginaPorNombre('servicios');
+      else if(typeof actualizarTitulo === 'function') actualizarTitulo('servicios');
+      if(typeof cargarServicios === 'function') cargarServicios();
+      return;
     }
     if(typeof actualizarTitulo === 'function') actualizarTitulo('inicio');
     if(typeof actualizarDatosTurboInicial === 'function') actualizarDatosTurboInicial();
