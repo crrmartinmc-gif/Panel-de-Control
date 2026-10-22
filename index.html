@@ -11698,41 +11698,73 @@ function urlFotoEvidenciaVehiculo(evidencia){
     const original=String(evidencia?.URL_DRIVE||evidencia?.urlDrive||evidencia?.URL||evidencia?.url||evidencia?.FOTO||evidencia?.foto||"").trim();
     if(!original) return "";
     if(original.startsWith("data:image/")) return original;
-    let match=original.match(/\/file\/d\/([^/?]+)/) || original.match(/[?&]id=([^&]+)/) || original.match(/\/d\/([^/?]+)/);
+    const match=original.match(/\/file\/d\/([^/?]+)/) || original.match(/[?&]id=([^&]+)/) || original.match(/\/d\/([^/?]+)/);
     if(match && match[1]) return "https://drive.google.com/thumbnail?id="+encodeURIComponent(match[1])+"&sz=w1000";
     return original;
 }
 
+/*
+ * Devuelve una clave estable para identificar la misma foto aunque Drive
+ * la entregue como /file/d/..., /view, /open o /thumbnail.
+ */
+function claveUnicaFotoEvidencia_(evidencia, urlNormalizada){
+    const original=String(
+        evidencia?.URL_DRIVE || evidencia?.urlDrive ||
+        evidencia?.URL || evidencia?.url ||
+        evidencia?.FOTO || evidencia?.foto || urlNormalizada || ""
+    ).trim();
+
+    const match=original.match(/\/file\/d\/([^/?]+)/) ||
+                original.match(/[?&]id=([^&]+)/) ||
+                original.match(/\/d\/([^/?]+)/);
+
+    if(match && match[1]){
+        let id=match[1];
+        try{id=decodeURIComponent(id);}catch(_){}
+        return "DRIVE:"+id;
+    }
+
+    try{
+        const u=new URL(original);
+        ["utm_source","utm_medium","utm_campaign","utm_term","utm_content","cacheBust","_"].forEach(k=>u.searchParams.delete(k));
+        u.hash="";
+        return u.toString();
+    }catch(_){
+        return original
+            .replace(/[?&](utm_[^=]+|cacheBust|_)=([^&]*)/gi,"")
+            .replace(/#.*$/,"");
+    }
+}
+
 function obtenerUltimasFotosVehiculo(vehiculo){
-    const id = String(vehiculo?.ID_VEHICULO || "").trim();
-    const dominio = String(vehiculo?.DOMINIO || "").trim().toUpperCase();
-    const normalizarDominio = x => String(x || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-    const claveFecha = e => e?.FECHA_HORA || e?.fechaHora || e?.FECHA || e?.fecha || e?.TIMESTAMP || e?.timestamp || e?.CREADO_EN || e?.createdAt || 0;
-    const vistas = new Set();
+    const id=String(vehiculo?.ID_VEHICULO||"").trim();
+    const dominio=String(vehiculo?.DOMINIO||"").trim().toUpperCase();
+    const normalizarDominio=x=>String(x||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"");
+    const claveFecha=e=>e?.FECHA_HORA||e?.fechaHora||e?.FECHA||e?.fecha||e?.TIMESTAMP||e?.timestamp||e?.CREADO_EN||e?.createdAt||0;
+    const vistas=new Set();
 
-    return (estadoPanel.evidencias || []).filter(e => {
-        const idEv = String(e?.ID_VEHICULO || e?.idVehiculo || e?.ID_VEHICULO_ASOCIADO || "").trim();
-        const dominioEv = normalizarDominio(e?.DOMINIO || e?.dominio || e?.PATENTE || e?.patente || "");
-        const tipo = normalizar(e?.TIPO_EVIDENCIA || e?.tipoEvidencia || e?.TIPO || e?.tipo || "");
-        const origen = normalizar(e?.ORIGEN || e?.origen || "");
-        const url = urlFotoEvidenciaVehiculo(e);
-        const esFotoVehiculo = /FRENTE|TRASERA|LATERAL|INSPECCION|SALIDA|VEHICULO|VEHICULAR|FOTO/.test(tipo) || /CHOFERES|DIA VERDE/.test(origen);
-        const coincideId = Boolean(id && idEv && idEv === id);
-        const coincideDominio = Boolean(dominio && dominioEv && normalizarDominio(dominio) === dominioEv);
+    return (estadoPanel.evidencias||[]).filter(e=>{
+        const idEv=String(e?.ID_VEHICULO||e?.idVehiculo||e?.ID_VEHICULO_ASOCIADO||"").trim();
+        const dominioEv=normalizarDominio(e?.DOMINIO||e?.dominio||e?.PATENTE||e?.patente||"");
+        const tipo=normalizar(e?.TIPO_EVIDENCIA||e?.tipoEvidencia||e?.TIPO||e?.tipo||"");
+        const origen=normalizar(e?.ORIGEN||e?.origen||"");
+        const url=urlFotoEvidenciaVehiculo(e);
+        const esFotoVehiculo=/FRENTE|TRASERA|LATERAL|INSPECCION|SALIDA|VEHICULO|VEHICULAR|FOTO/.test(tipo)||/CHOFERES|DIA VERDE/.test(origen);
+        const coincideId=Boolean(id&&idEv&&idEv===id);
+        const coincideDominio=Boolean(dominio&&dominioEv&&normalizarDominio(dominio)===dominioEv);
 
-        if (!url || !(coincideId || coincideDominio) || !esFotoVehiculo) return false;
+        if(!url||!(coincideId||coincideDominio)||!esFotoVehiculo)return false;
 
-        // Deduplicar por URL normalizada; fotos diferentes del mismo lateral
-        // siguen apareciendo porque tienen URL distintas.
-        const clave = String(url).trim().replace(/[?&](utm_[^=]+|cacheBust|_)=([^&]*)/gi, "");
-        if (vistas.has(clave)) return false;
+        // La clave se basa en el ID del archivo, no en la URL de visualización.
+        const clave=claveUnicaFotoEvidencia_(e,url);
+        if(vistas.has(clave))return false;
         vistas.add(clave);
         return true;
-    }).sort((a, b) => {
-        const fa = Date.parse(claveFecha(a)) || 0;
-        const fb = Date.parse(claveFecha(b)) || 0;
-        return fb - fa;
-    }).slice(0, 4);
+    }).sort((a,b)=>{
+        const fa=Date.parse(claveFecha(a))||0;
+        const fb=Date.parse(claveFecha(b))||0;
+        return fb-fa;
+    }).slice(0,4);
 }
 
 async function verVehiculo(idVehiculo){
