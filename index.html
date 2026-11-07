@@ -3527,6 +3527,18 @@ hr{border-color:var(--de-line)!important}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 </style>
 
+
+<style id="sidebar-icons-hud-tech">
+/* Iconografía técnica HUD: trazos uniformes, sin emojis ni glifos */
+.sidebar .menu button .menu-icon{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;min-width:36px!important;border:1px solid rgba(73,205,235,.16)!important;border-radius:11px!important;background:linear-gradient(145deg,rgba(24,65,91,.58),rgba(10,27,45,.88))!important;color:#65d9f2!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 4px 14px rgba(0,0,0,.16)!important;transition:all .2s ease!important}
+.sidebar .menu button .menu-icon svg{width:19px!important;height:19px!important;display:block!important;fill:none!important;stroke:currentColor!important;stroke-width:1.65!important;stroke-linecap:round!important;stroke-linejoin:round!important;filter:drop-shadow(0 0 3px rgba(65,210,245,.28))}
+.sidebar .menu button:hover .menu-icon{color:#a5f2ff!important;border-color:rgba(65,220,255,.55)!important;background:linear-gradient(145deg,rgba(17,104,133,.55),rgba(11,42,63,.95))!important;box-shadow:0 0 16px rgba(35,190,225,.16),inset 0 0 10px rgba(50,200,230,.08)!important;transform:translateY(-1px)}
+.sidebar .menu button.active .menu-icon{color:#70f4dc!important;border-color:rgba(55,226,190,.55)!important;background:linear-gradient(145deg,rgba(13,111,104,.48),rgba(9,49,57,.95))!important;box-shadow:0 0 16px rgba(35,225,185,.17),inset 0 0 12px rgba(35,225,185,.1)!important}
+.sidebar .menu button{gap:12px!important}
+.sidebar .menu-label{letter-spacing:1.8px!important;color:#64839d!important}
+@media(max-width:900px){.sidebar .menu button .menu-icon{width:34px!important;height:34px!important;min-width:34px!important}.sidebar .menu button .menu-icon svg{width:18px!important;height:18px!important}}
+</style>
+
 </head>
 
 <body class="panel-auth-locked">
@@ -3585,22 +3597,22 @@ hr{border-color:var(--de-line)!important}
     <nav class="menu">
 
         <button class="active" onclick="mostrarPagina('inicio',this)">
-            <span class="menu-icon">⌂</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-7h6v7"/></svg></span>
             <span>Inicio</span>
         </button>
 
         <button onclick="mostrarPagina('mapa',this)">
-            <span class="menu-icon">◉</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v4M20.5 12h-4M12 20.5v-4M3.5 12h4"/><circle cx="12" cy="12" r="2.5"/></svg></span>
             <span>Mapa Operativo</span>
         </button>
 
         <button onclick="mostrarPagina('inteligencia-flota',this)">
-            <span class="menu-icon">🧠</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4a3 3 0 0 0-5 2 3.5 3.5 0 0 0 0 6 3.5 3.5 0 0 0 2 6 3 3 0 0 0 5 2V4Z"/><path d="M15 4a3 3 0 0 1 5 2 3.5 3.5 0 0 1 0 6 3.5 3.5 0 0 1-2 6 3 3 0 0 1-5 2V4ZM9 8H7m2 8H7m10-8h-2m2 8h-2"/></svg></span>
             <span>Inteligencia de Flota</span>
         </button>
 
         <button onclick="mostrarPagina('ia-flota',this)">
-            <span class="menu-icon">🤖</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="7" width="16" height="13" rx="3"/><path d="M12 3v4M8 12h.01M16 12h.01M9 16h6M2 12h2m16 0h2"/></svg></span>
             <span>IA de Flota</span>
         </button>
 
@@ -3614,37 +3626,37 @@ hr{border-color:var(--de-line)!important}
     <nav class="menu">
 
         <button onclick="mostrarPagina('vehiculos',this)">
-            <span class="menu-icon">🚗</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m5 11 1.5-4h11L19 11l2 2v5h-2v2h-3v-2H8v2H5v-2H3v-5l2-2Z"/><path d="M6.5 14h.01M17.5 14h.01M7 11h10"/></svg></span>
             <span>Vehículos</span>
         </button>
 
         <button onclick="mostrarPagina('choferes',this)">
-            <span class="menu-icon">👤</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/></svg></span>
             <span>Choferes</span>
         </button>
 
         <button onclick="mostrarPagina('servicios',this)">
-            <span class="menu-icon">📋</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8 10h8M8 14h8M8 18h5"/></svg></span>
             <span>Servicios</span>
         </button>
 
         <button onclick="mostrarPagina('asignaciones',this)">
-            <span class="menu-icon">🔗</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 15-2 2a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0"/><path d="m15 9 2-2a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0M8 12h8"/></svg></span>
             <span>Asignaciones</span>
         </button>
 
         <button onclick="mostrarPagina('rutas',this)">
-            <span class="menu-icon">📍</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
             <span>Rutas</span>
         </button>
 
         <button onclick="mostrarPagina('puntosRuta',this)">
-            <span class="menu-icon">📌</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m16 3 5 5-4 1-4 4-1 5-2-2-5 5 4-7-2-2 5-1 4-4Z"/></svg></span>
             <span>Puntos de ruta</span>
         </button>
 
         <button onclick="mostrarPagina('viajes',this)">
-            <span class="menu-icon">🚦</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="3" width="10" height="18" rx="3"/><circle cx="12" cy="7" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="17" r="1.3"/></svg></span>
             <span>Viajes</span>
         </button>
 
@@ -3658,27 +3670,27 @@ hr{border-color:var(--de-line)!important}
     <nav class="menu">
 
         <button onclick="mostrarPagina('inspecciones',this)">
-            <span class="menu-icon">✓</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="9"/></svg></span>
             <span>Inspecciones</span>
         </button>
 
         <button onclick="mostrarPagina('gps',this)">
-            <span class="menu-icon">🛰</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m5 5 4-2 3 3-2 4-4-1-1-4ZM19 19l-4 2-3-3 2-4 4 1 1 4Z"/><path d="m9 9 6 6M3 12l3-1m6-8 1 3m8 6-3 1m-6 8-1-3"/></svg></span>
             <span>GPS</span>
         </button>
 
         <button onclick="mostrarPagina('reportes',this)">
-            <span class="menu-icon">⚠</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 22 20H2L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg></span>
             <span>Reportes</span>
         </button>
 
         <button onclick="mostrarPagina('mantenimiento',this)">
-            <span class="menu-icon">🔧</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 6a5 5 0 0 0-6 6L3 17a2 2 0 0 0 3 3l5-5a5 5 0 0 0 6-6l-3 3-3-3 3-3Z"/></svg></span>
             <span>Mantenimiento</span>
         </button>
 
         <button onclick="mostrarPagina('eventos',this)">
-            <span class="menu-icon">◷</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
             <span>Eventos</span>
         </button>
 
@@ -3692,12 +3704,12 @@ hr{border-color:var(--de-line)!important}
     <nav class="menu">
 
         <button onclick="mostrarPagina('usuarios',this)">
-            <span class="menu-icon">⚙</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.2 2.1-2 2-2.2-1.2a8 8 0 0 1-1.5.6L14.5 21h-5l-.5-2.4a8 8 0 0 1-1.5-.6L5.3 19.2l-2-2 1.2-2.2a8 8 0 0 1-.6-1.5L1.5 13v-2l2.4-.5a8 8 0 0 1 .6-1.5L3.3 6.8l2-2 2.2 1.2a8 8 0 0 1 1.5-.6L9.5 3h5l.5 2.4a8 8 0 0 1 1.5.6l2.2-1.2 2 2-1.2 2.2a8 8 0 0 1 .6 1.5l2.4.5v2l-2.4.5a8 8 0 0 1-.5 1.5Z"/></svg></span>
             <span>Usuarios</span>
         </button>
 
         <button onclick="mostrarPagina('configuracion',this)">
-            <span class="menu-icon">⚙</span>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.2 2.1-2 2-2.2-1.2a8 8 0 0 1-1.5.6L14.5 21h-5l-.5-2.4a8 8 0 0 1-1.5-.6L5.3 19.2l-2-2 1.2-2.2a8 8 0 0 1-.6-1.5L1.5 13v-2l2.4-.5a8 8 0 0 1 .6-1.5L3.3 6.8l2-2 2.2 1.2a8 8 0 0 1 1.5-.6L9.5 3h5l.5 2.4a8 8 0 0 1 1.5.6l2.2-1.2 2 2-1.2 2.2a8 8 0 0 1 .6 1.5l2.4.5v2l-2.4.5a8 8 0 0 1-.5 1.5Z"/></svg></span>
             <span>Configuración</span>
         </button>
 
