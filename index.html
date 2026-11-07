@@ -1010,82 +1010,6 @@ tr:hover td{
 }
 
 /* =========================================================
-   ORDEN Y COMPORTAMIENTO UNIFICADO DE FILTROS
-   Orden recomendado: búsqueda → contexto/área → fecha/estado → acciones.
-   Solo presentación; conserva IDs, valores y funciones originales.
-   ========================================================= */
-.servicio-toolbar,
-.asignacion-toolbar,
-.ruta-toolbar,
-.punto-toolbar,
-.viaje-toolbar,
-.inspeccion-toolbar,
-.evento-toolbar,
-.reporte-toolbar,
-.reportes-toolbar,
-.mantenimiento-toolbar,
-.chofer-toolbar,
-#dvMapFilterBar,
-.filters{
-    display:flex;
-    align-items:center;
-    gap:9px;
-    flex-wrap:wrap;
-}
-.servicio-toolbar .filter,
-.asignacion-toolbar .filter,
-.ruta-toolbar .filter,
-.punto-toolbar .filter,
-.viaje-toolbar .filter,
-.inspeccion-toolbar .filter,
-.evento-toolbar .filter,
-.reporte-toolbar .filter,
-.reportes-toolbar .filter,
-.mantenimiento-toolbar .filter,
-.chofer-toolbar .filter,
-.filters .filter{
-    min-width:170px;
-}
-.servicio-toolbar .servicio-search,
-.asignacion-toolbar .asignacion-search,
-.filters #filtroDominio,
-.usuarios-filtros input{
-    flex:1 1 240px;
-}
-@media(max-width:700px){
-    .servicio-toolbar,
-    .asignacion-toolbar,
-    .ruta-toolbar,
-    .punto-toolbar,
-    .viaje-toolbar,
-    .inspeccion-toolbar,
-    .evento-toolbar,
-    .reporte-toolbar,
-    .reportes-toolbar,
-    .mantenimiento-toolbar,
-    .chofer-toolbar,
-    .filters{
-        width:100%;
-    }
-    .servicio-toolbar .filter,
-    .asignacion-toolbar .filter,
-    .ruta-toolbar .filter,
-    .punto-toolbar .filter,
-    .viaje-toolbar .filter,
-    .inspeccion-toolbar .filter,
-    .evento-toolbar .filter,
-    .reporte-toolbar .filter,
-    .reportes-toolbar .filter,
-    .mantenimiento-toolbar .filter,
-    .chofer-toolbar .filter,
-    .filters .filter{
-        flex:1 1 100%;
-        width:100%;
-        min-width:0;
-    }
-}
-
-/* =========================================================
    FILTERS
    ========================================================= */
 
@@ -3454,23 +3378,153 @@ body.panel-role-servicios #modalPlanificacionServicio {
 </style>
 
 
-<style id="redisenio-premium-2026">
-:root{--bg:#07111f;--bg2:#0b1728;--panel:#101e31;--panel2:#14243a;--border:rgba(148,163,184,.16);--text:#edf4ff;--muted:#91a3bb;--green:#35d07f;--green2:#18a866;--blue:#4b9cff;--cyan:#36c8e6;--shadow:0 18px 50px rgba(0,0,0,.28);--radius:16px}
-html{scroll-behavior:smooth}body{background:radial-gradient(ellipse at 12% 0%,rgba(28,104,120,.16),transparent 34%),radial-gradient(ellipse at 90% 8%,rgba(43,105,190,.13),transparent 30%),var(--bg)!important;color:var(--text);letter-spacing:.01em}
-button{transition:transform .18s ease,filter .18s ease,box-shadow .18s ease}button:hover{filter:brightness(1.09)}button:active{transform:translateY(1px)}
-.sidebar{background:linear-gradient(180deg,#0d1b2d 0%,#091525 100%)!important;border-color:var(--border)!important;box-shadow:8px 0 30px rgba(0,0,0,.12)}
-.brand-logo{box-shadow:0 8px 28px rgba(53,208,127,.24)}
-.main,.content,.main-content{background:transparent!important}
-.card,.stat-card,.kpi-card,.panel,.modal-content{border-color:var(--border)!important;border-radius:var(--radius)!important;box-shadow:0 8px 28px rgba(0,0,0,.16)}
-.card:hover,.stat-card:hover,.kpi-card:hover{border-color:rgba(65,190,150,.34)!important}
-h1,h2,h3,h4{letter-spacing:-.025em}h1{font-weight:800}h2,h3{font-weight:700}
-.menu button{border-radius:10px!important;transition:background .18s ease,color .18s ease,transform .18s ease}.menu button:hover{background:rgba(61,190,143,.10)!important;color:#eafff5!important}
-input,select,textarea{border-radius:10px!important}input:focus,select:focus,textarea:focus{border-color:rgba(54,200,230,.65)!important;box-shadow:0 0 0 3px rgba(54,200,230,.10)!important}
-table{border-collapse:separate;border-spacing:0}thead th{font-weight:700;letter-spacing:.045em}tbody tr{transition:background .15s ease}tbody tr:hover{background:rgba(55,190,140,.055)!important}
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid rgba(54,200,230,.8)!important;outline-offset:2px}
-*{scrollbar-width:thin;scrollbar-color:#29435d transparent}*::-webkit-scrollbar{width:9px;height:9px}*::-webkit-scrollbar-thumb{background:#29435d;border:2px solid transparent;background-clip:padding-box;border-radius:20px}
-@media(max-width:900px){.card,.stat-card,.kpi-card{border-radius:13px!important}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+<style id="dark-enterprise-total-redesign-2026">
+/* ================================================================
+   DARK ENTERPRISE 2026 — REDISEÑO VISUAL INTEGRAL
+   Capa de presentación. Conserva DOM, IDs, eventos, lógica y backend.
+   ================================================================ */
+:root{
+ --de-bg:#070d18;--de-bg2:#0b1422;--de-side:#091321;--de-surface:#101d2e;
+ --de-surface2:#14243a;--de-surface3:#192d45;--de-line:rgba(151,174,202,.14);
+ --de-text:#edf4fc;--de-muted:#91a4ba;--de-accent:#45e0a0;--de-accent2:#19b981;
+ --de-blue:#58a6ff;--de-cyan:#46d5e8;--de-amber:#f5bd57;--de-red:#ff6878;
+ --de-shadow:0 16px 42px rgba(0,0,0,.28);--de-radius:17px;
+}
+*{box-sizing:border-box}
+html{background:var(--de-bg);scroll-behavior:smooth}
+body,html{background:var(--de-bg)!important;color:var(--de-text)!important}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif!important;letter-spacing:.005em}
+body:before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 72% -12%,rgba(33,116,139,.17),transparent 38%),radial-gradient(ellipse at 8% 45%,rgba(36,111,91,.10),transparent 34%),linear-gradient(145deg,#070d18,#0a1422 55%,#08111d)}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;transition:transform .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease,filter .18s ease}
+button:active{transform:translateY(1px)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--de-cyan)!important;outline-offset:3px}
+
+/* Estructura general y navegación */
+.app{min-height:100vh!important;background:transparent!important}
+.sidebar{width:266px!important;min-width:266px!important;background:linear-gradient(180deg,#0c1929 0%,#091321 52%,#08111e 100%)!important;border-right:1px solid var(--de-line)!important;box-shadow:12px 0 36px rgba(0,0,0,.14)!important;padding:22px 15px 16px!important;z-index:50}
+.brand{padding:9px 10px 23px!important;margin-bottom:15px!important;border-bottom:1px solid var(--de-line)!important;gap:12px!important}
+.brand-logo{width:45px!important;height:45px!important;display:grid!important;place-items:center!important;border-radius:14px!important;background:linear-gradient(145deg,#1b9d79,#146b72)!important;box-shadow:0 8px 24px rgba(25,185,129,.23)!important;font-size:22px!important}
+.brand-title{font-size:15px!important;font-weight:850!important;letter-spacing:.12em!important;color:#f4f8fc!important}
+.brand-sub{font-size:11px!important;color:#8ea4bb!important;letter-spacing:.035em!important;margin-top:4px!important}
+.menu-label{padding:17px 11px 8px!important;color:#657c96!important;font-size:9px!important;font-weight:800!important;letter-spacing:.17em!important;text-transform:uppercase!important}
+.menu{gap:4px!important}
+.menu button{width:100%!important;min-height:42px!important;display:flex!important;align-items:center!important;gap:12px!important;padding:9px 12px!important;margin:2px 0!important;border:1px solid transparent!important;border-radius:11px!important;background:transparent!important;color:#a9b9ca!important;text-align:left!important;font-size:12px!important;font-weight:600!important;box-shadow:none!important}
+.menu button .menu-icon{width:23px!important;min-width:23px!important;height:23px!important;display:grid!important;place-items:center!important;border-radius:7px!important;background:rgba(139,164,191,.08)!important;color:#8da6bf!important;font-size:14px!important}
+.menu button:hover{background:rgba(77,215,163,.075)!important;border-color:rgba(69,224,160,.12)!important;color:#f0fff8!important;transform:translateX(2px)}
+.menu button.active{background:linear-gradient(100deg,rgba(40,190,137,.20),rgba(40,190,137,.055))!important;border-color:rgba(69,224,160,.20)!important;color:#eafff5!important;box-shadow:inset 3px 0 0 var(--de-accent)!important}
+.menu button.active .menu-icon{background:rgba(69,224,160,.15)!important;color:var(--de-accent)!important}
+.sidebar-bottom{padding:13px 4px 2px!important}
+.connection-box{padding:13px 14px!important;border:1px solid var(--de-line)!important;border-radius:13px!important;background:rgba(18,37,57,.78)!important}
+.connection-title{font-size:9px!important;letter-spacing:.13em!important;color:#8298b0!important;font-weight:800!important}
+.connection-status{font-size:11px!important;color:#c4d3e2!important;margin-top:8px!important}
+
+/* Cabecera fija y área de trabajo */
+.main{margin-left:266px!important;width:calc(100% - 266px)!important;min-width:0!important;background:transparent!important}
+.topbar{position:sticky!important;top:0!important;z-index:30!important;min-height:83px!important;padding:17px 34px!important;background:rgba(8,17,30,.86)!important;border-bottom:1px solid var(--de-line)!important;backdrop-filter:blur(18px)!important;box-shadow:0 8px 26px rgba(0,0,0,.12)!important}
+.page-title{font-size:17px!important;font-weight:800!important;letter-spacing:-.035em!important;color:#f4f8ff!important}
+.page-description{font-size:11px!important;color:#8399b2!important;margin-top:5px!important}
+.top-actions{gap:10px!important}
+.search{min-width:210px!important;background:#101f31!important;border:1px solid var(--de-line)!important;border-radius:11px!important;padding:10px 13px!important;color:#edf4fc!important}
+.icon-btn{width:39px!important;height:39px!important;border:1px solid var(--de-line)!important;border-radius:11px!important;background:#122238!important;color:#b8c9da!important}
+.icon-btn:hover{border-color:rgba(69,224,160,.35)!important;background:#183149!important;color:#fff!important}
+.user{padding:5px 10px 5px 6px!important;border:1px solid var(--de-line)!important;border-radius:13px!important;background:rgba(17,32,50,.75)!important;gap:9px!important}
+.user-avatar{width:34px!important;height:34px!important;border-radius:10px!important;background:linear-gradient(145deg,#1e9879,#246d91)!important;color:white!important;font-size:11px!important;font-weight:800!important}
+.user-name{font-size:11px!important;font-weight:700!important;color:#eaf2fb!important}
+.user-role{font-size:9px!important;color:#8298b0!important;margin-top:3px!important}
+.content{max-width:1900px!important;padding:30px 34px 48px!important;margin:0 auto!important}
+.page{animation:deFade .28s ease both}
+@keyframes deFade{from{opacity:.35;transform:translateY(5px)}to{opacity:1;transform:none}}
+.section-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:18px!important;margin:0 0 23px!important;padding:0 0 17px!important;border-bottom:1px solid var(--de-line)!important}
+.section-head h2{font-size:23px!important;line-height:1.2!important;letter-spacing:-.045em!important;font-weight:850!important;color:#f2f7ff!important;margin:0!important}
+.section-head p{font-size:12px!important;color:#8ea3ba!important;margin:7px 0 0!important}
+
+/* Superficies, paneles y jerarquía */
+.panel{background:linear-gradient(155deg,rgba(19,35,54,.97),rgba(13,26,42,.98))!important;border:1px solid var(--de-line)!important;border-radius:var(--de-radius)!important;box-shadow:var(--de-shadow)!important;overflow:hidden!important}
+.panel-header,.panel-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:14px!important;padding:19px 21px!important;border-bottom:1px solid var(--de-line)!important;background:rgba(22,41,62,.45)!important}
+.panel-title{font-size:13px!important;font-weight:800!important;color:#edf5ff!important;letter-spacing:-.015em!important}
+.panel-subtitle{font-size:10px!important;color:#8299b2!important;margin-top:5px!important}
+.panel-body{padding:19px 21px!important}
+.kpi-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:15px!important;margin:0 0 20px!important}
+.kpi{position:relative!important;overflow:hidden!important;min-height:142px!important;padding:19px 19px 16px!important;border:1px solid var(--de-line)!important;border-radius:16px!important;background:linear-gradient(145deg,#15283d,#101d2e 72%)!important;box-shadow:0 12px 30px rgba(0,0,0,.18)!important;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease!important}
+.kpi:after{content:"";position:absolute;width:115px;height:115px;right:-38px;top:-46px;border-radius:50%;background:radial-gradient(circle,rgba(69,224,160,.12),transparent 70%);pointer-events:none}
+.kpi:hover{transform:translateY(-3px)!important;border-color:rgba(69,224,160,.28)!important;box-shadow:0 18px 38px rgba(0,0,0,.25)!important}
+.kpi-top{position:relative;z-index:1}
+.kpi-label{font-size:10px!important;font-weight:750!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#91a6bd!important}
+.kpi-number{font-size:31px!important;line-height:1.15!important;font-weight:850!important;letter-spacing:-.055em!important;color:#f3f8ff!important;margin:13px 0 8px!important;font-variant-numeric:tabular-nums}
+.kpi-footer{font-size:10px!important;color:#8298b0!important}
+.kpi-icon{width:37px!important;height:37px!important;display:grid!important;place-items:center!important;border-radius:11px!important;font-size:16px!important;border:1px solid rgba(255,255,255,.06)!important}
+.kpi-icon.green{background:rgba(38,198,132,.14)!important;color:#55e3a6!important}
+.kpi-icon.blue{background:rgba(74,153,255,.14)!important;color:#75b5ff!important}
+.kpi-icon.cyan{background:rgba(55,205,225,.14)!important;color:#69e2ed!important}
+.kpi-icon.red{background:rgba(255,104,120,.13)!important;color:#ff8794!important}
+.kpi-icon.yellow{background:rgba(245,189,87,.14)!important;color:#ffd17c!important}
+
+/* Filtros y controles de búsqueda */
+.filters{display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:9px!important;padding:14px 18px!important;border-bottom:1px solid var(--de-line)!important;background:rgba(8,18,31,.42)!important}
+.filter,.filters input,.filters select,.section-head .filter{min-height:39px!important;max-width:100%!important;padding:9px 12px!important;border:1px solid rgba(143,169,198,.19)!important;border-radius:10px!important;background:#0d1b2b!important;color:#e8f1fb!important;font-size:11px!important;box-shadow:inset 0 1px 2px rgba(0,0,0,.12)!important}
+.filter:hover,.filters input:hover,.filters select:hover{border-color:rgba(69,224,160,.35)!important}
+.filter:focus,.filters input:focus,.filters select:focus{border-color:var(--de-accent)!important;box-shadow:0 0 0 3px rgba(69,224,160,.10)!important}
+input::placeholder,textarea::placeholder{color:#71869e!important;opacity:1}
+select option{background:#102035!important;color:#edf4fc!important}
+
+/* Botones */
+.btn{min-height:38px!important;padding:9px 15px!important;border-radius:10px!important;font-size:11px!important;font-weight:750!important;letter-spacing:.01em!important;border:1px solid var(--de-line)!important;box-shadow:none!important}
+.btn-primary{background:linear-gradient(135deg,#1eb77e,#168c70)!important;border-color:rgba(69,224,160,.35)!important;color:#04170f!important;box-shadow:0 7px 18px rgba(25,185,129,.18)!important}
+.btn-primary:hover{filter:brightness(1.1)!important;box-shadow:0 10px 24px rgba(25,185,129,.25)!important;transform:translateY(-1px)}
+button:not(.menu button):not(.icon-btn):not(.btn-primary){border-radius:10px}
+
+/* Tablas profesionales */
+.table-wrap{width:100%!important;overflow:auto!important;background:rgba(8,17,29,.18)!important}
+table{width:100%!important;border-collapse:separate!important;border-spacing:0!important;color:#dce7f3!important;font-size:11px!important}
+thead th{position:sticky!important;top:0!important;z-index:2!important;padding:13px 14px!important;background:#172a40!important;color:#91a9c2!important;border-bottom:1px solid rgba(151,174,202,.2)!important;font-size:9px!important;font-weight:850!important;letter-spacing:.10em!important;text-transform:uppercase!important;white-space:nowrap!important}
+tbody td{padding:12px 14px!important;border-bottom:1px solid rgba(151,174,202,.085)!important;color:#c7d5e4!important;vertical-align:middle!important}
+tbody tr{background:rgba(14,28,44,.35)!important;transition:background .15s ease!important}
+tbody tr:nth-child(even){background:rgba(20,38,58,.42)!important}
+tbody tr:hover{background:rgba(50,177,137,.09)!important}
+tbody tr:last-child td{border-bottom:0!important}
+.status-badge{display:inline-flex!important;align-items:center!important;gap:5px!important;padding:5px 9px!important;border-radius:999px!important;font-size:9px!important;font-weight:800!important;letter-spacing:.035em!important;border:1px solid transparent!important}
+.badge-green{background:rgba(40,198,132,.12)!important;color:#65e7ad!important;border-color:rgba(69,224,160,.18)!important}
+.badge-yellow{background:rgba(245,189,87,.12)!important;color:#ffd17b!important;border-color:rgba(245,189,87,.18)!important}
+.badge-red{background:rgba(255,104,120,.12)!important;color:#ff8b98!important;border-color:rgba(255,104,120,.18)!important}
+
+/* Mapa, listados y módulos */
+#mapa .panel,#inicio .inicio-mapa-panel{border-color:rgba(70,213,232,.18)!important}
+#inicio .inicio-mapa-panel .panel-header{background:linear-gradient(90deg,rgba(30,93,112,.22),rgba(22,41,62,.42))!important}
+#inicio .inicio-resumen-panel{height:100%!important}
+#inicio .inicio-actividad-panel{margin-top:18px!important}
+.page>.panel,.page>.section-head+.panel{margin-bottom:18px!important}
+.page [class*="grid"]{min-width:0}
+
+/* Login: acceso institucional de alto impacto */
+#panelLoginCover{background:radial-gradient(ellipse at 18% 15%,rgba(31,145,123,.22),transparent 40%),radial-gradient(ellipse at 85% 80%,rgba(54,125,194,.18),transparent 42%),#060d18!important;backdrop-filter:blur(8px)!important}
+.panel-login-shell{max-width:1040px!important;min-height:570px!important;border:1px solid rgba(151,174,202,.18)!important;border-radius:25px!important;overflow:hidden!important;background:#0d1929!important;box-shadow:0 35px 100px rgba(0,0,0,.55)!important}
+.panel-login-hero{background:linear-gradient(145deg,rgba(12,77,76,.96),rgba(10,31,49,.98) 68%,#0d1b2d)!important;position:relative!important;overflow:hidden!important}
+.panel-login-hero:after{content:"";position:absolute;width:340px;height:340px;right:-110px;bottom:-130px;border:1px solid rgba(69,224,160,.16);border-radius:50%;box-shadow:0 0 0 35px rgba(69,224,160,.035),0 0 0 75px rgba(69,224,160,.025);pointer-events:none}
+.panel-login-emblem{background:linear-gradient(145deg,#31d69a,#168d82)!important;box-shadow:0 12px 30px rgba(22,185,129,.25)!important}
+.panel-login-title{font-size:clamp(30px,4vw,43px)!important;line-height:1.08!important;letter-spacing:-.055em!important;font-weight:850!important}
+.panel-login-desc{color:#b4c8d9!important;line-height:1.8!important;font-size:13px!important}
+.panel-login-form-side{background:linear-gradient(160deg,#12243a,#0d1929)!important}
+.panel-login-form h2{font-size:25px!important;letter-spacing:-.04em!important;color:#f3f8ff!important}
+.panel-login-subtitle{color:#91a7bd!important;line-height:1.65!important}
+.panel-login-field input{min-height:47px!important;background:#091625!important;border:1px solid rgba(151,174,202,.2)!important;border-radius:11px!important;color:#f0f6fc!important}
+.panel-login-form button{min-height:47px!important;border-radius:11px!important;background:linear-gradient(135deg,#29c98d,#168d75)!important;color:#04180f!important;font-weight:850!important;box-shadow:0 9px 24px rgba(25,185,129,.2)!important}
+.panel-login-security{color:#71879e!important;line-height:1.6!important}
+
+/* Scrollbar y pequeños detalles */
+*{scrollbar-width:thin;scrollbar-color:#29435a transparent}
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#29435a;border:2px solid transparent;background-clip:padding-box;border-radius:20px}
+hr{border-color:var(--de-line)!important}
+
+/* Responsive real */
+@media(max-width:1200px){.content{padding:25px 23px 40px!important}.topbar{padding:15px 23px!important}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:900px){.sidebar{width:76px!important;min-width:76px!important;padding:16px 9px!important}.main{margin-left:76px!important;width:calc(100% - 76px)!important}.brand{justify-content:center!important;padding:8px 0 18px!important}.brand>div:not(.brand-logo){display:none!important}.menu-label{font-size:0!important;padding:13px 0 5px!important}.menu button{justify-content:center!important;padding:9px 5px!important}.menu button span:not(.menu-icon){display:none!important}.menu button .menu-icon{width:34px!important;height:34px!important}.connection-box{padding:9px 4px!important}.connection-title,.connection-status{font-size:0!important}.topbar{padding:13px 17px!important}.content{padding:22px 17px 35px!important}}
+@media(max-width:640px){.topbar{align-items:flex-start!important;gap:10px!important;flex-wrap:wrap!important}.top-actions{width:100%!important;justify-content:flex-end!important}.search{min-width:0!important;flex:1!important}.content{padding:18px 12px 30px!important}.section-head{align-items:flex-start!important;flex-wrap:wrap!important}.section-head h2{font-size:20px!important}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}.kpi{min-height:122px!important;padding:14px!important}.kpi-number{font-size:25px!important}.panel-header,.panel-head{padding:15px!important}.panel-body{padding:14px!important}.filters{padding:11px!important}.filter,.filters input,.filters select{flex:1 1 145px!important;width:auto!important}.panel-login-shell{width:calc(100% - 24px)!important;min-height:0!important;border-radius:18px!important}.panel-login-hero{padding:25px!important}.panel-login-form-side{padding:25px!important}}
+@media(max-width:420px){.sidebar{width:62px!important;min-width:62px!important;padding:12px 5px!important}.main{margin-left:62px!important;width:calc(100% - 62px)!important}.brand-logo{width:39px!important;height:39px!important}.menu button .menu-icon{width:31px!important;height:31px!important}.kpi-grid{grid-template-columns:1fr 1fr!important}.user-info{display:none!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 </style>
 
 </head>
@@ -4160,15 +4214,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
                     oninput="filtrarVehiculos()"
                 >
 
-                <select class="filter" id="filtroArea" onchange="filtrarVehiculos()" title="Filtrar por área responsable">
-                    <option value="">Todas las áreas</option>
-                </select>
-
-                <select class="filter" id="filtroEstado" onchange="filtrarVehiculos()" title="Filtrar por estado operativo">
+                <select class="filter" id="filtroEstado" onchange="filtrarVehiculos()">
                     <option value="">Todos los estados</option>
                     <option value="DISPONIBLE">DISPONIBLE</option>
                     <option value="EN TALLER">EN TALLER</option>
                     <option value="FUERA DE SERVICIO">FUERA DE SERVICIO</option>
+                </select>
+
+                <select class="filter" id="filtroArea" onchange="filtrarVehiculos()">
+                    <option value="">Todas las áreas</option>
                 </select>
                 <span id="contadorVehiculos" class="vehicle-count">
                     0 vehículos
@@ -4320,9 +4374,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
             <p>Programación y control de servicios</p>
         </div>
         <div class="servicio-toolbar">
-            <input id="filtroServicio" class="filter servicio-search"
-                   placeholder="Buscar servicio, tipo o ruta..."
-                   oninput="filtrarServicios()">
             <select id="filtroFechaServicio" class="filter servicio-date-filter"
                     onchange="filtrarServicios()" title="Filtrar servicios por fecha">
                 <option value="hoy" selected>📅 Servicios de hoy</option>
@@ -4332,6 +4383,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
                 <option value="7">📅 Últimos 7 días</option>
                 <option value="30">📅 Últimos 30 días</option>
             </select>
+            <input id="filtroServicio" class="filter servicio-search"
+                   placeholder="Buscar servicio, tipo o ruta..."
+                   oninput="filtrarServicios()">
             <button class="btn btn-secondary"
                     type="button"
                     onclick="abrirModalPlanificacionMasiva()">
@@ -5212,17 +5266,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
         <div class="usuarios-filtros">
             <input id="buscarUsuarios" class="form-control" placeholder="Buscar usuario, nombre o ID..." oninput="filtrarUsuarios()">
-            <select id="filtroUsuarioApp" class="form-control" onchange="filtrarUsuarios()" title="Filtrar por aplicación">
-                <option value="">Todas las aplicaciones</option>
-                <option value="PANEL">PANEL</option>
-                <option value="DIA_VERDE">DIA_VERDE</option>
-                <option value="CHOFERES">CHOFERES</option>
-            </select>
-            <select id="filtroUsuarioRol" class="form-control" onchange="filtrarUsuarios()" title="Filtrar por rol">
+            <select id="filtroUsuarioRol" class="form-control" onchange="filtrarUsuarios()">
                 <option value="">Todos los roles</option>
                 <option value="ADMIN">ADMIN</option>
                 <option value="SUPERVISOR">SUPERVISOR</option>
                 <option value="CHOFER">CHOFER</option>
+            </select>
+            <select id="filtroUsuarioApp" class="form-control" onchange="filtrarUsuarios()">
+                <option value="">Todas las aplicaciones</option>
+                <option value="PANEL">PANEL</option>
+                <option value="DIA_VERDE">DIA_VERDE</option>
+                <option value="CHOFERES">CHOFERES</option>
             </select>
             <select id="filtroUsuarioEstado" class="form-control" onchange="filtrarUsuarios()">
                 <option value="">Todos los estados</option>
