@@ -1010,6 +1010,82 @@ tr:hover td{
 }
 
 /* =========================================================
+   ORDEN Y COMPORTAMIENTO UNIFICADO DE FILTROS
+   Orden recomendado: búsqueda → contexto/área → fecha/estado → acciones.
+   Solo presentación; conserva IDs, valores y funciones originales.
+   ========================================================= */
+.servicio-toolbar,
+.asignacion-toolbar,
+.ruta-toolbar,
+.punto-toolbar,
+.viaje-toolbar,
+.inspeccion-toolbar,
+.evento-toolbar,
+.reporte-toolbar,
+.reportes-toolbar,
+.mantenimiento-toolbar,
+.chofer-toolbar,
+#dvMapFilterBar,
+.filters{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    flex-wrap:wrap;
+}
+.servicio-toolbar .filter,
+.asignacion-toolbar .filter,
+.ruta-toolbar .filter,
+.punto-toolbar .filter,
+.viaje-toolbar .filter,
+.inspeccion-toolbar .filter,
+.evento-toolbar .filter,
+.reporte-toolbar .filter,
+.reportes-toolbar .filter,
+.mantenimiento-toolbar .filter,
+.chofer-toolbar .filter,
+.filters .filter{
+    min-width:170px;
+}
+.servicio-toolbar .servicio-search,
+.asignacion-toolbar .asignacion-search,
+.filters #filtroDominio,
+.usuarios-filtros input{
+    flex:1 1 240px;
+}
+@media(max-width:700px){
+    .servicio-toolbar,
+    .asignacion-toolbar,
+    .ruta-toolbar,
+    .punto-toolbar,
+    .viaje-toolbar,
+    .inspeccion-toolbar,
+    .evento-toolbar,
+    .reporte-toolbar,
+    .reportes-toolbar,
+    .mantenimiento-toolbar,
+    .chofer-toolbar,
+    .filters{
+        width:100%;
+    }
+    .servicio-toolbar .filter,
+    .asignacion-toolbar .filter,
+    .ruta-toolbar .filter,
+    .punto-toolbar .filter,
+    .viaje-toolbar .filter,
+    .inspeccion-toolbar .filter,
+    .evento-toolbar .filter,
+    .reporte-toolbar .filter,
+    .reportes-toolbar .filter,
+    .mantenimiento-toolbar .filter,
+    .chofer-toolbar .filter,
+    .filters .filter{
+        flex:1 1 100%;
+        width:100%;
+        min-width:0;
+    }
+}
+
+/* =========================================================
    FILTERS
    ========================================================= */
 
@@ -3377,6 +3453,26 @@ body.panel-role-servicios #modalPlanificacionServicio {
 /* Los filtros y el buscador siguen activos; solo se ocultan controles de edición. */
 </style>
 
+
+<style id="redisenio-premium-2026">
+:root{--bg:#07111f;--bg2:#0b1728;--panel:#101e31;--panel2:#14243a;--border:rgba(148,163,184,.16);--text:#edf4ff;--muted:#91a3bb;--green:#35d07f;--green2:#18a866;--blue:#4b9cff;--cyan:#36c8e6;--shadow:0 18px 50px rgba(0,0,0,.28);--radius:16px}
+html{scroll-behavior:smooth}body{background:radial-gradient(ellipse at 12% 0%,rgba(28,104,120,.16),transparent 34%),radial-gradient(ellipse at 90% 8%,rgba(43,105,190,.13),transparent 30%),var(--bg)!important;color:var(--text);letter-spacing:.01em}
+button{transition:transform .18s ease,filter .18s ease,box-shadow .18s ease}button:hover{filter:brightness(1.09)}button:active{transform:translateY(1px)}
+.sidebar{background:linear-gradient(180deg,#0d1b2d 0%,#091525 100%)!important;border-color:var(--border)!important;box-shadow:8px 0 30px rgba(0,0,0,.12)}
+.brand-logo{box-shadow:0 8px 28px rgba(53,208,127,.24)}
+.main,.content,.main-content{background:transparent!important}
+.card,.stat-card,.kpi-card,.panel,.modal-content{border-color:var(--border)!important;border-radius:var(--radius)!important;box-shadow:0 8px 28px rgba(0,0,0,.16)}
+.card:hover,.stat-card:hover,.kpi-card:hover{border-color:rgba(65,190,150,.34)!important}
+h1,h2,h3,h4{letter-spacing:-.025em}h1{font-weight:800}h2,h3{font-weight:700}
+.menu button{border-radius:10px!important;transition:background .18s ease,color .18s ease,transform .18s ease}.menu button:hover{background:rgba(61,190,143,.10)!important;color:#eafff5!important}
+input,select,textarea{border-radius:10px!important}input:focus,select:focus,textarea:focus{border-color:rgba(54,200,230,.65)!important;box-shadow:0 0 0 3px rgba(54,200,230,.10)!important}
+table{border-collapse:separate;border-spacing:0}thead th{font-weight:700;letter-spacing:.045em}tbody tr{transition:background .15s ease}tbody tr:hover{background:rgba(55,190,140,.055)!important}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid rgba(54,200,230,.8)!important;outline-offset:2px}
+*{scrollbar-width:thin;scrollbar-color:#29435d transparent}*::-webkit-scrollbar{width:9px;height:9px}*::-webkit-scrollbar-thumb{background:#29435d;border:2px solid transparent;background-clip:padding-box;border-radius:20px}
+@media(max-width:900px){.card,.stat-card,.kpi-card{border-radius:13px!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+
 </head>
 
 <body class="panel-auth-locked">
@@ -4064,15 +4160,15 @@ body.panel-role-servicios #modalPlanificacionServicio {
                     oninput="filtrarVehiculos()"
                 >
 
-                <select class="filter" id="filtroEstado" onchange="filtrarVehiculos()">
+                <select class="filter" id="filtroArea" onchange="filtrarVehiculos()" title="Filtrar por área responsable">
+                    <option value="">Todas las áreas</option>
+                </select>
+
+                <select class="filter" id="filtroEstado" onchange="filtrarVehiculos()" title="Filtrar por estado operativo">
                     <option value="">Todos los estados</option>
                     <option value="DISPONIBLE">DISPONIBLE</option>
                     <option value="EN TALLER">EN TALLER</option>
                     <option value="FUERA DE SERVICIO">FUERA DE SERVICIO</option>
-                </select>
-
-                <select class="filter" id="filtroArea" onchange="filtrarVehiculos()">
-                    <option value="">Todas las áreas</option>
                 </select>
                 <span id="contadorVehiculos" class="vehicle-count">
                     0 vehículos
@@ -4224,6 +4320,9 @@ body.panel-role-servicios #modalPlanificacionServicio {
             <p>Programación y control de servicios</p>
         </div>
         <div class="servicio-toolbar">
+            <input id="filtroServicio" class="filter servicio-search"
+                   placeholder="Buscar servicio, tipo o ruta..."
+                   oninput="filtrarServicios()">
             <select id="filtroFechaServicio" class="filter servicio-date-filter"
                     onchange="filtrarServicios()" title="Filtrar servicios por fecha">
                 <option value="hoy" selected>📅 Servicios de hoy</option>
@@ -4233,9 +4332,6 @@ body.panel-role-servicios #modalPlanificacionServicio {
                 <option value="7">📅 Últimos 7 días</option>
                 <option value="30">📅 Últimos 30 días</option>
             </select>
-            <input id="filtroServicio" class="filter servicio-search"
-                   placeholder="Buscar servicio, tipo o ruta..."
-                   oninput="filtrarServicios()">
             <button class="btn btn-secondary"
                     type="button"
                     onclick="abrirModalPlanificacionMasiva()">
@@ -5116,17 +5212,17 @@ body.panel-role-servicios #modalPlanificacionServicio {
 
         <div class="usuarios-filtros">
             <input id="buscarUsuarios" class="form-control" placeholder="Buscar usuario, nombre o ID..." oninput="filtrarUsuarios()">
-            <select id="filtroUsuarioRol" class="form-control" onchange="filtrarUsuarios()">
-                <option value="">Todos los roles</option>
-                <option value="ADMIN">ADMIN</option>
-                <option value="SUPERVISOR">SUPERVISOR</option>
-                <option value="CHOFER">CHOFER</option>
-            </select>
-            <select id="filtroUsuarioApp" class="form-control" onchange="filtrarUsuarios()">
+            <select id="filtroUsuarioApp" class="form-control" onchange="filtrarUsuarios()" title="Filtrar por aplicación">
                 <option value="">Todas las aplicaciones</option>
                 <option value="PANEL">PANEL</option>
                 <option value="DIA_VERDE">DIA_VERDE</option>
                 <option value="CHOFERES">CHOFERES</option>
+            </select>
+            <select id="filtroUsuarioRol" class="form-control" onchange="filtrarUsuarios()" title="Filtrar por rol">
+                <option value="">Todos los roles</option>
+                <option value="ADMIN">ADMIN</option>
+                <option value="SUPERVISOR">SUPERVISOR</option>
+                <option value="CHOFER">CHOFER</option>
             </select>
             <select id="filtroUsuarioEstado" class="form-control" onchange="filtrarUsuarios()">
                 <option value="">Todos los estados</option>
