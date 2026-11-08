@@ -5624,6 +5624,82 @@ hr{border-color:var(--de-line)!important}
 .iaf-wrap{padding:20px;max-width:1200px;margin:0 auto}.iaf-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px}.iaf-head h2{margin:0;font-size:20px}.iaf-head p{margin:6px 0 0;color:var(--muted);font-size:11px}.iaf-live{padding:8px 11px;border:1px solid var(--border);border-radius:999px;background:#0d1829;color:#9fb0c7;font-size:10px;white-space:nowrap}.iaf-live b{color:#22c55e}.iaf-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px}.iaf-chat,.iaf-sidecard{background:var(--panel);border:1px solid var(--border);border-radius:15px;box-shadow:var(--shadow)}.iaf-chat{min-height:610px;display:flex;flex-direction:column;overflow:hidden}.iaf-chat-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}.iaf-chat-title{font-size:13px;font-weight:800}.iaf-chat-sub{font-size:9px;color:var(--muted);margin-top:3px}.iaf-status{font-size:9px;color:#7f8da3}.iaf-status.ok{color:var(--green)}.iaf-messages{flex:1;padding:16px;overflow:auto;display:flex;flex-direction:column;gap:10px;min-height:440px;max-height:600px}.iaf-msg{max-width:88%;padding:11px 13px;border-radius:12px;font-size:11px;line-height:1.55;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;overflow:visible;height:auto;max-height:none}.iaf-msg.ai{align-self:flex-start;background:#0c1727;border:1px solid rgba(255,255,255,.05)}.iaf-msg.user{align-self:flex-end;background:#14365b;border:1px solid #245b92}.iaf-msg small{display:block;color:#718198;font-size:8px;margin-bottom:5px}.iaf-inputbar{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px}.iaf-input{flex:1;min-height:46px;max-height:130px;resize:vertical;background:#091422;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px;font:inherit;font-size:11px;outline:none}.iaf-input:focus{border-color:#35628e}.iaf-send{min-width:94px;border:0;border-radius:10px;background:var(--green2);color:white;font-weight:800;cursor:pointer}.iaf-send:disabled{opacity:.5;cursor:wait}.iaf-side{display:flex;flex-direction:column;gap:12px}.iaf-sidecard{padding:14px}.iaf-side-title{font-size:11px;font-weight:800;margin-bottom:10px}.iaf-q{width:100%;text-align:left;background:#0c1727;color:#dce6f3;border:1px solid rgba(255,255,255,.05);padding:9px 10px;border-radius:9px;margin-top:7px;font-size:10px;cursor:pointer}.iaf-q:hover{border-color:#35506f}.iaf-note{font-size:9px;color:var(--muted);line-height:1.5}.iaf-pill{display:inline-flex;padding:5px 8px;border-radius:999px;background:#10263a;color:#7fd7a0;font-size:8px;margin:3px 3px 0 0}
 @media(max-width:900px){.iaf-grid{grid-template-columns:1fr}.iaf-side{display:grid;grid-template-columns:1fr 1fr}.iaf-chat{min-height:560px}}
 @media(max-width:600px){.iaf-wrap{padding:12px}.iaf-head{align-items:flex-start;flex-direction:column}.iaf-live{width:100%}.iaf-side{grid-template-columns:1fr}.iaf-msg{max-width:94%}.iaf-inputbar{position:sticky;bottom:0;background:var(--panel)}}
+
+/* =========================================================
+   SIGL — REDISEÑO KPI COMMAND CENTER AZUL
+   Solo presentación visual: conserva IDs, valores y lógica JS.
+   ========================================================= */
+.kpi-grid{
+  gap:16px;
+  margin-bottom:20px;
+}
+.kpi-grid > .kpi{
+  min-height:158px;
+  padding:20px 21px 17px;
+  border:1px solid #294761;
+  border-radius:22px;
+  background:
+    radial-gradient(circle at 92% 12%,rgba(75,165,255,.13),transparent 34%),
+    linear-gradient(145deg,#152332 0%,#101923 58%,#0e171f 100%);
+  box-shadow:inset 0 1px 0 rgba(190,225,255,.055),0 12px 28px rgba(0,0,0,.16);
+  transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease;
+}
+.kpi-grid > .kpi:hover{
+  transform:translateY(-3px);
+  border-color:#4c91c5;
+  box-shadow:inset 0 1px 0 rgba(190,225,255,.08),0 16px 32px rgba(0,0,0,.25),0 0 22px rgba(66,158,235,.08);
+}
+.kpi-grid > .kpi::after{
+  width:145px;height:145px;right:-54px;top:-58px;
+  background:radial-gradient(circle,rgba(88,170,255,.12),transparent 68%);
+}
+.kpi-top{position:relative;z-index:1;min-height:32px}
+.kpi-label{font-size:9px;letter-spacing:1.15px;color:#9aafc0;font-weight:700}
+.kpi-icon{
+  width:34px;height:34px;border-radius:10px;font-size:16px;
+  border:1px solid rgba(91,174,239,.2);
+  background:rgba(67,155,225,.13);
+  color:#8dccff;
+}
+.kpi-number{
+  position:relative;z-index:1;
+  font-size:42px;font-weight:700;letter-spacing:.3px;line-height:.98;
+  margin-top:13px;color:#f2f7fc;
+  text-shadow:0 2px 18px rgba(93,174,241,.10);
+}
+.kpi-footer{
+  position:relative;z-index:1;
+  margin-top:8px;font-size:9px;color:#8298a9;letter-spacing:.1px;
+}
+.kpi-grid > .kpi:nth-child(1){
+  background:radial-gradient(circle at 92% 12%,rgba(75,165,255,.15),transparent 34%),linear-gradient(145deg,#15283a,#101923 65%,#0e171f);
+}
+.kpi-grid > .kpi:nth-child(1) .kpi-icon{color:#8dccff;background:rgba(67,155,225,.13);border-color:rgba(91,174,239,.2)}
+.kpi-grid > .kpi:nth-child(2){
+  background:radial-gradient(circle at 92% 12%,rgba(69,194,160,.13),transparent 34%),linear-gradient(145deg,#142a2a,#101d21 65%,#0e171f);
+  border-color:#285047;
+}
+.kpi-grid > .kpi:nth-child(2) .kpi-icon{color:#56d6b0;background:rgba(86,214,176,.12);border-color:rgba(86,214,176,.2)}
+.kpi-grid > .kpi:nth-child(2) .kpi-number{text-shadow:0 2px 18px rgba(86,214,176,.10)}
+.kpi-grid > .kpi:nth-child(3){
+  background:radial-gradient(circle at 92% 12%,rgba(230,169,79,.14),transparent 34%),linear-gradient(145deg,#29251d,#1d1b19 65%,#151719);
+  border-color:#55432b;
+}
+.kpi-grid > .kpi:nth-child(3) .kpi-icon{color:#f0bd70;background:rgba(227,166,77,.13);border-color:rgba(227,166,77,.2)}
+.kpi-grid > .kpi:nth-child(4){
+  background:radial-gradient(circle at 92% 12%,rgba(116,145,255,.14),transparent 34%),linear-gradient(145deg,#1b2438,#131b2a 65%,#101722);
+  border-color:#354568;
+}
+.kpi-grid > .kpi:nth-child(4) .kpi-icon{color:#a9bbff;background:rgba(116,145,255,.13);border-color:rgba(116,145,255,.2)}
+@media(max-width:700px){
+  .kpi-grid{gap:9px;margin-bottom:12px}
+  .kpi-grid > .kpi{min-height:132px;padding:13px;border-radius:17px}
+  .kpi-label{font-size:7px;letter-spacing:.7px}
+  .kpi-icon{width:27px;height:27px;font-size:13px;border-radius:8px}
+  .kpi-number{font-size:34px !important;margin-top:10px;line-height:1}
+  .kpi-footer{font-size:8px;margin-top:6px}
+}
+
 </style>
 
 <div id="ia-flota" class="page">
