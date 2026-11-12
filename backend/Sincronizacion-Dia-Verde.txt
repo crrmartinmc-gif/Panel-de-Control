@@ -1,0 +1,176 @@
+// Reemplazos para el Backend Maestro. Ver GUIA-SINCRONIZACION.md.
+function dvSyncNumero_(v) {
+  if (v == null || String(v).trim() === '' || typeof v === 'boolean') return null;
+  const n = Number(String(v).trim().replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+function dvSyncCampo_(r, nombres) {
+  for (const nombre of nombres) {
+    const key = Object.keys(r).find(k => normalizarClaveDV_(k) === normalizarClaveDV_(nombre));
+    if (key && r[key] != null && String(r[key]).trim() !== '') return r[key];
+  }
+  return '';
+}
+
+function dvSyncHistorico_(rows) {
+  return rows.map(r => ({
+    fecha:dvSyncCampo_(r,['Fecha']), hora:dvSyncCampo_(r,['Hora']),
+    cgm:dvSyncCampo_(r,['CGM']), zona:dvSyncCampo_(r,['Zona']),
+    direccion:dvSyncCampo_(r,['Direccion','Dirección']),
+    latitud:dvSyncNumero_(dvSyncCampo_(r,['Latitud'])), longitud:dvSyncNumero_(dvSyncCampo_(r,['Longitud'])),
+    foto:dvSyncCampo_(r,['Foto','Evidencia','URL_DRIVE']), estado:dvSyncCampo_(r,['Estado']),
+    idEvidencia:dvSyncCampo_(r,['ID_EVIDENCIA']), claveReclamo:dvSyncCampo_(r,['CLAVE_RECLAMO']),
+    usuario:dvSyncCampo_(r,['Usuario']), nombre:dvSyncCampo_(r,['Nombre']),
+    idRecorrido:dvSyncCampo_(r,['ID_RECORRIDO']), precision:dvSyncNumero_(dvSyncCampo_(r,['Precision'])),
+    timestampCaptura:dvSyncCampo_(r,['TIMESTAMP_CAPTURA']), origenUbicacion:dvSyncCampo_(r,['ORIGEN_UBICACION'])
+  }));
+}
+
+function obtenerMapaDiaVerde_() {
+  const id = PropertiesService.getScriptProperties().getProperty('DIA_VERDE_HISTORICO_ID') || MAPA_DIA_VERDE.SPREADSHEET_ID;
+  const ss = SpreadsheetApp.openById(id);
+  const hojaGPS = ss.getSheetByName(MAPA_DIA_VERDE.HOJA_GPS);
+  const hojaHistorico = ss.getSheetByName(MAPA_DIA_VERDE.HOJA_HISTORICO);
+  if (!hojaGPS || !hojaHistorico) throw new Error('No se encontró GPS Día Verde o Hoja 1 en el histórico.');
+  const gps = leerHojaMapaDV_(hojaGPS).map(r => ({
+    timestamp:dvSyncCampo_(r,['Timestamp']), usuario:dvSyncCampo_(r,['Usuario']), nombre:dvSyncCampo_(r,['Nombre']),
+    zona:dvSyncCampo_(r,['Zona']), cgm:dvSyncCampo_(r,['CGM']),
+    latitud:dvSyncNumero_(dvSyncCampo_(r,['Latitud'])), longitud:dvSyncNumero_(dvSyncCampo_(r,['Longitud'])),
+    precision:dvSyncNumero_(dvSyncCampo_(r,['Precision'])), rumbo:dvSyncNumero_(dvSyncCampo_(r,['Rumbo'])),
+    activo:dvSyncCampo_(r,['Activo']), idPunto:dvSyncCampo_(r,['ID_PUNTO']),
+    idRecorrido:dvSyncCampo_(r,['ID_RECORRIDO']), fuente:dvSyncCampo_(r,['FUENTE'])
+  })).filter(p => p.latitud !== null && p.longitud !== null && Math.abs(p.latitud) <= 90 &&
+    Math.abs(p.longitud) <= 180 && (p.latitud !== 0 || p.longitud !== 0));
+  const historico = dvSyncHistorico_(leerHojaMapaDV_(hojaHistorico));
+  const usuarios = {};
+  gps.forEach(p => {
+    const key = String(p.usuario || p.nombre).trim().toLowerCase();
+    if (!usuarios[key]) usuarios[key] = {usuario:p.usuario, nombre:p.nombre, puntos:0};
+    usuarios[key].puntos++;
+  });
+  const ordenados = gps.slice().sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+  return {ok:true, syncVersion:2, fuente:'HISTORICO DIA VERDE',
+    hojas:{gps:MAPA_DIA_VERDE.HOJA_GPS, historico:MAPA_DIA_VERDE.HOJA_HISTORICO},
+    gps:gps, historico:historico, resumen:{puntosGPS:gps.length, direcciones:historico.length,
+      nombres:Object.values(usuarios), ultimaPosicion:ordenados.length ? ordenados[ordenados.length-1] : null},
+    timestamp:isoAhora_()};
+}
+
+function aplicarCorreccionesReclamosDiaVerde_(reclamos) {
+  const correcciones = obtenerCorreccionesReclamosDiaVerde_();
+  const porClave = {}, porDireccion = {};
+  correcciones.forEach(c => {
+    const lat = dvSyncNumero_(c.latitud), lng = dvSyncNumero_(c.longitud);
+    if (lat === null || lng === null || Math.abs(lat) > 90 || Math.abs(lng) > 180 || (lat === 0 && lng === 0)) return;
+    const dato = {latitud:lat, longitud:lng, usuario:c.usuario || '', fecha:c.fecha || ''};
+    porClave[dvNormalizarClaveCorreccion_(c.clave)] = dato;
+    const dir = dvSepararDireccionCorreccion_(c.direccion);
+    if (c.localidad && c.zona && dir.calle) {
+      porDireccion[dvClaveDireccionCorreccion_(c.localidad,c.zona,dir.calle,dir.numero)] = dato;
+    }
+  });
+  return (Array.isArray(reclamos) ? reclamos : []).map(r => {
+    const c = porClave[dvNormalizarClaveCorreccion_(r.clave)] ||
+      porDireccion[dvClaveDireccionCorreccion_(r.localidad,r.zona,r.calle,r.numero)];
+    // Una calle y altura de otro CGM nunca heredan esta ubicación.
+    return c ? Object.assign({},r,{latitud:c.latitud,longitud:c.longitud,lat:c.latitud,lng:c.longitud,
+      _corregidoPanel:true,_correccionUsuario:c.usuario,_correccionFecha:c.fecha}) : r;
+  });
+}
+
+function obtenerReclamosDiaVerde_() {
+  const ss = SpreadsheetApp.openById(RECLAMOS_DIA_VERDE.SPREADSHEET_ID);
+  const hoja = obtenerHojaPorGid_(ss,RECLAMOS_DIA_VERDE.GID);
+  if (!hoja) throw new Error('No se encontró la hoja de direcciones de Día Verde.');
+  const salida = {_keys:{},items:[]};
+  hoja.getDataRange().getDisplayValues().forEach(row => {
+    agregarReclamoDV_(salida,'Llavallol',row,0,1,2);
+    agregarReclamoDV_(salida,'Banfield',row,3,4,5);
+    agregarReclamoDV_(salida,'Temperley',row,6,7,8);
+    agregarReclamoDV_(salida,'Turdera',row,9,10,null);
+    agregarReclamoDV_(salida,'Lomas',row,11,12,13);
+    agregarReclamoDV_(salida,'Santa Catalina',row,14,15,16);
+  });
+  const reclamos = aplicarCorreccionesReclamosDiaVerde_(salida.items);
+  let evidencias = [], evidenciasOk = false;
+  try {
+    const id = PropertiesService.getScriptProperties().getProperty('DIA_VERDE_HISTORICO_ID') || MAPA_DIA_VERDE.SPREADSHEET_ID;
+    const historico = SpreadsheetApp.openById(id).getSheetByName(MAPA_DIA_VERDE.HOJA_HISTORICO);
+    if (!historico) throw new Error('No se encontró la hoja de evidencias.');
+    const hoy = Utilities.formatDate(new Date(),CONFIG.ZONA_HORARIA,'dd/MM/yyyy');
+    evidencias = dvSyncHistorico_(leerHojaMapaDV_(historico)).filter(e => {
+      const s = String(e.fecha || '').trim();
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+        const partes = s.split('/');
+        return partes[0].padStart(2,'0')+'/'+partes[1].padStart(2,'0')+'/'+partes[2] === hoy;
+      }
+      const d = new Date(s);
+      return !isNaN(d.getTime()) && Utilities.formatDate(d,CONFIG.ZONA_HORARIA,'dd/MM/yyyy') === hoy;
+    });
+    evidenciasOk = true;
+  } catch (error) { console.warn('Lectura de evidencias Día Verde no disponible: ' + error.message); }
+  return {ok:true, syncVersion:2, fuente:'DIA VERDE',total:reclamos.length,reclamos:reclamos,
+    evidencias:evidencias,evidenciasOk:evidenciasOk,timestamp:isoAhora_()};
+}
+
+function guardarCorreccionReclamo_(d) {
+  const clave = String(d.clave || '').trim();
+  const lat = dvSyncNumero_(d.latitud), lng = dvSyncNumero_(d.longitud);
+  if (!clave || lat === null || lng === null || Math.abs(lat)>90 || Math.abs(lng)>180 || (lat===0 && lng===0)) {
+    throw new Error('Clave y coordenadas válidas obligatorias.');
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  let resultado;
+  try {
+    const hoja = asegurarHojaCorreccionesDiaVerde_();
+    const last = hoja.getLastRow();
+    const claves = last>=2 ? hoja.getRange(2,1,last-1,1).getDisplayValues() : [];
+    const indice = claves.findIndex(r=>dvNormalizarClaveCorreccion_(r[0])===dvNormalizarClaveCorreccion_(clave));
+    const fecha = ahora_(), usuario = String(d.usuario || 'PANEL').trim();
+    const valores = [[clave,lat,lng,String(d.direccion||''),String(d.localidad||''),String(d.zona||''),usuario,fecha]];
+    hoja.getRange(indice<0 ? last+1 : indice+2,1,1,8).setValues(valores);
+    SpreadsheetApp.flush();
+    resultado = {clave:clave,latitud:lat,longitud:lng,fecha:fecha.toISOString(),usuario:usuario};
+  } finally { lock.releaseLock(); }
+  // La auditoría toma su propio lock; se ejecuta después de liberar el de la corrección.
+  try { registrarEvento_({tipoEvento:'CORRECCION_PIN_DIA_VERDE',origen:'PANEL',
+    descripcion:'Ubicación de reclamo compartida con Día Verde',datos:resultado}); }
+  catch (error) { console.warn('Corrección guardada; auditoría pendiente.'); }
+  return resultado;
+}
+
+function eliminarCorreccionReclamo_(d) {
+  const clave=String(d.clave||'').trim();
+  if(!clave)throw new Error('Clave de reclamo obligatoria.');
+  const lock=LockService.getScriptLock();
+  lock.waitLock(30000);
+  let resultado;
+  try{
+    const hoja=asegurarHojaCorreccionesDiaVerde_();
+    const last=hoja.getLastRow();
+    const claves=last>=2 ? hoja.getRange(2,1,last-1,1).getDisplayValues() : [];
+    const indice=claves.findIndex(r=>dvNormalizarClaveCorreccion_(r[0])===dvNormalizarClaveCorreccion_(clave));
+    if(indice>=0)hoja.deleteRow(indice+2);
+    SpreadsheetApp.flush();
+    resultado={ok:true,clave:clave,eliminada:indice>=0,fecha:isoAhora_()};
+  }finally{lock.releaseLock();}
+  if(resultado.eliminada){
+    try{registrarEvento_({tipoEvento:'RESTAURACION_PIN_DIA_VERDE',origen:'PANEL',descripcion:'Corrección de ubicación eliminada',datos:resultado});}
+    catch(error){console.warn('Restauración guardada; auditoría pendiente.');}
+  }
+  return resultado;
+}
+
+function diagnosticoSincronizacionDiaVerde(){
+  const mapa=obtenerMapaDiaVerde_();
+  const reclamos=obtenerReclamosDiaVerde_();
+  const r={ok:mapa.ok&&reclamos.ok,syncVersion:2,puntosGPS:mapa.gps.length,
+    puntosConIdRecorrido:mapa.gps.filter(p=>p.idRecorrido).length,
+    reclamos:reclamos.reclamos.length,
+    conUbicacion:reclamos.reclamos.filter(p=>dvSyncNumero_(p.latitud)!==null&&dvSyncNumero_(p.longitud)!==null).length,
+    evidenciasDisponibles:reclamos.evidenciasOk,evidenciasHoy:reclamos.evidencias.length};
+  console.log(JSON.stringify(r));
+  return r;
+}
