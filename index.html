@@ -14018,6 +14018,122 @@ async function actualizarDatos(){
 /* =========================================================
    MAPA OPERATIVO — LECTURA REAL DE DIA VERDE
    ========================================================= */
+// Lecturas Día Verde compartidas. La transición solo se habilita cuando el
+// backend exclusivo confirma que las correcciones fueron verificadas/migradas.
+// Una vez habilitada, un error conserva los datos anteriores; nunca mezcla fuentes.
+function dvCrearClienteExclusivo(url){
+  let activo=false,ultimoIntento=0,pendiente=null;
+  async function solicitar(accion,parametros={}){
+    const query=new URLSearchParams({accion,contratoPanel:'1',...parametros,t:String(Date.now())});
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),20000);
+    try{
+      const r=await fetch(url+'?'+query,{cache:'no-store',signal:controller.signal});
+      if(!r.ok)throw new Error('Día Verde HTTP '+r.status);
+      const j=await r.json();
+      if(!j?.ok || j.servicio!=='DIA_VERDE' || j.contratoPanel!==1 || j.accion!==accion || !j.datos || j.datos.ok===false){
+        throw new Error(j?.error||'Día Verde no confirmó la actualización.');
+      }
+      const d=j.datos;
+      if(accion==='reclamosDiaVerde' && (!Array.isArray(d.reclamos)||!Array.isArray(d.evidencias)||d.evidenciasOk!==true))throw new Error('Reclamos o evidencias incompletos.');
+      if(accion==='correccionesReclamosDiaVerde' && !Array.isArray(d.correcciones))throw new Error('Correcciones incompletas.');
+      if(accion==='zonasDiaVerde' && (d.geojson?.type!=='FeatureCollection'||!Array.isArray(d.geojson.features)))throw new Error('Zonas incompletas.');
+      return j;
+    }finally{clearTimeout(timer);}
+  }
+  async function disponible(){
+    if(activo)return true;
+    if(pendiente)return pendiente;
+    if(ultimoIntento && Date.now()-ultimoIntento<60000)return false;
+    ultimoIntento=Date.now();
+    pendiente=(async()=>{
+      try{
+        const j=await solicitar('estadoIntegracionPanel');
+        activo=j.datos.migracionCompleta===true;
+        if(!activo)console.info('Día Verde: se conserva la conexión actual hasta completar la migración de correcciones.');
+        return activo;
+      }catch(e){console.warn('Día Verde exclusivo pendiente:',e.message);return false;}
+      finally{pendiente=null;}
+    })();
+    return pendiente;
+  }
+  return {disponible,solicitar,activo:()=>activo};
+}
+
+// No incluir DIA_VERDE_PANEL_KEY en el navegador: las escrituras se autentican
+// en el Maestro y se delegan desde allí al backend exclusivo.
+const DIA_VERDE_BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxOlc134pd-I6ziLrymxxw4DNffzGrlm6LHKepkca40gk3y4phDc-gIYvP-_-ExKD9M5A/exec';
+const dvLecturasExclusivas = dvCrearClienteExclusivo(DIA_VERDE_BACKEND_URL);
+let dvMapaCompartidoCache=null;
+let dvMapaCompartidoPendiente=null;
+function dvPermitirLecturaExclusiva(){
+  if(!window.__PANEL_AUTH_READY__)throw new Error('SESION_REQUERIDA');
+  if(panelEsConsultaServicios())throw new Error('PERMISO_DENEGADO: este usuario solo puede consultar Servicios.');
+}
+async function dvPanelFetchDiaVerde(accion,parametros={}){
+  dvPermitirLecturaExclusiva();
+  if(await dvLecturasExclusivas.disponible()){
+    const j=await dvLecturasExclusivas.solicitar(accion,parametros);
+    return new Response(JSON.stringify(j),{status:200,headers:{'Content-Type':'application/json'}});
+  }
+  const query=new URLSearchParams({accion,...parametros,t:String(Date.now())});
+  return fetch(BACKEND_URL+'?'+query,{cache:'no-store',signal:typeof AbortSignal.timeout==='function'?AbortSignal.timeout(20000):undefined});
+}
+function dvCombinarFilasCompartidas(anteriores,nuevas,tipo){
+  const map=new Map();
+  for(const p of [...anteriores,...nuevas]){
+    const id=tipo==='gps'?p.idPunto:p.idEvidencia;
+    const key=id?'id:'+id:JSON.stringify(tipo==='gps'
+      ?[p.usuario,p.nombre,p.timestamp,p.latitud,p.longitud,p.activo,p.idRecorrido]
+      :[p.cgm,p.zona,p.fecha,p.hora,p.direccion,p.idRecorrido]);
+    map.set(key,p);
+  }
+  return [...map.values()];
+}
+async function dvLeerMapaCompartido(){
+  dvPermitirLecturaExclusiva();
+  if(dvMapaCompartidoPendiente)return dvMapaCompartidoPendiente;
+  dvMapaCompartidoPendiente=(async()=>{
+    const fecha=DVContract.dayKey();
+    const exclusivo=await dvLecturasExclusivas.disponible();
+    if(!exclusivo){
+      const r=await dvPanelFetchDiaVerde('mapaDiaVerde');
+      if(!r.ok)throw new Error('Mapa HTTP '+r.status);
+      const j=await r.json();
+      if(!j?.ok||!Array.isArray(j.datos?.gps)||!Array.isArray(j.datos?.historico))throw new Error(j?.error||'Mapa incompleto.');
+      return {gps:j.datos.gps,historico:j.datos.historico};
+    }
+    // Los cursores viven junto a sus filas, solo en memoria. Una recarga o un
+    // cambio de día obtiene una instantánea completa, sin reutilizar cursores sueltos.
+    let cache=dvMapaCompartidoCache?.fecha===fecha?dvMapaCompartidoCache:null;
+    for(let pagina=0;pagina<5;pagina++){
+      const anterior=cache;
+      const params=cache?{fecha,modo:'incremental',cursorGPS:cache.cursorGPS,cursorEvidencias:cache.cursorEvidencias,limite:2000}:{fecha,modo:'completo'};
+      const d=(await dvLecturasExclusivas.solicitar('mapaDiaVerde',params)).datos;
+      if(!Array.isArray(d.gps)||!Array.isArray(d.historico)||d.fecha!==fecha||d.modo!==params.modo||
+        !Number.isSafeInteger(d.cursorGPS)||!Number.isSafeInteger(d.cursorEvidencias)||d.cursorGPS<1||d.cursorEvidencias<1||
+        (cache && (d.cursorGPS<cache.cursorGPS||d.cursorEvidencias<cache.cursorEvidencias)))throw new Error('Cursores del mapa inválidos.');
+      if(!cache && d.hayMas)throw new Error('La lectura inicial del mapa está incompleta.');
+      cache={fecha,cursorGPS:d.cursorGPS,cursorEvidencias:d.cursorEvidencias,
+        gps:dvCombinarFilasCompartidas(cache?.gps||[],d.gps,'gps'),historico:dvCombinarFilasCompartidas(cache?.historico||[],d.historico,'evidencias')};
+      dvMapaCompartidoCache=cache;
+      if(!d.hayMas)break;
+      if(anterior && cache.cursorGPS===anterior.cursorGPS&&cache.cursorEvidencias===anterior.cursorEvidencias)throw new Error('La actualización del mapa no avanzó.');
+    }
+    return {gps:cache.gps,historico:cache.historico};
+  })();
+  try{return await dvMapaCompartidoPendiente;}catch(error){if(/Cursor fuera de rango/.test(error.message))dvMapaCompartidoCache=null;throw error;}finally{dvMapaCompartidoPendiente=null;}
+}
+async function dvVerificarCorreccionCompartida(clave,lat,lng,eliminada=false){
+  if(!dvLecturasExclusivas.activo())return;
+  const j=await dvLecturasExclusivas.solicitar('correccionesReclamosDiaVerde');
+  const normalizar=v=>String(v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
+  const c=j.datos.correcciones.find(c=>normalizar(c.clave)===normalizar(clave));
+  if(eliminada ? !!c : !c || DVContract.number(c.latitud)!==Number(lat)||DVContract.number(c.longitud)!==Number(lng)){
+    throw new Error('El backend de Día Verde todavía no confirmó el cambio. Revisar la activación REMOTO del Maestro.');
+  }
+}
+
 const DIA_VERDE_SHEET_ID = "1yt7JqSWUjybFodTFUr94-788RvvlxIsHeI-j0U7B0L0";
 const DIA_VERDE_GPS_GID = "1066800944";
 const DIA_VERDE_HISTORICO_GID = "2024260409";
@@ -14159,17 +14275,7 @@ function dvCrearMapa(){
 }
 
 async function leerMapaDiaVerdeCompleto(){
-    const url=BACKEND_URL+"?accion=mapaDiaVerde&t="+Date.now();
-    const r=await fetch(url,{method:"GET",cache:"no-store"});
-    if(!r.ok) throw new Error("Backend HTTP "+r.status);
-    const j=await r.json();
-    if(!j || !j.ok) throw new Error((j&&j.error)||"El Backend Maestro no pudo leer Día Verde");
-    const datos=j.datos;
-    if(!datos || !Array.isArray(datos.gps) || !Array.isArray(datos.historico))throw new Error("El servidor no devolvió una lectura válida del mapa.");
-    return {
-        gps:Array.isArray(datos.gps)?datos.gps:[],
-        historico:Array.isArray(datos.historico)?datos.historico:[]
-    };
+    return dvLeerMapaCompartido();
 }
 async function leerHojaDiaVerde(gid){
     const datos=await leerMapaDiaVerdeCompleto();
@@ -14266,7 +14372,7 @@ function dvBorrarCorreccionLocal(clave){
 }
 async function dvCargarCorreccionesRemotas(){
     try{
-        const r=await fetch(BACKEND_URL+"?accion="+DV_RECLAMOS_COORD_BACKEND_ACCION+"&t="+Date.now(),{cache:"no-store"});
+        const r=await dvPanelFetchDiaVerde(DV_RECLAMOS_COORD_BACKEND_ACCION);
         if(!r.ok) throw new Error("HTTP "+r.status);
         const j=await r.json();
         const arr=j?.datos?.correcciones;
@@ -14296,6 +14402,7 @@ async function dvGuardarCorreccionReclamo(clave,lat,lng,d=null){
         const r=await fetch(BACKEND_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
         const j=await r.json();
         if(!j?.ok) throw new Error(j?.error||"Backend rechazó la corrección");
+        await dvVerificarCorreccionCompartida(clave,nlat,nlng);
         dvCorreccionesRemotas[clave]={lat:nlat,lng:nlng,fecha:j?.resultado?.fecha||new Date().toISOString(),usuario:window.panelUsuarioActual?.usuario || "PANEL"};
         dvBorrarCorreccionLocal(clave);
         return true;
@@ -14308,6 +14415,7 @@ async function dvBorrarCorreccionReclamo(clave){
         const r=await fetch(BACKEND_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
         const j=await r.json();
         if(!j?.ok) throw new Error(j?.error||"Backend rechazó la restauración");
+        await dvVerificarCorreccionCompartida(clave,null,null,true);
         delete dvCorreccionesRemotas[clave];
         return true;
     }catch(e){console.warn("No se pudo sincronizar restauración con backend",e);return false;}
@@ -15018,12 +15126,14 @@ async function cargarCapasEstaticasDiaVerde(){
         //    No esperamos al backend de reclamos.
         // =========================================================
         try{
-            const zonaResp=await fetch(DV_ZONAS_LOCAL_URL+"?t="+Date.now(),{
-                cache:"no-store"
-            });
+            const zonasExclusivas=await dvLecturasExclusivas.disponible();
+            const zonaResp=zonasExclusivas
+                ? await dvPanelFetchDiaVerde(DV_ZONAS_ACCION)
+                : await fetch(DV_ZONAS_LOCAL_URL+"?t="+Date.now(),{cache:"no-store"});
             if(!zonaResp.ok) throw new Error("zonas.geojson HTTP "+zonaResp.status);
 
-            const geo=await zonaResp.json();
+            const zonaJSON=await zonaResp.json();
+            const geo=zonasExclusivas ? zonaJSON.datos.geojson : zonaJSON;
             if(!geo || geo.type!=="FeatureCollection" || !Array.isArray(geo.features)){
                 throw new Error("zonas.geojson no contiene un FeatureCollection válido");
             }
@@ -15056,10 +15166,7 @@ async function cargarCapasEstaticasDiaVerde(){
         if(status) status.textContent="⏳ Cargando reclamos de Día Verde...";
 
         try{
-            const reclamoResp=await fetch(
-                BACKEND_URL+"?accion="+DV_RECLAMOS_ACCION+"&t="+Date.now(),
-                {cache:"no-store"}
-            );
+            const reclamoResp=await dvPanelFetchDiaVerde(DV_RECLAMOS_ACCION);
             if(!reclamoResp.ok) throw new Error("Backend reclamos HTTP "+reclamoResp.status);
 
             const jr=await reclamoResp.json();
@@ -15685,11 +15792,18 @@ async function dvRefrescarReclamosCompartidos(){
     if(dvClaimsRefreshing)return;
     dvClaimsRefreshing=true;
     try{
-        const r=await fetch(BACKEND_URL+"?accion=reclamosDiaVerde&t="+Date.now(),{cache:"no-store"});
+        const r=await dvPanelFetchDiaVerde(DV_RECLAMOS_ACCION);
         if(!r.ok)throw new Error("HTTP "+r.status);
         const j=await r.json();
         if(!j.ok || !Array.isArray(j.datos?.reclamos))throw new Error(j.error||"Reclamos no disponibles");
         dvMapReclamos=j.datos.reclamos;
+        if(dvLecturasExclusivas.activo()){
+            const zonas=(await dvLecturasExclusivas.solicitar(DV_ZONAS_ACCION)).datos.geojson.features;
+            if(JSON.stringify(zonas)!==JSON.stringify(dvMapZonas)){
+                dvMapZonas=zonas;dvGuardarCache("zonas",zonas);
+                if(dvMapReady)dvAplicarCapasEstaticas();
+            }
+        }
         if(j.datos.evidenciasOk!==false){dvMapEvidencias=Array.isArray(j.datos.evidencias)?j.datos.evidencias:[];dvEvidenceLastSuccess=Date.now();}
         dvClaimsLastSuccess=Date.now();
         dvGuardarCache("reclamos",dvMapReclamos);dvGuardarCache("evidencias",dvMapEvidencias);
@@ -17656,3 +17770,4 @@ function dvOrdenarCapasMapa(){
 <script src="./responsive.js?v=1"></script>
 </body>
 </html>
+
