@@ -2543,7 +2543,7 @@ textarea.form-control{
 
 .dv-legend-zone{display:inline-block;width:18px;height:10px;border:2px solid #087a3d;background:rgba(24,165,88,.15);border-radius:2px}
 .dv-legend-reclamo{display:inline-flex;width:20px;height:20px;border-radius:50%;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:900}
-.dv-legend-reclamo.pendiente{background:#c62828}.dv-legend-reclamo.realizado{background:#18a558}
+.dv-legend-reclamo.pendiente{background:#ce9222}.dv-legend-reclamo.realizado{background:#25834f}
 .dv-legend-subtitle{margin:8px 0 4px;font-size:10px;font-weight:900;opacity:.7;letter-spacing:.06em}
 
 .dv-reclamo-corregir-btn,.dv-reclamo-restaurar-btn{display:block;width:100%;margin-top:7px;border:0;border-radius:8px;padding:7px 9px;font-weight:700;cursor:pointer;background:#087a3d;color:#fff}.dv-reclamo-restaurar-btn{background:#6b7280}.dv-reclamo-corregir-btn:hover,.dv-reclamo-restaurar-btn:hover{filter:brightness(1.08)}
@@ -3540,6 +3540,7 @@ hr{border-color:var(--de-line)!important}
 </style>
 
 <link rel="stylesheet" href="./responsive.css?v=1">
+<script src="./dv-contract.js"></script>
 </head>
 
 <body class="panel-auth-locked">
@@ -3975,7 +3976,7 @@ hr{border-color:var(--de-line)!important}
                     <div class="panel-title">Mapa Operativo</div>
                     <div class="panel-subtitle">Seguimiento de unidades y servicios · Día Verde</div>
                 </div>
-                <span class="status-badge badge-green">EN VIVO</span>
+                <span class="status-badge badge-green">ACTUALIZA CADA 15 S</span>
             </div>
 
             <div class="dv-home-map-shell">
@@ -4136,7 +4137,7 @@ hr{border-color:var(--de-line)!important}
             <h2>Mapa Operativo</h2>
             <p>Seguimiento GPS exclusivo de Día Verde</p>
         </div>
-        <span id="dvMapBadge" class="status-badge badge-green">GPS ACTIVO</span>
+        <span id="dvMapBadge" class="status-badge badge-green">SINCRONIZANDO</span>
     </div>
 
     <div class="panel">
@@ -4180,7 +4181,7 @@ hr{border-color:var(--de-line)!important}
 
         <div class="dv-history">
             <div class="dv-history-card"><div class="dv-history-label">GPS recibidos</div><div id="dvKpiGps" class="dv-history-value">0</div></div>
-            <div class="dv-history-card"><div class="dv-history-label">Personas en recorrido</div><div id="dvKpiNombres" class="dv-history-value">0</div></div>
+            <div class="dv-history-card"><div class="dv-history-label">Usuarios con posición</div><div id="dvKpiNombres" class="dv-history-value">0</div></div>
             <div class="dv-history-card"><div class="dv-history-label">Realizados hoy</div><div id="dvKpiRealizados" class="dv-history-value">0</div></div>
             <div class="dv-history-card"><div class="dv-history-label">Histórico cargado</div><div id="dvKpiHistorico" class="dv-history-value">0</div></div>
         </div>
@@ -14028,11 +14029,15 @@ let dvMapStaticLoaded = false;
 let dvMapCargaEnCurso = false;
 let dvGpsCargaEnCurso = false;
 let dvMapUltimaFirma = "";
-let dvMapGeocodingProgramado = false;
 let dvMapGpsHandlersBound = false;
 let dvMapStaticLoading = false;
 let dvMapStartupIniciado = false;
 let dvMapLastVisibleAt = 0;
+let dvGpsLastSuccess = 0;
+let dvGpsLastError = "";
+let dvClaimsLastSuccess = 0;
+let dvEvidenceLastSuccess = 0;
+let dvClaimsRefreshing = false;
 let dvMapReady = false; // Se activa en "load"; evita bloquear filtros por glyphs/estilo externo.
 let dvUltimaFirmaVerdadMapa = "";
 let dvMapReclamos = [];
@@ -14156,7 +14161,8 @@ async function leerMapaDiaVerdeCompleto(){
     if(!r.ok) throw new Error("Backend HTTP "+r.status);
     const j=await r.json();
     if(!j || !j.ok) throw new Error((j&&j.error)||"El Backend Maestro no pudo leer Día Verde");
-    const datos=j.datos||{};
+    const datos=j.datos;
+    if(!datos || !Array.isArray(datos.gps) || !Array.isArray(datos.historico))throw new Error("El servidor no devolvió una lectura válida del mapa.");
     return {
         gps:Array.isArray(datos.gps)?datos.gps:[],
         historico:Array.isArray(datos.historico)?datos.historico:[]
@@ -14182,8 +14188,8 @@ function dvLimpiarCapas(){
 
 function dvColorPorNombre(nombre,mapa){
     if(!mapa[nombre]){
-        const indice=Object.keys(mapa).length % DV_MAP_COLORS.length;
-        mapa[nombre]=DV_MAP_COLORS[indice];
+        let hash=0;for(const ch of String(nombre))hash=(Math.imul(hash,31)+ch.charCodeAt(0))>>>0;
+        mapa[nombre]=DV_MAP_COLORS[hash%DV_MAP_COLORS.length];
     }
     return mapa[nombre];
 }
@@ -14200,20 +14206,9 @@ function dvZonaPunto(p){
     return String(p?.zona ?? p?.ZONA ?? p?.Zona ?? "-").trim() || "-";
 }
 
-function dvLatPunto(p){
-    const n=Number(p?.latitud ?? p?.LATITUD ?? p?.lat ?? p?.Lat ?? p?.latitude ?? p?.Latitud);
-    return Number.isFinite(n) && Math.abs(n)<=90 ? n : null;
-}
-
-function dvLngPunto(p){
-    const n=Number(p?.longitud ?? p?.LONGITUD ?? p?.lng ?? p?.Lng ?? p?.lon ?? p?.Lon ?? p?.longitude ?? p?.Longitud);
-    return Number.isFinite(n) && Math.abs(n)<=180 ? n : null;
-}
-
-function dvFechaPunto(p){
-    return p?.timestamp ?? p?.TIMESTAMP ?? p?.fecha_hora ?? p?.FECHA_HORA ?? p?.fechaHora ?? p?.fecha ?? p?.FECHA ?? null;
-}
-
+function dvLatPunto(p){ return DVContract.coords(p)?.[0] ?? null; }
+function dvLngPunto(p){ return DVContract.coords(p)?.[1] ?? null; }
+function dvFechaPunto(p){ return DVContract.date(p); }
 function dvHoraTexto(valor){
     if(!valor) return "-";
     const s=String(valor).trim();
@@ -14247,14 +14242,7 @@ function dvHoraTexto(valor){
     return s;
 }
 
-function dvEsHoy(valor){
-    if(!valor) return false;
-    const d=new Date(valor);
-    if(Number.isNaN(d.getTime())) return false;
-    const hoy=new Date();
-    return d.getFullYear()===hoy.getFullYear() && d.getMonth()===hoy.getMonth() && d.getDate()===hoy.getDate();
-}
-
+function dvEsHoy(valor){ return !!DVContract.dayKey(valor) && DVContract.dayKey(valor) === DVContract.dayKey(); }
 const DV_RECLAMO_COORD_OVERRIDES_KEY="panelDiaVerdeReclamoCoordsV1";
 const DV_RECLAMOS_COORD_BACKEND_ACCION="correccionesReclamosDiaVerde";
 let dvReclamoEnCorreccion=null;
@@ -14283,11 +14271,11 @@ async function dvCargarCorreccionesRemotas(){
             dvCorreccionesRemotas={};
             arr.forEach(c=>{
                 const clave=String(c.clave||"").trim();
-                const lat=Number(c.latitud),lng=Number(c.longitud);
-                if(clave&&Number.isFinite(lat)&&Number.isFinite(lng)) dvCorreccionesRemotas[clave]={lat,lng,fecha:c.fecha||"",usuario:c.usuario||""};
+                const pos=DVContract.coords(c);
+                if(clave && pos) dvCorreccionesRemotas[clave]={lat:pos[0],lng:pos[1],fecha:c.fecha||"",usuario:c.usuario||""};
             });
             try{
-                const local=dvCargarCorreccionesReclamos();
+                const local=Object.fromEntries(Object.entries(dvCargarCorreccionesReclamos()).filter(([k,v])=>v.origen==="LOCAL"));
                 Object.entries(dvCorreccionesRemotas).forEach(([k,v])=>local[k]={...v,origen:"BACKEND"});
                 localStorage.setItem(DV_RECLAMO_COORD_OVERRIDES_KEY,JSON.stringify(local));
             }catch(e){}
@@ -14301,18 +14289,19 @@ async function dvGuardarCorreccionReclamo(clave,lat,lng,d=null){
     dvGuardarCorreccionLocal(clave,nlat,nlng);
     try{
         const payload={accion:"guardarCorreccionReclamo",clave:String(clave),latitud:nlat,longitud:nlng,
-            direccion:d?dvDireccionReclamo(d):"",localidad:d?.localidad||"",zona:d?.zona||"",usuario:"PANEL"};
+            direccion:d?dvDireccionReclamo(d):"",localidad:d?.localidad||"",zona:d?.zona||"",usuario:window.panelUsuarioActual?.usuario || "PANEL"};
         const r=await fetch(BACKEND_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
         const j=await r.json();
         if(!j?.ok) throw new Error(j?.error||"Backend rechazó la corrección");
-        dvCorreccionesRemotas[clave]={lat:nlat,lng:nlng,fecha:j?.resultado?.fecha||new Date().toISOString(),usuario:"PANEL"};
+        dvCorreccionesRemotas[clave]={lat:nlat,lng:nlng,fecha:j?.resultado?.fecha||new Date().toISOString(),usuario:window.panelUsuarioActual?.usuario || "PANEL"};
+        dvBorrarCorreccionLocal(clave);
         return true;
     }catch(e){console.warn("No se pudo sincronizar corrección con backend",e);return false;}
 }
 async function dvBorrarCorreccionReclamo(clave){
     dvBorrarCorreccionLocal(clave);
     try{
-        const payload={accion:"eliminarCorreccionReclamo",clave:String(clave),usuario:"PANEL"};
+        const payload={accion:"eliminarCorreccionReclamo",clave:String(clave),usuario:window.panelUsuarioActual?.usuario || "PANEL"};
         const r=await fetch(BACKEND_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
         const j=await r.json();
         if(!j?.ok) throw new Error(j?.error||"Backend rechazó la restauración");
@@ -14322,8 +14311,9 @@ async function dvBorrarCorreccionReclamo(clave){
 }
 function dvCoordenadaManualReclamo(d){
     const clave=dvClaveReclamo(d);
-    const c=dvCorreccionesRemotas[clave] || dvCargarCorreccionesReclamos()[clave];
-    if(c && Number.isFinite(Number(c.lat)) && Number.isFinite(Number(c.lng))) return [Number(c.lat),Number(c.lng)];
+    const local=dvCargarCorreccionesReclamos()[clave];
+    const c=(local?.origen==="LOCAL" ? local : null) || dvCorreccionesRemotas[clave];
+    if(c) return DVContract.coords(c);
     return null;
 }
 function dvReclamoTieneCorreccion(d){return !!dvCoordenadaManualReclamo(d);}
@@ -14353,22 +14343,9 @@ async function dvConfirmarCorreccionReclamo(clave,lngLat){
     if(status) status.textContent=sincronizada?"✓ Ubicación corregida y guardada en el sistema":"✓ Ubicación corregida localmente · sin conexión con backend";
 }
 function dvReclamoLatLng(d){
-    const manual=dvCoordenadaManualReclamo(d);
-    if(manual) return manual;
-    const lat=Number(d.lat ?? d.Lat ?? d.latitude ?? d.Latitud);
-    const lng=Number(d.lng ?? d.Lng ?? d.lon ?? d.Lon ?? d.longitude ?? d.Longitud);
-    if(Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180){
-        return [lat,lng];
-    }
-    return null;
+    return dvCoordenadaManualReclamo(d) || DVContract.coords(d);
 }
-
-function dvClaveReclamo(d){
-    const id=d.id??d.ID??d.idReclamo??d.IdReclamo??d.codigo??d.Codigo??d.nro??d.Nro??"";
-    if(String(id).trim()) return "ID|"+dvNormalizar(id);
-    return [d.localidad,d.zona,d.calle,d.numero].map(dvNormalizar).join("|");
-}
-
+function dvClaveReclamo(d){ return DVContract.claimKey(d); }
 function dvDireccionReclamo(d){
     return `${d.calle || d.direccion || d.Direccion || d.domicilio || d.Domicilio || ""} ${d.numero || ""}`.trim();
 }
@@ -14409,55 +14386,17 @@ function dvCalleNumeroPartes(v){
     return {texto,calle:texto,numero:''};
 }
 
-function dvEvidenciaCoincide(d,e){
-    if(!d || !e)return false;
-
-    // 1) Si ambos traen una clave/ID de reclamo, esa es la coincidencia fuerte.
-    const claveD=dvClaveReclamo(d);
-    const claveE=dvTextoEvidencia(e);
-    if(claveE){
-        const normalE=dvNormalizar(claveE);
-        if(normalE===dvNormalizar(claveD) || normalE===dvNormalizar(String(claveD).replace(/^id\|/i,''))) return true;
-        const idsD=[d.id,d.ID,d.idReclamo,d.ID_RECLAMO,d.codigo,d.Codigo,d.nro,d.Nro].map(v=>dvNormalizar(v)).filter(Boolean);
-        if(idsD.includes(normalE))return true;
-    }
-
-    // 2) Fallback robusto: calle + número.
-    const dirD=dvCalleNumeroPartes(dvDireccionReclamo(d));
-    const dirE=dvCalleNumeroPartes(
-        e.direccion ?? e.Direccion ?? e.domicilio ?? e.Domicilio ??
-        e.calle ?? e.Calle ?? e.nombreCalle ?? e.NOMBRE_CALLE ?? ''
-    );
-    if(!dirD.texto || !dirE.texto)return false;
-
-    const mismaDireccion = dirD.texto===dirE.texto ||
-        (dirD.calle===dirE.calle && !!dirD.numero && !!dirE.numero && dirD.numero===dirE.numero);
-    if(!mismaDireccion)return false;
-
-    // 3) La zona solo confirma si ambos lados la tienen.
-    const zonaD=dvNormalizar(d.zona ?? d.Zona);
-    const zonaE=dvNormalizar(e.zona ?? e.Zona);
-    if(zonaD && zonaE){
-        return zonaD===zonaE || zonaD.includes(zonaE) || zonaE.includes(zonaD);
-    }
-    return true;
-}
+function dvEvidenciaCoincide(d,e){ return DVContract.evidenceMatches(d,e,dvMapReclamos); }
 
 function dvReclamoRealizado(d){
-    // V37: si el backend trae un estado explícito, ese estado tiene prioridad.
-    // Solo usamos evidencia como respaldo cuando el reclamo no trae estado.
-    const estadoExplicito=d?.estado ?? d?.ESTADO ?? d?.status ?? d?.STATUS ??
-        d?.estadoReclamo ?? d?.ESTADO_RECLAMO ?? d?.situacion ?? d?.SITUACION ?? "";
-    const eNorm=dvNormalizar(estadoExplicito);
-    if(eNorm){
-        if(/realiz|resuelt|complet|finaliz|atendid|levantad/.test(eNorm)) return true;
-        if(/pendient|abiert|ingres|asignad|en proceso|no realiz/.test(eNorm)) return false;
-    }
-
     const ev=Array.isArray(d?.__evidencias) && d.__evidencias.length ? d.__evidencias : (dvMapEvidencias||[]);
-    return ev.some(e=>dvEvidenciaCoincide(d,e));
+    // Evidencia confirmada del día prevalece sobre un estado pendiente antiguo.
+    if(ev.some(e=>dvEsHoy(e.fecha ?? e.FECHA ?? e.timestamp) && dvEvidenciaCoincide(d,e))) return true;
+    const estado=d?.estado ?? d?.ESTADO ?? d?.status ?? d?.STATUS ?? d?.estadoReclamo ?? d?.ESTADO_RECLAMO ?? d?.situacion ?? d?.SITUACION;
+    const fecha=d?.fechaRealizado ?? d?.FECHA_REALIZADO ?? d?.fecha ?? d?.FECHA;
+    // Sin fecha no podemos afirmar que un estado histórico sea "realizado hoy".
+    return !!fecha && dvEsHoy(fecha) && DVContract.completedStatus(estado) === true;
 }
-
 function dvReclamoTieneEstadoExplicito(d){
     const v=d?.estado ?? d?.ESTADO ?? d?.status ?? d?.STATUS ??
         d?.estadoReclamo ?? d?.ESTADO_RECLAMO ?? d?.situacion ?? d?.SITUACION ?? "";
@@ -14506,7 +14445,7 @@ function dvAsegurarCapasReclamos(){
         dvPurgarFuentesReclamosAntiguas();
         dvMap.addSource(DV_RECLAMOS_SOURCE_ID,{type:"geojson",data:{type:"FeatureCollection",features:[]}});
         dvMap.addLayer({id:DV_RECLAMOS_CIRCLE_ID,type:"circle",source:DV_RECLAMOS_SOURCE_ID,paint:{
-            "circle-radius":9,"circle-color":["match",["get","estado"],"realizado","#0ea5e9","#ff7a00"],
+            "circle-radius":9,"circle-color":["match",["get","estado"],"realizado","#25834f","#ce9222"],
             "circle-stroke-color":"#ffffff","circle-stroke-width":3,"circle-opacity":1
         }});
         dvMap.addLayer({id:DV_RECLAMOS_ICON_ID,type:"symbol",source:DV_RECLAMOS_SOURCE_ID,layout:{
@@ -14551,7 +14490,7 @@ function dvConvertirUrlImagenDrive(url){
 
 function dvBuscarEvidenciaReclamo(d){
     const ev=Array.isArray(d?.__evidencias) && d.__evidencias.length ? d.__evidencias : (dvMapEvidencias||[]);
-    return ev.find(e=>dvEvidenciaCoincide(d,e)) || null;
+    return ev.find(e=>dvEsHoy(e.fecha ?? e.FECHA ?? e.timestamp) && dvEvidenciaCoincide(d,e)) || null;
 }
 
 function dvEscaparAtributo(v){
@@ -15127,7 +15066,7 @@ async function cargarCapasEstaticasDiaVerde(){
 
             const datos=jr.datos||{};
             dvMapReclamos=Array.isArray(datos.reclamos)?datos.reclamos:[];
-            dvMapEvidencias=Array.isArray(datos.evidencias)?datos.evidencias:[];
+            if(datos.evidenciasOk!==false){dvMapEvidencias=Array.isArray(datos.evidencias)?datos.evidencias:[];dvEvidenceLastSuccess=Date.now();}
 
             const realizadosDiagnostico=dvMapReclamos.filter(d=>dvReclamoRealizado(d)).length;
             const explicitosDiagnostico=dvMapReclamos.filter(d=>dvReclamoTieneEstadoExplicito(d)).length;
@@ -15166,19 +15105,7 @@ async function cargarCapasEstaticasDiaVerde(){
                 requestAnimationFrame(()=>{try{dvCentrarReclamosFiltrados();}catch(e){}});
             }
 
-            // Geocodificación en segundo plano.
-            if(!dvMapGeocodingProgramado){
-                dvMapGeocodingProgramado=true;
-                setTimeout(()=>{
-                    dvGeocodificarReclamosSinCoordenadas().then(async ()=>{
-                        if(dvMap && dvMap.isStyleLoaded()){
-                            dvRenderMarcadoresReclamos();
-                            dvActualizarEstadoFiltroMapa();
-                        }
-
-                    });
-                },5000);
-            }
+            dvClaimsLastSuccess=Date.now();
 
         }catch(reclamoError){
             console.error("Reclamos Día Verde:",reclamoError);
@@ -15219,75 +15146,6 @@ async function cargarCapasEstaticasDiaVerde(){
         dvMapStaticLoading=false;
         dvActualizarEstadoFiltroMapa();
     }
-}
-
-async function dvGeocodificarReclamosSinCoordenadas(){
-    const pendientes=[];
-    const cacheKey="panelDiaVerdeGeocodingV1";
-    let cache={};
-    try{cache=JSON.parse(localStorage.getItem(cacheKey)||"{}");}catch(e){cache={};}
-
-    dvMapReclamos=dvMapReclamos.map(d=>{
-        const directa=dvReclamoLatLng(d);
-        if(directa) return d;
-        const key=dvClaveReclamo(d);
-        if(cache[key] && Number.isFinite(Number(cache[key].lat)) && Number.isFinite(Number(cache[key].lng)))
-            return {...d,lat:Number(cache[key].lat),lng:Number(cache[key].lng)};
-        if(pendientes.length<20) pendientes.push(d);
-        return d;
-    });
-
-    let indice=0;
-    async function trabajador(){
-        while(indice<pendientes.length){
-            const d=pendientes[indice++];
-            const q=`${dvDireccionReclamo(d)}, ${d.localidad || ""}, Buenos Aires, Argentina`;
-            try{
-                const r=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=ar&q="+encodeURIComponent(q),{headers:{Accept:"application/json"}});
-                if(r.ok){
-                    const a=await r.json();
-                    if(a && a[0]){
-                        const lat=Number(a[0].lat),lng=Number(a[0].lon);
-                        if(Number.isFinite(lat)&&Number.isFinite(lng)){
-                            const key=dvClaveReclamo(d);
-                            cache[key]={lat,lng};
-                            d.lat=lat;d.lng=lng;
-                            // IMPORTANTE: la geolocalización automática se persiste en Backend.
-                            // Así deja de depender del localStorage de esta PC y desaparece del contador de pendientes.
-                            try{
-                                await dvGuardarGeolocalizacionAutomatica(d,lat,lng);
-                            }catch(e){console.warn("No se pudo persistir geolocalización automática",q,e);}
-                        }
-                    }
-                }
-            }catch(e){console.warn("Geocodificación Día Verde",q,e);}
-            await new Promise(r=>setTimeout(r,600));
-        }
-    }
-    const trabajadores=Math.min(2,pendientes.length);
-    await Promise.all(Array.from({length:trabajadores},()=>trabajador()));
-    try{localStorage.setItem(cacheKey,JSON.stringify(cache));}catch(e){}
-    // Actualizar el contador después de persistir las coordenadas automáticas.
-
-}
-
-async function dvGuardarGeolocalizacionAutomatica(d,lat,lng){
-    const payload={
-        accion:"guardarCorreccionReclamo",
-        clave:String(dvClaveReclamo(d)),
-        latitud:Number(lat),
-        longitud:Number(lng),
-        direccion:dvDireccionReclamo(d),
-        localidad:d?.localidad||"",
-        zona:d?.zona||"",
-        usuario:"NOMINATIM-AUTO"
-    };
-    const r=await fetch(BACKEND_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
-    if(!r.ok)throw new Error("HTTP "+r.status);
-    const j=await r.json();
-    if(!j?.ok)throw new Error(j?.error||"Backend rechazó la geolocalización automática");
-    dvCorreccionesRemotas[payload.clave]={lat:Number(lat),lng:Number(lng),fecha:j?.resultado?.fecha||new Date().toISOString(),usuario:"NOMINATIM-AUTO"};
-    return true;
 }
 
 function dvRenderMapa(gps,historico){
@@ -15343,105 +15201,56 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
         .forEach(id=>{try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}});
 
     const puntos=(Array.isArray(gps)?gps:[]).map((p,i)=>({
-        ...p,
-        lat:dvLatPunto(p),
-        lng:dvLngPunto(p),
-        nombre:dvNombrePunto(p),
-        usuario:dvUsuarioPunto(p),
-        zona:dvZonaPunto(p),
-        fecha:dvFechaPunto(p),
-        orden:i
-    })).filter(p=>p.lat!==null&&p.lng!==null);
-
-    // No agrupamos un recorrido únicamente por nombre. Un mismo nombre puede
-    // reutilizarse entre turnos y, además, un salto grande de tiempo/distancia
-    // no debe convertirse en una línea falsa.
+        ...p,lat:dvLatPunto(p),lng:dvLngPunto(p),nombre:dvNombrePunto(p),usuario:dvUsuarioPunto(p),
+        zona:dvZonaPunto(p),fecha:dvFechaPunto(p),orden:i,
+        captura:DVContract.timestamp(dvFechaPunto(p)),precision:DVContract.number(p.precision ?? p.Precision ?? p.PRECISION)
+    })).filter(p=>p.lat!==null && p.lng!==null && p.captura!==null && p.captura<=Date.now()+60000 &&
+        (p.precision===null || (p.precision>=0 && p.precision<=50)));
     const porNombre={};
     puntos.forEach(p=>{
-        const nombre=p.nombre||"SIN NOMBRE";
-        if(!porNombre[nombre])porNombre[nombre]=[];
-        porNombre[nombre].push(p);
+        const key=DVContract.userKey(p);
+        if(!porNombre[key])porNombre[key]=[];
+        porNombre[key].push(p);
     });
-
     const colores={};
     const gpsFeatures=[];
-    const MAX_GAP_MIN=15;
-    const MAX_JUMP_KM=3;
     let routeIndex=0;
-
-    Object.entries(porNombre).forEach(([nombre,lista])=>{
-        lista.sort((a,b)=>new Date(a.fecha||0)-new Date(b.fecha||0));
-        const color=dvColorPorNombre(nombre,colores);
+    Object.entries(porNombre).sort(([a],[b])=>a.localeCompare(b)).forEach(([key,lista])=>{
+        lista.sort((a,b)=>a.captura-b.captura || a.orden-b.orden);
+        const color=dvColorPorNombre(key,colores);
         const segmentos=[];
         let segmento=[];
-
-        const cerrarSegmento=()=>{
-            if(segmento.length) segmentos.push(segmento);
-            segmento=[];
-        };
-
-        lista.forEach((p,i)=>{
-            if(!segmento.length){
-                segmento=[p];
-                return;
-            }
+        const cerrar=()=>{if(segmento.length)segmentos.push(segmento);segmento=[];};
+        lista.forEach(p=>{
             const anterior=segmento[segmento.length-1];
-            const t1=Date.parse(anterior.fecha||"");
-            const t2=Date.parse(p.fecha||"");
-            const gapMin=(Number.isFinite(t1)&&Number.isFinite(t2)) ? Math.abs(t2-t1)/60000 : 0;
-            const distKm=dvDistanciaKmGPS(anterior.lat,anterior.lng,p.lat,p.lng);
-
-            // Corta por día, salto temporal o salto espacial. Esto evita unir
-            // turnos distintos y evita líneas que atraviesan el municipio.
-            const diaAnterior=Number.isFinite(t1)?new Date(t1).toISOString().slice(0,10):"";
-            const diaActual=Number.isFinite(t2)?new Date(t2).toISOString().slice(0,10):diaAnterior;
-            const cortaPorTiempo=gapMin>MAX_GAP_MIN;
-            const cortaPorDistancia=distKm>MAX_JUMP_KM;
-            const cortaPorDia=!!diaAnterior&&!!diaActual&&diaAnterior!==diaActual;
-
-            if(cortaPorTiempo||cortaPorDistancia||cortaPorDia){
-                cerrarSegmento();
-                segmento=[p];
-            }else{
-                segmento.push(p);
+            if(anterior){
+                const delta=p.captura-anterior.captura;
+                const distancia=DVContract.distance([anterior.lat,anterior.lng],[p.lat,p.lng]);
+                const cambiaRecorrido=DVContract.routeId(p)!==DVContract.routeId(anterior);
+                const cambiaZona=dvNormalizar(p.zona)!==dvNormalizar(anterior.zona);
+                if(DVContract.active(anterior)===false || cambiaRecorrido || cambiaZona ||
+                   DVContract.dayKey(anterior.captura)!==DVContract.dayKey(p.captura) || delta>900000 ||
+                   distancia>3000 || (delta>0 && distancia/(delta/1000)>50))cerrar();
             }
+            segmento.push(p);
         });
-        cerrarSegmento();
-
+        cerrar();
         segmentos.forEach(seg=>{
             const coordinates=seg.map(p=>[p.lng,p.lat]);
-            if(coordinates.length>=2){
-                const sourceId="dv-route-"+(routeIndex++);
-                const layerId=sourceId+"-line";
-                dvMap.addSource(sourceId,{
-                    type:"geojson",
-                    data:{type:"Feature",geometry:{type:"LineString",coordinates}}
-                });
-                dvMap.addLayer({
-                    id:layerId,
-                    type:"line",
-                    source:sourceId,
-                    layout:{"line-cap":"round","line-join":"round"},
-                    paint:{"line-color":color,"line-width":5,"line-opacity":0.88}
-                });
-            }
+            if(coordinates.length<2)return;
+            const sourceId="dv-route-"+(routeIndex++);
+            dvMap.addSource(sourceId,{type:"geojson",data:{type:"Feature",geometry:{type:"LineString",coordinates}}});
+            dvMap.addLayer({id:sourceId+"-line",type:"line",source:sourceId,
+                layout:{"line-cap":"round","line-join":"round"},paint:{"line-color":color,"line-width":5,"line-opacity":0.88}});
         });
-
-        // El punto visible es siempre el último punto válido del nombre.
         const ultimo=lista[lista.length-1];
-        gpsFeatures.push({
-            type:"Feature",
-            geometry:{type:"Point",coordinates:[ultimo.lng,ultimo.lat]},
-            properties:{
-                nombre,
-                usuario:ultimo.usuario||"-",
-                zona:ultimo.zona||"-",
-                fecha:ultimo.fecha||"",
-                lat:ultimo.lat,
-                lng:ultimo.lng,
-                color
-            }
-        });
+        const activo=DVContract.active(ultimo);
+        const reciente=Date.now()-ultimo.captura<90000;
+        gpsFeatures.push({type:"Feature",geometry:{type:"Point",coordinates:[ultimo.lng,ultimo.lat]},
+            properties:{nombre:ultimo.nombre,usuario:ultimo.usuario,zona:ultimo.zona,fecha:ultimo.fecha,
+                lat:ultimo.lat,lng:ultimo.lng,precision:ultimo.precision ?? "Sin dato",
+                estado:activo===false ? "Recorrido finalizado" : reciente ? "Ubicación reciente" : "Sin señal reciente",
+                color:activo===false || !reciente ? "#728078" : color}});
     });
 
     const gpsData={type:"FeatureCollection",features:gpsFeatures};
@@ -15485,7 +15294,7 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
     if(legend){
         const nombres=Object.keys(porNombre);
         const rutasHtml=nombres.length
-            ? nombres.map(nombre=>`<div class="dv-legend-item"><span class="dv-legend-line" style="background:${colores[nombre]}"></span><span>${dvEscapar(nombre)}</span></div>`).join("")
+            ? nombres.map(nombre=>`<div class="dv-legend-item"><span class="dv-legend-line" style="background:${colores[nombre]}"></span><span>${dvEscapar(porNombre[nombre][porNombre[nombre].length-1].nombre)} · ${dvEscapar(porNombre[nombre][0].usuario)}</span></div>`).join("")
             : "";
         legend.innerHTML=`
             <div class="dv-legend-item"><span class="dv-legend-zone"></span><span>Zonas operativas</span></div>
@@ -15494,6 +15303,18 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
             <div class="dv-legend-subtitle">RECORRIDOS GPS</div>${rutasHtml}`;
     }
 
+    const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
+    set("dvMapPuntos",puntos.length);set("dvKpiGps",puntos.length);set("dvKpiNombres",gpsFeatures.length);
+    set("dvKpiHistorico",dvMapHistoricoData.length);set("dvKpiRealizados",dvMapReclamos.filter(dvReclamoRealizado).length);
+    if(!dvMapGpsHandlersBound){
+        dvMap.on("click","dv-gps-puntos-circles",e=>{
+            const p=e.features?.[0]?.properties;if(!p)return;
+            new maplibregl.Popup().setLngLat([Number(p.lng),Number(p.lat)]).setHTML(
+                `<strong>${dvEscapar(p.nombre)}</strong> · ${dvEscapar(p.usuario)}<br>${dvEscapar(p.estado)}<br>Captura: ${dvEscapar(dvHoraTexto(p.fecha))}<br>Precisión: ${dvEscapar(p.precision)} m<br>Lat: ${Number(p.lat).toFixed(6)} · Lng: ${Number(p.lng).toFixed(6)}`
+            ).addTo(dvMap);
+        });
+        dvMapGpsHandlersBound=true;
+    }
     dvOrdenarCapasMapa();
 }
 function dvCentrarReclamosFiltrados(){
@@ -15566,20 +15387,27 @@ function dvActualizarEstadoFiltroMapa(){
     }
     if(!dvMapStaticLoaded){
         if(dvMapStaticLoading){
-            status.textContent="⏳ Cargando zonas/reclamos · GPS activo...";
+            status.textContent="Cargando zonas y reclamos...";
         }else{
             status.textContent="⏳ Preparando capas de Día Verde...";
         }
         return;
     }
+    const reciente=dvGpsLastSuccess && Date.now()-dvGpsLastSuccess<45000 && !dvGpsLastError;
+    const conexion=reciente ? "Última consulta confirmada" : "Datos sin actualizar · se conserva la última posición";
+    const atrasoReclamos=!dvClaimsLastSuccess || Date.now()-dvClaimsLastSuccess>90000;
+    const badge=document.getElementById("dvMapBadge");
+    if(badge){badge.textContent=reciente ? "CONSULTA ACTUALIZADA" : "SIN ACTUALIZAR";badge.classList.toggle("badge-red",!reciente);badge.classList.toggle("badge-green",!!reciente);}
+    const dot=document.getElementById("dvMapLiveDot");if(dot)dot.classList.toggle("off",!reciente);
+    const detalle=conexion+(atrasoReclamos ? " · Reclamos pendientes de actualización" : "")+(!dvEvidenceLastSuccess || Date.now()-dvEvidenceLastSuccess>90000 ? " · Evidencias pendientes de actualización" : "");
     const tieneFiltro=!!(dvMapFiltros.cgm||dvMapFiltros.zona||dvMapFiltros.chofer||dvMapFiltros.reclamo);
     if(!tieneFiltro){
-        status.textContent=`Día Verde conectado · GPS activo · ${dvMapZonas.length} zonas · ${dvMapReclamos.length} reclamos`;
+        status.textContent=`${detalle} · ${dvMapZonas.length} zonas · ${dvMapReclamos.length} reclamos`;
         return;
     }
     const zonasSeleccionadas=(Array.isArray(dvMapZonas)?dvMapZonas:[]).filter(dvZonaGeoVisiblePorFiltros);
     const reclamosVisibles=dvObtenerReclamosFiltradosMapa();
-    status.textContent=`✓ Filtro activo · ${zonasSeleccionadas.length} zonas · ${reclamosVisibles.length} reclamos con ubicación`;
+    status.textContent=`${detalle} · ${zonasSeleccionadas.length} zonas · ${reclamosVisibles.length} reclamos con ubicación`;
     const firmaFiltro=[dvMapFiltros.cgm,dvMapFiltros.zona,dvMapFiltros.chofer,dvMapFiltros.reclamo,reclamosVisibles.length].join("|");
     if(window.dvUltimaFirmaFiltroMapa!==firmaFiltro){
         window.dvUltimaFirmaFiltroMapa=firmaFiltro;
@@ -15665,7 +15493,7 @@ function dvAplicarFiltrosMapa(){
 
 // TURBO 25: filtros geográficos y recorridos reforzados.
 // Estas funciones son requeridas por la carga inicial y por los selectores.
-function dvValorNombreSeguro(p){return String(p?.nombre??p?.NOMBRE??"").trim();}
+function dvValorNombreSeguro(p){return DVContract.userKey(p);}
 
 function dvPoblarFiltrosMapa(){
     const cgmSel=document.getElementById("dvFiltroCgmMapa"),zonaSel=document.getElementById("dvFiltroZonaMapa"),choferSel=document.getElementById("dvFiltroChoferMapa");
@@ -15678,7 +15506,7 @@ function dvPoblarFiltrosMapa(){
     const choferActual=dvNormalizar(dvMapFiltros.chofer||"");
     cgmSel.innerHTML='<option value="">Todos los CGM</option>'+cgms.map(c=>`<option value="${dvEscapar(c)}">${dvEscapar(c.charAt(0)+c.slice(1).toLowerCase())}</option>`).join("");
     zonaSel.innerHTML='<option value="">Todas las zonas</option>'+zonas.map(z=>`<option value="${dvEscapar(z)}">${dvEscapar(z)}</option>`).join("");
-    choferSel.innerHTML='<option value="">Todos los choferes</option>'+choferes.map(c=>`<option value="${dvEscapar(c)}">${dvEscapar(c)}</option>`).join("");
+    choferSel.innerHTML='<option value="">Todos los choferes</option>'+choferes.map(c=>`<option value="${dvEscapar(c)}">${dvEscapar(dvNombrePunto(dvMapGpsData.find(p=>DVContract.userKey(p)===c)))} · ${dvEscapar(dvUsuarioPunto(dvMapGpsData.find(p=>DVContract.userKey(p)===c)))}</option>`).join("");
     cgmSel.value=cgmActual && cgms.includes(cgmActual)?cgmActual:"";
     const zonaMatch=zonas.find(z=>dvNormalizar(z)===zonaActual);
     zonaSel.value=zonaMatch||"";
@@ -15805,15 +15633,10 @@ async function cargarMapaDiaVerde(){
         const gps=Array.isArray(datos.gps)?datos.gps:[];
         const historico=Array.isArray(datos.historico)?datos.historico:[];
 
-        const firma=JSON.stringify(
-            gps.map(p=>[
-                dvNombrePunto(p),
-                dvLatPunto(p),
-                dvLngPunto(p),
-                dvFechaPunto(p)
-            ])
-        );
+        const firma=DVContract.gpsSignature(gps);
 
+        dvGpsLastSuccess=Date.now();
+        dvGpsLastError="";
         dvMapGpsData=gps;
         dvMapHistoricoData=historico;
         dvGuardarCache("gps",dvMapGpsData);
@@ -15830,7 +15653,7 @@ async function cargarMapaDiaVerde(){
 
         const badge=document.getElementById("dvMapBadge");
         if(badge){
-            badge.textContent="GPS + ZONAS + RECLAMOS · TURBO 39";
+            badge.textContent="DATOS ACTUALIZADOS";
             badge.classList.remove("badge-red");
             badge.classList.add("badge-green");
         }
@@ -15838,6 +15661,7 @@ async function cargarMapaDiaVerde(){
         dvActualizarEstadoFiltroMapa();
 
     }catch(error){
+        dvGpsLastError=error.message;
         console.error("Mapa Día Verde:",error);
         if(dot) dot.classList.add("off");
         if(status) status.textContent="⚠ GPS de Día Verde conectado · esperando actualización";
@@ -15854,8 +15678,25 @@ async function cargarMapaDiaVerde(){
     }
 }
 
+async function dvRefrescarReclamosCompartidos(){
+    if(dvClaimsRefreshing)return;
+    dvClaimsRefreshing=true;
+    try{
+        const r=await fetch(BACKEND_URL+"?accion=reclamosDiaVerde&t="+Date.now(),{cache:"no-store"});
+        if(!r.ok)throw new Error("HTTP "+r.status);
+        const j=await r.json();
+        if(!j.ok || !Array.isArray(j.datos?.reclamos))throw new Error(j.error||"Reclamos no disponibles");
+        dvMapReclamos=j.datos.reclamos;
+        if(j.datos.evidenciasOk!==false){dvMapEvidencias=Array.isArray(j.datos.evidencias)?j.datos.evidencias:[];dvEvidenceLastSuccess=Date.now();}
+        dvClaimsLastSuccess=Date.now();
+        dvGuardarCache("reclamos",dvMapReclamos);dvGuardarCache("evidencias",dvMapEvidencias);
+        await dvCargarCorreccionesRemotas();
+        if(dvMapReady){dvRenderMarcadoresReclamos();dvActualizarEstadoFiltroMapa();}
+    }catch(e){console.warn("Se conservan reclamos previos:",e.message);}
+    finally{dvClaimsRefreshing=false;}
+}
 async function actualizarGpsDiaVerde(){
-    // TURBO 39: cada 15 s solo refresca GPS. NO toca zonas ni reclamos.
+    // GPS cada 15 segundos; estados y coordenadas compartidas cada 30 segundos.
     if(dvGpsCargaEnCurso || !dvMap || !dvMapReady) return;
     dvGpsCargaEnCurso=true;
 
@@ -15864,15 +15705,10 @@ async function actualizarGpsDiaVerde(){
         const gps=Array.isArray(datos.gps)?datos.gps:[];
         const historico=Array.isArray(datos.historico)?datos.historico:[];
 
-        const firma=JSON.stringify(
-            gps.map(p=>[
-                dvNombrePunto(p),
-                dvLatPunto(p),
-                dvLngPunto(p),
-                dvFechaPunto(p)
-            ])
-        );
+        const firma=DVContract.gpsSignature(gps);
 
+        dvGpsLastSuccess=Date.now();
+        dvGpsLastError="";
         dvMapGpsData=gps;
         dvMapHistoricoData=historico;
         dvGuardarCache("gps",dvMapGpsData);
@@ -15886,10 +15722,14 @@ async function actualizarGpsDiaVerde(){
                 dvActualizarEstadoFiltroMapa();
             }
         }
+        if(Date.now()-dvClaimsLastSuccess>=30000) await dvRefrescarReclamosCompartidos();
+        if(dvMap.isStyleLoaded()) dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
     }catch(e){
+        dvGpsLastError=e.message;
         console.warn("Actualización GPS Día Verde:",e);
     }finally{
         dvGpsCargaEnCurso=false;
+        dvActualizarEstadoFiltroMapa();
     }
 }
 
