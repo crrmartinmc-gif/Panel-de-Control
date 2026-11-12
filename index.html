@@ -11657,14 +11657,17 @@ function numeroKMVehiculo(valor){
 
 function obtenerKMActualVehiculo(vehiculo){
     const directo = numeroKMVehiculo(vehiculo?.KM_ACTUAL ?? vehiculo?.KM);
-    if(directo !== null) return directo;
+    const esSecretaria = normalizar(vehiculo?.AREA) === "SECRETARIA";
+    if(directo !== null && !esSecretaria) return directo;
 
     const id = String(vehiculo?.ID_VEHICULO || "").trim();
-    const valores=[];
+    const valores=directo === null ? [] : [directo];
 
     (estadoPanel.viajes || []).forEach(v=>{
         if(String(v?.ID_VEHICULO || "").trim() !== id) return;
-        const km = numeroKMVehiculo(v?.KM_FINAL ?? v?.KM_INICIAL);
+        if(["CANCELADO","CANCELADA","ANULADO","ANULADA"].includes(normalizar(v?.ESTADO))) return;
+        const kmFinal = numeroKMVehiculo(v?.KM_FINAL);
+        const km = kmFinal !== null ? kmFinal : numeroKMVehiculo(v?.KM_INICIAL);
         if(km !== null) valores.push(km);
     });
 

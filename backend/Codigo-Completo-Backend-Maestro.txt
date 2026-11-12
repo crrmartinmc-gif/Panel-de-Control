@@ -1277,6 +1277,9 @@ function iniciarViajeSecretaria_(d) {
       throw new Error('El viaje quedó creado, pero no se pudieron registrar las cuatro fotos. Volvé a intentar o contactá al administrador. ' +
         resultadoFotos.faltantes.join(' | '));
     }
+    // El panel consulta el odómetro en VEHICULOS también durante el viaje.
+    asegurarColumnaVehiculosKM_();
+    actualizarPorID_(CONFIG.HOJAS.VEHICULOS, 'ID_VEHICULO', vehiculo.ID_VEHICULO, {KM_ACTUAL:kmInicial});
     registrarEvento_({
       tipoEvento:'VIAJE_SECRETARIA_INICIADO', origen:'CHOFERES',
       idUsuario:auth.usuario.ID_USUARIO, idViaje:id,
@@ -1318,6 +1321,7 @@ function finalizarViajeSecretaria_(d) {
       HORA_FIN:horaFin, KM_FINAL:kmFinal, KM_RECORRIDO:kmFinal-kmInicial,
       ESTADO:'FINALIZADO', OBSERVACIONES:d.observaciones || viaje.OBSERVACIONES || ''
     });
+    asegurarColumnaVehiculosKM_();
     actualizarPorID_(CONFIG.HOJAS.VEHICULOS, 'ID_VEHICULO', vehiculo.ID_VEHICULO, {KM_ACTUAL:kmFinal});
     registrarEvento_({
       tipoEvento:'VIAJE_SECRETARIA_FINALIZADO', origen:'CHOFERES',

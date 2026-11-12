@@ -39,3 +39,9 @@ El frontend del Panel sigue actualizando GPS cada 15 segundos y consulta reclamo
 `node --test tests/*.test.cjs`
 
 Se probaron posiciones separadas para usuarios con el mismo nombre, precisión y coordenadas ausentes, segmentación por recorrido, preservación de foto/ID y correcciones limitadas al CGM correspondiente.
+
+## Kilometraje de Secretaría
+
+El archivo completo también actualiza `VEHICULOS.KM_ACTUAL` al iniciar un viaje de Secretaría, después de confirmar las cuatro fotos. Garantiza la columna de kilometraje al iniciar y finalizar. Para activar esta escritura en la base, publicar una nueva versión del Backend Maestro siguiendo los pasos de arriba; subir el TXT a GitHub no actualiza Apps Script.
+
+El Panel puede mostrar el kilometraje confirmado de los viajes de Secretaría aunque el valor de la ficha todavía esté desactualizado. Usa el KM inicial para viajes abiertos con KM final vacío, ignora viajes cancelados y conserva el mayor valor registrado.
