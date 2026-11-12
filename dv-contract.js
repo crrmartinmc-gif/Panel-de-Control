@@ -42,12 +42,18 @@
     const t = Date.parse(text);
     return Number.isFinite(t) && t > 0 ? t : null;
   }
+  let dayFormatter;
+  const dayKeys=new Map();
   function dayKey(value = Date.now()){
     const t = timestamp(value);
     if(t === null) return '';
-    const parts = new Intl.DateTimeFormat('en-CA', {timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(t));
+    if(dayKeys.has(t))return dayKeys.get(t);
+    if(!dayFormatter)dayFormatter=new Intl.DateTimeFormat('en-CA', {timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'});
+    const parts = dayFormatter.formatToParts(new Date(t));
     const part = key => parts.find(p => p.type === key)?.value;
-    return `${part('year')}-${part('month')}-${part('day')}`;
+    const key=`${part('year')}-${part('month')}-${part('day')}`;
+    if(dayKeys.size>=8192)dayKeys.delete(dayKeys.keys().next().value);
+    dayKeys.set(t,key);return key;
   }
   function date(o){ return pick(o, ['timestamp','TIMESTAMP','Timestamp','fecha_hora','FECHA_HORA','fechaHora','fecha','FECHA','Fecha']); }
   function userKey(o){
@@ -107,3 +113,4 @@
   }
   return {number,pick,normalize,coords,timestamp,dayKey,date,userKey,active,routeId,distance,gpsSignature,claimKey,completedStatus,address,evidenceMatches,zone};
 });
+

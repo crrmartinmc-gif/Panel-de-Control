@@ -3540,7 +3540,7 @@ hr{border-color:var(--de-line)!important}
 </style>
 
 <link rel="stylesheet" href="./responsive.css?v=1">
-<script src="./dv-contract.js"></script>
+<script src="./dv-contract.js?v=20261112-panel-perf1"></script>
 </head>
 
 <body class="panel-auth-locked">
@@ -6688,6 +6688,7 @@ function mostrarPagina(id, boton){
     }
 
     actualizarTitulo(id);
+    if(id==="inicio" || id==="mapa")actualizarGpsDiaVerde();
 
     if(id === "mapa") {
         dvActivarMapaPaginaCompleta();
@@ -6921,12 +6922,51 @@ let estadoPanel = {
    LECTURAS DEL BACKEND
    ========================================================= */
 
-async function leerBackend(accion, parametros={}){
+// Lecturas simultáneas compartidas, sin guardar respuestas antiguas.
+const PANEL_MAX_LECTURAS=4;
+const panelLecturasPendientes=new Map();
+const panelColaLecturas=[];
+let panelLecturasActivas=0;
+let panelEpocaLecturas=0;
+function panelSesionLectura(){
+    try{return sessionStorage.getItem("PANEL_CONTROL_SESSION_V1")||"";}catch(e){return "";}
+}
+function panelInvalidarLecturas(){panelEpocaLecturas++;panelLecturasPendientes.clear();}
+function panelDespacharLecturas(){
+    while(panelLecturasActivas<PANEL_MAX_LECTURAS && panelColaLecturas.length){
+        const item=panelColaLecturas.shift();panelLecturasActivas++;
+        Promise.resolve().then(item.operacion).then(item.resolve,item.reject).finally(()=>{
+            panelLecturasActivas--;panelDespacharLecturas();
+        });
+    }
+}
+function leerBackend(accion,parametros={}){
+    if(!BACKEND_URL)return Promise.resolve(null);
+    const sesion=panelSesionLectura();
+    const entradas=Object.entries(parametros||{}).filter(([,v])=>v!==undefined&&v!==null&&v!=="")
+        .map(([k,v])=>[k,String(v)]).sort(([a],[b])=>a.localeCompare(b));
+    const clave=JSON.stringify([sesion,panelEpocaLecturas,accion,entradas]);
+    if(panelLecturasPendientes.has(clave))return panelLecturasPendientes.get(clave);
+    const pendiente=new Promise((resolve,reject)=>{
+        panelColaLecturas.push({resolve,reject,operacion:async()=>{
+            if(panelSesionLectura()!==sesion)return null;
+            const resultado=await panelLeerBackendDirecto(accion,parametros);
+            return panelSesionLectura()===sesion?resultado:null;
+        }});
+    });
+    panelLecturasPendientes.set(clave,pendiente);
+    const liberar=()=>{if(panelLecturasPendientes.get(clave)===pendiente)panelLecturasPendientes.delete(clave);};
+    pendiente.then(liberar,liberar);panelDespacharLecturas();return pendiente;
+}
+async function panelLeerBackendDirecto(accion, parametros={}){
+
 
     if(!BACKEND_URL){
         return null;
     }
 
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),35000);
     try{
 
         const query = new URLSearchParams();
@@ -6945,7 +6985,8 @@ async function leerBackend(accion, parametros={}){
             BACKEND_URL + "?" + query.toString(),
             {
                 method:"GET",
-                cache:"no-store"
+                cache:"no-store",
+                signal:controller.signal
             }
         );
 
@@ -6973,6 +7014,8 @@ async function leerBackend(accion, parametros={}){
         );
 
         return null;
+    }finally{
+        clearTimeout(timeout);
     }
 }
 
@@ -11573,7 +11616,7 @@ async function guardarInspeccion(event){
    VEHÍCULOS
    ========================================================= */
 
-async function cargarVehiculos(){
+async function cargarVehiculos(conComplementos=true){
 
     // IMPORTANTE: la flota se carga de forma independiente.
     // Ningún dato secundario puede impedir que aparezcan los vehículos.
@@ -11593,7 +11636,7 @@ async function cargarVehiculos(){
     renderizarVehiculos(vehiculos);
 
     // Los datos complementarios se cargan después y no bloquean la flota.
-    cargarComplementosVehiculos();
+    if(conComplementos)cargarComplementosVehiculos();
 
     return vehiculos;
 }
@@ -13954,7 +13997,15 @@ async function guardarReporte(event){
    ACTUALIZAR TODO
    ========================================================= */
 
-async function actualizarDatos(){
+let panelActualizacionTotal=null;
+let panelActualizacionEpoca=-1;
+function actualizarDatos(){
+    if(panelActualizacionTotal && panelActualizacionEpoca===panelEpocaLecturas)return panelActualizacionTotal;
+    panelActualizacionEpoca=panelEpocaLecturas;
+    const pendiente=panelActualizarDatosCompleto().finally(()=>{if(panelActualizacionTotal===pendiente)panelActualizacionTotal=null;});
+    panelActualizacionTotal=pendiente;return pendiente;
+}
+async function panelActualizarDatosCompleto(){
 
     const botonActualizar =
         document.querySelector(
@@ -13984,7 +14035,7 @@ async function actualizarDatos(){
         */
         await Promise.all([
             cargarResumenPanel(),
-            cargarVehiculos(),
+            cargarVehiculos(false),
             cargarChoferes(),
             cargarServicios(),
             cargarAsignaciones(),
@@ -13995,8 +14046,11 @@ async function actualizarDatos(){
             cargarReportes(),
             cargarMantenimiento(),
             cargarEventos(),
-            cargarUsuarios()
+            cargarUsuarios(),
+            panelCargarEvidenciasVehiculos()
         ]);
+
+        renderizarVehiculos(estadoPanel.vehiculos || []);
 
         estadoPanel.ultimaActualizacion =
             new Date();
@@ -14351,22 +14405,31 @@ function dvHoraTexto(valor){
     return s;
 }
 
-function dvEsHoy(valor){ return !!DVContract.dayKey(valor) && DVContract.dayKey(valor) === DVContract.dayKey(); }
+function dvEsHoy(valor){ const dia=DVContract.dayKey(valor);return !!dia && dia===DVContract.dayKey(); }
 const DV_RECLAMO_COORD_OVERRIDES_KEY="panelDiaVerdeReclamoCoordsV1";
 const DV_RECLAMOS_COORD_BACKEND_ACCION="correccionesReclamosDiaVerde";
 let dvReclamoEnCorreccion=null;
 let dvMapCorrectionHandlerBound=false;
 let dvCorreccionesRemotas={};
+let dvCorreccionesTextoCache=null;
+let dvCorreccionesDatosCache={};
 function dvCargarCorreccionesReclamos(){
-    try{return JSON.parse(localStorage.getItem(DV_RECLAMO_COORD_OVERRIDES_KEY)||"{}");}catch(e){return {};}
+    try{
+        const texto=localStorage.getItem(DV_RECLAMO_COORD_OVERRIDES_KEY)||"{}";
+        if(texto!==dvCorreccionesTextoCache){
+            const datos=JSON.parse(texto);
+            dvCorreccionesDatosCache=datos;dvCorreccionesTextoCache=texto;
+        }
+        return dvCorreccionesDatosCache;
+    }catch(e){return {};}
 }
 function dvGuardarCorreccionLocal(clave,lat,lng,meta={}){
-    const data=dvCargarCorreccionesReclamos();
+    const data={...dvCargarCorreccionesReclamos()};
     data[clave]={lat:Number(lat),lng:Number(lng),fecha:meta.fecha||new Date().toISOString(),origen:"LOCAL"};
     try{localStorage.setItem(DV_RECLAMO_COORD_OVERRIDES_KEY,JSON.stringify(data));}catch(e){console.warn("No se pudo guardar corrección local",e);}
 }
 function dvBorrarCorreccionLocal(clave){
-    const data=dvCargarCorreccionesReclamos();
+    const data={...dvCargarCorreccionesReclamos()};
     delete data[clave];
     try{localStorage.setItem(DV_RECLAMO_COORD_OVERRIDES_KEY,JSON.stringify(data));}catch(e){}
 }
@@ -14932,13 +14995,10 @@ function dvRenderMarcadoresReclamos(){
 
     const token=++dvRenderReclamosToken;
 
-    // Una sola fuente visual. Antes de calcular/pintar el nuevo conjunto,
-    // vaciamos explícitamente la fuente actual para que nunca quede visible
-    // un conjunto anterior durante un cambio de filtro.
+    // Una sola fuente visual: reemplazo completo y atómico del conjunto filtrado.
+    // No enviamos primero una colección vacía al worker del mapa.
     dvPurgarFuentesReclamosAntiguas();
     dvAsegurarCapasReclamos();
-    const srcInicial=dvMap.getSource(DV_RECLAMOS_SOURCE_ID);
-    if(srcInicial)srcInicial.setData({type:"FeatureCollection",features:[]});
 
     const reclamosVisibles=dvObtenerReclamosFiltradosMapa();
     const features=reclamosVisibles.map(d=>{
@@ -15281,35 +15341,8 @@ function dvRenderMapa(gps,historico){
 function dvActualizarGpsFiltradoSinDestruirCapas(gps){
     if(!dvMap||!dvMapReady)return;
 
-    // Cambio de filtro = actualizar GPS, NO reconstruir el mapa completo.
-    // dvRenderMapa() limpia/recrea capas y puede alterar el orden visual.
-    // LIMPIEZA ROBUSTA DE RUTAS: no dependemos de que exista la capa.
-    // En una carrera de refresco puede quedar el source sin layer y el
-    // siguiente addSource provoca: "Source dv-route-0 already exists".
-    const styleLayers=dvMap.getStyle()?.layers||[];
-    const routeLayerIds=styleLayers
-        .filter(l=>String(l.id||"").indexOf("dv-route-")===0)
-        .map(l=>l.id);
-    const routeSourceIds=[...new Set(
-        styleLayers
-            .filter(l=>String(l.id||"").indexOf("dv-route-")===0)
-            .map(l=>l.source)
-            .filter(Boolean)
-    )];
-
-    routeLayerIds.forEach(id=>{
-        try{if(dvMap.getLayer(id))dvMap.removeLayer(id);}catch(e){}
-    });
-    routeSourceIds.forEach(id=>{
-        try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}
-    });
-
-    // Segunda pasada: también elimina cualquier source dv-route-* que haya
-    // quedado huérfano y por eso no figure asociado a una capa.
-    Object.keys(dvMap.getStyle()?.sources||{})
-        .filter(id=>String(id).indexOf("dv-route-")===0)
-        .forEach(id=>{try{if(dvMap.getSource(id))dvMap.removeSource(id);}catch(e){}});
-
+    // Conservamos las fuentes y capas: un refresco actualiza sus coordenadas.
+    const rutasVigentes=new Set();
     const puntos=(Array.isArray(gps)?gps:[]).map((p,i)=>({
         ...p,lat:dvLatPunto(p),lng:dvLngPunto(p),nombre:dvNombrePunto(p),usuario:dvUsuarioPunto(p),
         zona:dvZonaPunto(p),fecha:dvFechaPunto(p),orden:i,
@@ -15349,9 +15382,17 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
             const coordinates=seg.map(p=>[p.lng,p.lat]);
             if(coordinates.length<2)return;
             const sourceId="dv-route-"+(routeIndex++);
-            dvMap.addSource(sourceId,{type:"geojson",data:{type:"Feature",geometry:{type:"LineString",coordinates}}});
-            dvMap.addLayer({id:sourceId+"-line",type:"line",source:sourceId,
-                layout:{"line-cap":"round","line-join":"round"},paint:{"line-color":color,"line-width":5,"line-opacity":0.88}});
+            rutasVigentes.add(sourceId);
+            const datosRuta={type:"Feature",geometry:{type:"LineString",coordinates}};
+            const existente=dvMap.getSource(sourceId);
+            if(existente)existente.setData(datosRuta);
+            else dvMap.addSource(sourceId,{type:"geojson",data:datosRuta});
+            if(!dvMap.getLayer(sourceId+"-line")){
+                dvMap.addLayer({id:sourceId+"-line",type:"line",source:sourceId,
+                    layout:{"line-cap":"round","line-join":"round"},paint:{"line-color":color,"line-width":5,"line-opacity":0.88}});
+            }else if(dvMap.getPaintProperty(sourceId+"-line","line-color")!==color){
+                dvMap.setPaintProperty(sourceId+"-line","line-color",color);
+            }
         });
         const ultimo=lista[lista.length-1];
         const activo=DVContract.active(ultimo);
@@ -15362,6 +15403,12 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
                 estado:activo===false ? "Recorrido finalizado" : reciente ? "Ubicación reciente" : "Sin señal reciente",
                 color:activo===false || !reciente ? "#728078" : color}});
     });
+
+    const style=dvMap.getStyle()||{};
+    (style.layers||[]).filter(l=>String(l.id||"").startsWith("dv-route-") && !rutasVigentes.has(l.source))
+        .forEach(l=>{if(dvMap.getLayer(l.id))dvMap.removeLayer(l.id);});
+    Object.keys(style.sources||{}).filter(id=>id.startsWith("dv-route-") && !rutasVigentes.has(id))
+        .forEach(id=>{if(dvMap.getSource(id))dvMap.removeSource(id);});
 
     const gpsData={type:"FeatureCollection",features:gpsFeatures};
     const pointSource=dvMap.getSource("dv-gps-puntos");
@@ -15812,9 +15859,16 @@ async function dvRefrescarReclamosCompartidos(){
     }catch(e){console.warn("Se conservan reclamos previos:",e.message);}
     finally{dvClaimsRefreshing=false;}
 }
+function panelMapaOperativoVisible(){
+    if(document.hidden || !window.__PANEL_AUTH_READY__)return false;
+    return ["inicio","mapa"].some(id=>document.getElementById(id)?.classList.contains("active"));
+}
+document.addEventListener("visibilitychange",()=>{
+    if(panelMapaOperativoVisible())actualizarGpsDiaVerde();
+});
 async function actualizarGpsDiaVerde(){
     // GPS cada 15 segundos; estados y coordenadas compartidas cada 30 segundos.
-    if(dvGpsCargaEnCurso || !dvMap || !dvMapReady) return;
+    if(!panelMapaOperativoVisible() || dvGpsCargaEnCurso || !dvMap || !dvMapReady) return;
     dvGpsCargaEnCurso=true;
 
     try{
@@ -15832,13 +15886,7 @@ async function actualizarGpsDiaVerde(){
         dvGuardarCache("historico",dvMapHistoricoData);
         dvPoblarFiltrosMapa();
 
-        if(firma!==dvMapUltimaFirma){
-            dvMapUltimaFirma=firma;
-            if(dvMap.isStyleLoaded()){
-                dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
-                dvActualizarEstadoFiltroMapa();
-            }
-        }
+        dvMapUltimaFirma=firma;
         if(Date.now()-dvClaimsLastSuccess>=30000) await dvRefrescarReclamosCompartidos();
         if(dvMap.isStyleLoaded()) dvActualizarGpsFiltradoSinDestruirCapas(dvFiltrarGpsMapa());
     }catch(e){
@@ -15889,20 +15937,44 @@ function iniciarMapaDiaVerde(){
 }
 
 
-async function actualizarDatosTurboInicial(){
-    try{
-        const conectado=await probarConexion();
-        if(!conectado) return;
-        // Primero lo visible y crítico.
-        await Promise.all([cargarResumenPanel(),cargarVehiculos(),cargarChoferes()]);
-        // El resto se carga en segundo plano sin bloquear la apertura del panel.
-        setTimeout(()=>Promise.all([
-            cargarServicios(),cargarAsignaciones(),cargarRutas(),cargarPuntosRuta(),
-            cargarViajes(),cargarInspecciones(),cargarReportes(),cargarMantenimiento(),
-            cargarEventos(),cargarUsuarios()
-        ]).catch(e=>console.warn("Carga secundaria Panel Turbo",e)),150);
-        estadoPanel.ultimaActualizacion=new Date();
-    }catch(e){console.warn("Carga inicial Turbo",e);}
+async function panelCargarEvidenciasVehiculos(){
+    const r=await leerBackend("evidencias");
+    if(r?.ok && Array.isArray(r.datos))estadoPanel.evidencias=r.datos;
+}
+let panelInicioEnCurso=null;
+let panelInicioClave="";
+async function panelCargarSecundarios(tareas){
+    let siguiente=0;
+    async function ejecutar(){
+        while(siguiente<tareas.length){
+            const tarea=tareas[siguiente++];
+            try{await tarea();}catch(e){console.warn("Carga secundaria Panel",e);}
+            await new Promise(resolve=>setTimeout(resolve,0));
+        }
+    }
+    await Promise.all([ejecutar(),ejecutar()]);
+}
+function actualizarDatosTurboInicial(){
+    const clave=JSON.stringify([panelSesionLectura(),panelEpocaLecturas]);
+    if(panelInicioEnCurso && panelInicioClave===clave)return panelInicioEnCurso;
+    panelInicioClave=clave;
+    const pendiente=(async()=>{
+        try{
+            if(panelEsConsultaServicios()){await cargarServicios();return;}
+            // La conexión y las tarjetas visibles no esperan una a la otra.
+            const [conectado]=await Promise.all([probarConexion(),cargarResumenPanel(),cargarVehiculos(false),cargarChoferes()]);
+            if(!conectado)return;
+            // Se conserva la carga de todos los módulos, con dos tareas secundarias a la vez.
+            await panelCargarSecundarios([
+                cargarServicios,cargarEventos,cargarAsignaciones,cargarRutas,
+                cargarPuntosRuta,cargarViajes,cargarInspecciones,cargarReportes,
+                cargarMantenimiento,cargarUsuarios,panelCargarEvidenciasVehiculos
+            ]);
+            renderizarVehiculos(estadoPanel.vehiculos || []);
+            estadoPanel.ultimaActualizacion=new Date();
+        }catch(e){console.warn("Carga inicial del panel",e);}
+    })().finally(()=>{if(panelInicioEnCurso===pendiente)panelInicioEnCurso=null;});
+    panelInicioEnCurso=pendiente;return pendiente;
 }
 
 /* =========================================================
@@ -15975,7 +16047,7 @@ function cargarUsuarios(){
         tbody.innerHTML = '<tr><td colspan="8"><div class="empty">Cargando usuarios...</div></td></tr>';
     }
 
-    leerBackend("usuarios").then(resultado => {
+    return leerBackend("usuarios").then(resultado => {
         if(!resultado || !resultado.ok){
             usuariosCache = [];
             usuariosFiltrados = [];
@@ -17670,6 +17742,7 @@ function dvOrdenarCapasMapa(){
       if(accionExenta(action)) return rawFetch(input, init);
       const token = tokenActual();
       if(!token) return respuestaLocal({ok:false,error:'SESION_REQUERIDA'});
+      if(typeof panelInvalidarLecturas === 'function') panelInvalidarLecturas();
       const wrapped = {accion:'panelPost', accionInterna:action, token:token, datosOriginal:parsed};
       const nextInit = {...(init||{}), method:'POST', body:JSON.stringify(wrapped)};
       return rawFetch(BACKEND, nextInit);
