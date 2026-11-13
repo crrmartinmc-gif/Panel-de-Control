@@ -391,9 +391,6 @@ function normalizarKilometraje_(valor){
 
 function iniciarViajeBase_(d){
   validarCampos_(d,['idServicio','idAsignacion','idVehiculo','idChofer']);
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
     const servicio=obtenerPorID_(CONFIG.HOJAS.SERVICIOS,'ID_SERVICIO',d.idServicio);
     const asignacion=obtenerPorID_(CONFIG.HOJAS.ASIGNACIONES,'ID_ASIGNACION',d.idAsignacion);
     if(!servicio) throw new Error('El servicio no existe.');
@@ -453,9 +450,6 @@ function iniciarViajeBase_(d){
       datos:{kmInicial:kmInicial,kmReferencia:'VEHICULOS.KM_ACTUAL',fotosRegistradas:fotos.registradas,erroresFotos:fotos.errores.length}
     });
     return Object.assign({},viaje,{ID_INSPECCION:inspeccion.ID_INSPECCION,FOTOS_SALIDA:fotos});
-  } finally {
-    lock.releaseLock();
-  }
 }
 
 function finalizarViaje_(d){
@@ -1389,9 +1383,6 @@ function listarViajesSecretaria_(p) {
 function iniciarViajeSecretariaBase_(d) {
   const auth = validarChoferSecretaria_(d);
   validarCampos_(d, ['idVehiculo','kmInicial']);
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
     const vehiculo = vehiculoSecretariaHabilitado_(d.idVehiculo);
     const kmInicial = normalizarKilometraje_(d.kmInicial);
     if (!Number.isFinite(kmInicial) || kmInicial < 0) throw new Error('Kilometraje inicial inválido.');
@@ -1439,9 +1430,6 @@ function iniciarViajeSecretariaBase_(d) {
       datos:{kmInicial:kmInicial,fotosRegistradas:resultadoFotos.registradas}
     });
     return {ok:true,viaje:viaje,FOTOS_SALIDA:resultadoFotos};
-  } finally {
-    lock.releaseLock();
-  }
 }
 
 function finalizarViajeSecretaria_(d) {
@@ -5578,12 +5566,46 @@ function recMismaSalida_(viaje,d){
     recDia_(viaje.HORA_INICIO||viaje.FECHA)===recDia_(d.horaInicio||ahora_());
 }
 function recIgual_(a,b){return String(a||'').trim()===String(b||'').trim();}
-function recActivo_(v){
+function recActivo_(v,serviciosPorId){
   if(!['EN CURSO','ACTIVO','INICIADO'].includes(normalizar_(v.ESTADO)))return false;
   if(!v.ID_SERVICIO)return true;
-  const servicio=obtenerPorID_(CONFIG.HOJAS.SERVICIOS,'ID_SERVICIO',v.ID_SERVICIO);
+  const servicio=serviciosPorId?serviciosPorId.get(String(v.ID_SERVICIO).trim()):obtenerPorID_(CONFIG.HOJAS.SERVICIOS,'ID_SERVICIO',v.ID_SERVICIO);
   if(servicio?.FECHA && recDia_(servicio.FECHA)!==recDia_(v.HORA_INICIO||v.FECHA))return false;
   return !['FINALIZADO','CANCELADO','CANCELADA'].includes(normalizar_(servicio?.ESTADO));
+}
+// Solo lee SERVICIOS una vez y descarta primero viajes ajenos a la operación.
+function recViajesActivos_(viajes,predicado){
+  const candidatos=viajes.filter(v=>predicado(v)&&['EN CURSO','ACTIVO','INICIADO'].includes(normalizar_(v.ESTADO)));
+  if(!candidatos.length)return [];
+  const servicios=new Map(leerTabla_(CONFIG.HOJAS.SERVICIOS).map(s=>[String(s.ID_SERVICIO||'').trim(),s]));
+  return candidatos.filter(v=>recActivo_(v,servicios));
+}
+// Reserva por chofer y vehículo. El bloqueo global solo protege la toma/liberación
+// de estas claves; nunca las fotos en Drive. Caduca después del límite de ejecución.
+function recTomarReservaViaje_(d){
+  validarCampos_(d,['idChofer','idVehiculo']);
+  const claves=['REC_ENVIO_CHOFER_'+String(d.idChofer).trim(),'REC_ENVIO_VEHICULO_'+String(d.idVehiculo).trim()];
+  const token=Utilities.getUuid(),props=PropertiesService.getScriptProperties();
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(1000))throw new Error('El backend está guardando otra operación. El envío se conserva pendiente para reintentar.');
+  try{
+    const ahora=Date.now();
+    for(const clave of claves){
+      const valor=props.getProperty(clave);let reserva=null;
+      try{reserva=valor?JSON.parse(valor):null;}catch(e){}
+      if(reserva?.vence>ahora)throw new Error('Ya se está procesando un envío de este chofer o vehículo. Se conserva pendiente para confirmar sin duplicarlo.');
+    }
+    const valor=JSON.stringify({token:token,vence:ahora+7*60*1000});
+    const valores={};claves.forEach(k=>valores[k]=valor);props.setProperties(valores);
+  }finally{lock.releaseLock();}
+  return {releaseLock:function(){
+    // No se usa un bloqueo global: una reserva nueva solo se toma tras liberar
+    // ambas claves o vencer los siete minutos (la ejecución termina antes).
+    for(const clave of claves){
+      let reserva=null;try{reserva=JSON.parse(props.getProperty(clave)||'null');}catch(e){}
+      if(reserva?.token===token)props.deleteProperty(clave);
+    }
+  }};
 }
 function recLeer_(){return obtenerSpreadsheet_().getSheetByName(REC_CHOFER_HOJA)?leerTabla_(REC_CHOFER_HOJA):[];}
 function recAsegurarColumnas_(hoja,columnas){
@@ -5618,7 +5640,7 @@ function recValidarUsuario_(d){
 }
 function estadoRecorridoChofer_(d){
   recValidarUsuario_(d);
-  const activo=obtenerViajes().find(v=>recIgual_(v.ID_CHOFER,d.idChofer)&&recActivo_(v));
+  const activo=recViajesActivos_(obtenerViajes(),v=>recIgual_(v.ID_CHOFER,d.idChofer))[0];
   const r=recLeer_().filter(r=>recIgual_(r.ID_CHOFER,d.idChofer)&&r.DIA===recDia_()&&normalizar_(r.ESTADO)==='ABIERTO').pop()||null;
   const fotos=r&&recFotos_(r);
   return {ok:true,versionRecorridos:1,recorrido:r?{...r,DOMINIO:obtenerPorID_(CONFIG.HOJAS.VEHICULOS,'ID_VEHICULO',r.ID_VEHICULO)?.DOMINIO||''}:null,
@@ -5642,7 +5664,7 @@ function recVincular_(viaje,r,inspeccion){
 function recCerrarInterno_(id, motivo, hora, excluirViaje){
   const r=recLeer_().find(r=>recIgual_(r.ID_RECORRIDO,id));
   if(!r||normalizar_(r.ESTADO)!=='ABIERTO')return r||null;
-  if(obtenerViajes().some(v=>(recIgual_(v.ID_CHOFER,r.ID_CHOFER)||recIgual_(v.ID_VEHICULO,r.ID_VEHICULO))&&recActivo_(v)&&!recIgual_(v.ID_VIAJE,excluirViaje)))throw new Error('Finalizá primero el servicio que está en curso.');
+  if(recViajesActivos_(obtenerViajes(),v=>(recIgual_(v.ID_CHOFER,r.ID_CHOFER)||recIgual_(v.ID_VEHICULO,r.ID_VEHICULO))&&!recIgual_(v.ID_VIAJE,excluirViaje)).length)throw new Error('Finalizá primero el servicio que está en curso.');
   return actualizarPorID_(REC_CHOFER_HOJA,'ID_RECORRIDO',id,{ESTADO:'CERRADO',HORA_FIN:hora||ahora_(),MOTIVO_CIERRE:motivo});
 }
 function finalizarRecorridoChofer_(d){
@@ -5661,7 +5683,7 @@ function recDespuesCierre_(viaje,d){
     try{
       const fresco=obtenerPorID_(CONFIG.HOJAS.VIAJES,'ID_VIAJE',viaje.ID_VIAJE);
       if(fresco?.ID_RECORRIDO)viaje=fresco;
-      else if(!obtenerViajes().some(v=>(recIgual_(v.ID_CHOFER,viaje.ID_CHOFER)||recIgual_(v.ID_VEHICULO,viaje.ID_VEHICULO))&&recActivo_(v))){
+      else if(!recViajesActivos_(obtenerViajes(),v=>(recIgual_(v.ID_CHOFER,viaje.ID_CHOFER)||recIgual_(v.ID_VEHICULO,viaje.ID_VEHICULO))&&recDia_(v.HORA_INICIO||v.FECHA)===recDia_(viaje.HORA_INICIO)).length){
         const fotos=recFotos_({ID_VIAJE_ORIGEN:viaje.ID_VIAJE});
         if(fotos){
           let r=recLeer_().filter(r=>recValido_(r,viaje.ID_CHOFER,viaje.ID_VEHICULO)).pop();
@@ -5678,7 +5700,7 @@ function recDespuesCierre_(viaje,d){
 function recIniciar_(datos,secretaria){
   // Las marcas internas no pueden llegar desde un POST manipulado.
   const d={...datos,__recorridoId:'',__inspeccionId:''};
-  const lock=LockService.getUserLock();lock.waitLock(30000);
+  const lock=recTomarReservaViaje_(d);
   try{
     if(secretaria)validarChoferSecretaria_(d);
     validarCampos_(d,secretaria?['idChofer','idVehiculo','kmInicial']:['idChofer','idVehiculo','idServicio','idAsignacion']);
@@ -5691,12 +5713,13 @@ function recIniciar_(datos,secretaria){
     if(existente && (!recIgual_(existente.ID_CHOFER,d.idChofer)||!recIgual_(existente.ID_VEHICULO,d.idVehiculo)))throw new Error('El viaje ya pertenece a otro chofer o vehículo.');
     const anterior=existente?.ID_RECORRIDO?recLeer_().find(r=>recIgual_(r.ID_RECORRIDO,existente.ID_RECORRIDO)):null;
     // Un reintento confirmado no vuelve a abrir el recorrido ni sube fotos otra vez.
-    if(existente && anterior && recFotos_(anterior)){
-      const fotos={...recFotos_(anterior),reutilizadas:!recIgual_(anterior.ID_VIAJE_ORIGEN,existente.ID_VIAJE),ID_RECORRIDO:anterior.ID_RECORRIDO,ID_INSPECCION:anterior.ID_INSPECCION,ID_VIAJE_ORIGEN:anterior.ID_VIAJE_ORIGEN};
+    const fotosAnteriores=existente&&anterior?recFotos_(anterior):null;
+    if(fotosAnteriores){
+      const fotos={...fotosAnteriores,reutilizadas:!recIgual_(anterior.ID_VIAJE_ORIGEN,existente.ID_VIAJE),ID_RECORRIDO:anterior.ID_RECORRIDO,ID_INSPECCION:anterior.ID_INSPECCION,ID_VIAJE_ORIGEN:anterior.ID_VIAJE_ORIGEN};
       sincronizarHorarioServicioDesdeViaje_(existente);
       return secretaria?{ok:true,viaje:existente,FOTOS_SALIDA:fotos,RECORRIDO:anterior,IDEMPOTENTE:true}:{...existente,FOTOS_SALIDA:fotos,RECORRIDO:anterior,IDEMPOTENTE:true};
     }
-    const conflictos=viajes.filter(v=>recActivo_(v)&&!recIgual_(v.ID_VIAJE,existente?.ID_VIAJE));
+    const conflictos=recViajesActivos_(viajes,v=>(recIgual_(v.ID_CHOFER,d.idChofer)||recIgual_(v.ID_VEHICULO,d.idVehiculo))&&!recIgual_(v.ID_VIAJE,existente?.ID_VIAJE));
     if(conflictos.some(v=>recIgual_(v.ID_CHOFER,d.idChofer)))throw new Error('Ya tenés un servicio en curso. Finalizalo antes de iniciar otro.');
     // Las filas históricas de otra jornada no reservan hoy la unidad de otro chofer.
     if(conflictos.some(v=>recIgual_(v.ID_VEHICULO,d.idVehiculo)&&recDia_(v.HORA_INICIO||v.FECHA)===recDia_(d.horaInicio||ahora_())))throw new Error('El vehículo tiene un servicio en curso de otro chofer en esta jornada. Revisá ese viaje desde el panel.');
