@@ -5696,7 +5696,10 @@ function recIniciar_(datos,secretaria){
       sincronizarHorarioServicioDesdeViaje_(existente);
       return secretaria?{ok:true,viaje:existente,FOTOS_SALIDA:fotos,RECORRIDO:anterior,IDEMPOTENTE:true}:{...existente,FOTOS_SALIDA:fotos,RECORRIDO:anterior,IDEMPOTENTE:true};
     }
-    if(viajes.some(v=>(recIgual_(v.ID_CHOFER,d.idChofer)||recIgual_(v.ID_VEHICULO,d.idVehiculo))&&recActivo_(v)&&!recIgual_(v.ID_VIAJE,existente?.ID_VIAJE)))throw new Error('Ya tenés un servicio en curso. Finalizalo antes de iniciar otro.');
+    const conflictos=viajes.filter(v=>recActivo_(v)&&!recIgual_(v.ID_VIAJE,existente?.ID_VIAJE));
+    if(conflictos.some(v=>recIgual_(v.ID_CHOFER,d.idChofer)))throw new Error('Ya tenés un servicio en curso. Finalizalo antes de iniciar otro.');
+    // Las filas históricas de otra jornada no reservan hoy la unidad de otro chofer.
+    if(conflictos.some(v=>recIgual_(v.ID_VEHICULO,d.idVehiculo)&&recDia_(v.HORA_INICIO||v.FECHA)===recDia_(d.horaInicio||ahora_())))throw new Error('El vehículo tiene un servicio en curso de otro chofer en esta jornada. Revisá ese viaje desde el panel.');
     const rutas=recLeer_();let r=rutas.filter(r=>recValido_(r,d.idChofer,d.idVehiculo)).pop()||null;
     if(r&&!recFotos_(r))r=null;
     if(d.idRecorrido && (!r||!recIgual_(r.ID_RECORRIDO,d.idRecorrido)))throw new Error('La inspección ya no está vigente. Actualizá la pantalla y tomá cuatro fotos nuevas.');
