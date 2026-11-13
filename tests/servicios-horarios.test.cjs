@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const src=fs.readFileSync('backend/Codigo-Maestro-Inspeccion-Recorrido.txt','utf8');
+const src=fs.readFileSync('backend/Codigo-Maestro-Actualizacion-Panel.txt','utf8');
 function fixture(s={},viajes=[]){
  const writes=[];s={ID_SERVICIO:'S1',ESTADO:'PROGRAMADO',...s};
  const c={recDespuesCierre_:()=>{},CONFIG:{HOJAS:{SERVICIOS:'S',VIAJES:'V',VEHICULOS:'VEH',ASIGNACIONES:'A'}},console:{log(){}},normalizar_:v=>String(v||'').toUpperCase(),validarCampos_:()=>{},ahora_:()=> '2026-11-13T14:00:00Z',obtenerServicios:()=>[s],obtenerViajes:()=>viajes,obtenerPorID_:(t,_,id)=>t==='S'?s:t==='V'?viajes.find(v=>v.ID_VIAJE===id):{KM_ACTUAL:100},actualizarPorID_:(t,_,id,v)=>{writes.push({t,v});return Object.assign(t==='S'?s:viajes.find(v=>v.ID_VIAJE===id)||{},v);},cerrarAsignacionesDeServicio_:()=>{},asegurarViajeActivoDesdePanel_:()=>viajes[0],asegurarColumnaVehiculosKM_:()=>{},normalizarKilometraje_:Number,registrarEvento_:()=>{}};
