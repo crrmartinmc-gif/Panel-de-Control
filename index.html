@@ -17810,11 +17810,27 @@ function dvOrdenarCapasMapa(){
     const isServicesReader = ['CONSULTA_SERVICIOS','SERVICIOS_LECTURA','LECTOR_SERVICIOS'].includes(role) ||
       (Array.isArray(mods) && mods.length === 1 && String(mods[0]).toLowerCase() === 'servicios' &&
        (storedUser.soloLectura === true || storedUser.solo_lectura === true || perms.soloLectura === true));
+    // Secretaria conserva el perfil de consulta general. Solo las acciones
+    // siguientes pueden pasar al backend, que valida la sesión nuevamente.
+    const isSecretariaOperador = isServicesReader &&
+      String(storedUser.usuario || storedUser.USUARIO || '').trim().toLowerCase() === 'secretaria';
+    const secretariaLecturas = ['secretariaAgenda','secretariaRecursos'];
+    const secretariaEscrituras = ['secretariaReservar','secretariaAsignar','secretariaLiberar','secretariaConfirmar'];
     if(isServicesReader && !accionExenta(url.searchParams.get('accion') || '')){
-      if(method === 'POST') return respuestaLocal({ok:false,error:'PERMISO_DENEGADO: perfil de consulta, sin modificaciones.'});
+      if(method === 'POST'){
+        let op = '';
+        try {
+          const body = init && typeof init.body === 'string' ? JSON.parse(init.body) : {};
+          op = String(body.accion || '');
+        } catch(err) {}
+        if(!isSecretariaOperador || !secretariaEscrituras.includes(op))
+          return respuestaLocal({ok:false,error:'PERMISO_DENEGADO: perfil de consulta, sin modificaciones generales.'});
+      }
       if(method === 'GET'){
         const requestedAction = url.searchParams.get('accion') || 'estado';
-        if(requestedAction !== 'servicios') return respuestaLocal({ok:false,error:'PERMISO_DENEGADO: este usuario solo puede consultar Servicios.'});
+        if(requestedAction !== 'servicios' &&
+          !(isSecretariaOperador && secretariaLecturas.includes(requestedAction)))
+          return respuestaLocal({ok:false,error:'PERMISO_DENEGADO: este usuario solo puede consultar Servicios.'});
       }
     }
     if(method === 'GET'){
