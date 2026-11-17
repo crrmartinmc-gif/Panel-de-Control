@@ -9,7 +9,9 @@ Write-Host 'FASE 5A: Panel de Control conectado a APPSECRETARIA' -ForegroundColo
 Write-Host 'No se tocan SERVICIOS, VIAJES ni KILOMETRAJES del Maestro.' -ForegroundColor Yellow
 $scriptId = (Read-Host 'Pegá el ID DEL SCRIPT o URL del editor de BACKEND MAESTRO FLOTA (no el ID de la planilla)').Trim()
 if ($scriptId -match 'script\.google\.com/(?:home/projects|d)/([A-Za-z0-9_-]+)') { $scriptId = $Matches[1] }
-if ($scriptId -notmatch '^[A-Za-z0-9_-]{20,} 'Script ID inválido. No se hizo ningún cambio.' }
+if ($scriptId -notmatch '^[A-Za-z0-9_-]{20,}$') {
+  throw 'Script ID inválido. No se hizo ningún cambio.'
+}
 if (-not (Get-Command clasp -ErrorAction SilentlyContinue)) {
   throw 'Falta clasp. Instalalo con: npm install -g @google/clasp'
 }
