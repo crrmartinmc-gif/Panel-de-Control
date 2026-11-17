@@ -69,7 +69,8 @@ try {
   if (-not $module.Contains('function s5Post_(') -or -not $module.Contains('function s5Auth_(')) {
     throw 'Módulo descargado incorrecto: se canceló la instalación.'
   }
-  [IO.File]::WriteAllText($main,$patched,(New-Object System.Text.UTF8Encoding($false)))
+  $utf8 = New-Object System.Text.UTF8Encoding -ArgumentList $false
+  [IO.File]::WriteAllText($main,$patched,$utf8)
   Write-Host 'Backend parcheado localmente (sin reescribir los módulos de viajes ni choferes).' -ForegroundColor Green
   Write-Host 'Archivos que se subirán:' -ForegroundColor Cyan
   & clasp status
