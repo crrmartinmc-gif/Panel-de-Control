@@ -1,4 +1,4 @@
-# Instala Fase 5A en el Apps Script BACKEND MAESTRO FLOTA, sin alterar otros módulos.
+﻿# Instala Fase 5A en el Apps Script BACKEND MAESTRO FLOTA, sin alterar otros módulos.
 # REQUIERE: clasp logueado con la cuenta autorizada a editar el Maestro.
 # Descarga código SOLO del repositorio Panel-de-Control del usuario.
 # Preserva copia local completa y mantiene la URL /exec al actualizar despliegue existente.
@@ -8,7 +8,7 @@ $deployId = 'AKfycbz0n4ZlW2p--nP2Wx0SnytyCRt_pL6RFxliEan0j1vUdSSrBrVNCbsTI7VC0JQ
 Write-Host 'FASE 5A: Panel de Control conectado a APPSECRETARIA' -ForegroundColor Cyan
 Write-Host 'No se tocan SERVICIOS, VIAJES ni KILOMETRAJES del Maestro.' -ForegroundColor Yellow
 $scriptId = (Read-Host 'Pegá el ID DEL SCRIPT o URL del editor de BACKEND MAESTRO FLOTA (no el ID de la planilla)').Trim()
-if ($scriptId -match 'script\.google\.com/(?:home/projects|d)/([A-Za-z0-9_-]+)') { $scriptId = $Matches[1] }
+if ($scriptId -match 'script\.google\.com/(?:u/\d+/)?(?:home/projects|d)/([A-Za-z0-9_-]+)') { $scriptId = $Matches[1] }
 if ($scriptId -notmatch '^[A-Za-z0-9_-]{20,}$') {
   throw 'Script ID inválido. No se hizo ningún cambio.'
 }
