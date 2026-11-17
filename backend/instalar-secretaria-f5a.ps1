@@ -81,6 +81,7 @@ try {
   Write-Host 'Backend parcheado localmente (sin reescribir los módulos de viajes ni choferes).' -ForegroundColor Green
   Write-Host 'Archivos que se subirán:' -ForegroundColor Cyan
   & clasp status
+  if ($LASTEXITCODE -ne 0) { & clasp show-file-status }
   Write-Host ''
   $ok = Read-Host 'Para actualizar el CÓDIGO del Maestro escribí APLICAR (o Enter para cancelar)'
   if ($ok -ne 'APLICAR') {
@@ -91,15 +92,18 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Falló clasp push. Revisá el resultado y conservá el respaldo.' }
   Write-Host 'Código actualizado. La aplicación publicada todavía puede estar en la versión anterior.' -ForegroundColor Green
   Write-Host 'Implementaciones existentes:' -ForegroundColor Cyan
-  & clasp deployments
+  $deployments = @(& clasp deployments)
+  if ($LASTEXITCODE -ne 0) { $deployments = @(& clasp list-deployments) }
+  Write-Host ($deployments | Out-String)
   Write-Host ('La implementación de este Panel debe ser: ' + $deployId)
   $publish = Read-Host 'Para actualizar la MISMA URL /exec escribí PUBLICAR (o Enter para no publicar)'
   if ($publish -eq 'PUBLICAR') {
-    $list = (& clasp deployments | Out-String)
+    $list = ($deployments | Out-String)
     if (-not $list.Contains($deployId)) {
       throw 'El ID de implementación del Panel no está en este proyecto. No se publicó nada.'
     }
     & clasp deploy -i $deployId -d 'Fase 5A: Panel Secretaría y APPSECRETARIA'
+    if ($LASTEXITCODE -ne 0) { & clasp create-deployment -i $deployId -d 'Fase 5A: Panel Secretaría y APPSECRETARIA' }
     if ($LASTEXITCODE -ne 0) { throw 'No se pudo actualizar la implementación. Conservá el respaldo y revisá clasp.' }
     Write-Host 'Implementación existente actualizada, sin cambiar su URL.' -ForegroundColor Green
   } else {
