@@ -27,11 +27,21 @@ function raiz(){
   root.querySelector('#s5refresh').onclick=cargar;root.addEventListener('click',accion);return root;
 }
 function aviso(x){const node=document.getElementById('s5mensaje');if(node)node.textContent=String(x||'')}
+// Consulta directa para conservar el error del backend (leerBackend
+// devuelve null cuando hay un problema y ocultaría el diagnóstico).
+async function s5Leer(accion,parametros){
+  const url = BACKEND_URL + '?' + new URLSearchParams({accion,...parametros}).toString();
+  const res = await fetch(url,{method:'GET',cache:'no-store'});
+  const r = await res.json();
+  if(!res.ok || !r || r.ok !== true)
+    throw new Error(r?.error || ('Error de consulta HTTP '+res.status));
+  return r;
+}
 async function cargar(){
   if(!esSecretaria()||busy)return;const root=raiz();if(!root)return;
   busy=true;root.querySelector('#s5refresh').disabled=true;aviso('Consultando APPSECRETARIA...');
   try{
-    const [desde,hasta]=fechas(),r=await leerBackend('secretariaAgenda',{desde,hasta});
+    const [desde,hasta]=fechas(),r=await s5Leer('secretariaAgenda',{desde,hasta});
     if(!r||r.ok!==true||!r.datos||r.datos.ok!==true)throw Error(r?.error||r?.datos?.error||'No se obtuvo la agenda.');
     modelo=r.datos;dibujar();aviso('');
   }catch(err){aviso('No se pudo leer la agenda: '+(err.message||err));
@@ -75,7 +85,7 @@ async function ejecutar(accion,d){
 async function asignar(id){
   const editor=document.getElementById('s5editor');editor.classList.add('open');editor.textContent='Consultando recursos...';
   try{
-    const r=await leerBackend('secretariaRecursos',{idSolicitud:id});
+    const r=await s5Leer('secretariaRecursos',{idSolicitud:id});
     if(!r||r.ok!==true||!r.datos||r.datos.ok!==true)throw Error(r?.error||'No hay recursos disponibles.');
     if(r.datos.asignacion)throw Error('Esta solicitud ya tiene una preasignación.');
     const cs=r.datos.choferes.filter(x=>x.disponible),vs=r.datos.vehiculos.filter(x=>x.disponible);
