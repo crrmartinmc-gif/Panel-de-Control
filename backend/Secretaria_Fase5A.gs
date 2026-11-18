@@ -100,21 +100,22 @@ function s5Resources_(c,id,x){
   const w=s5CurrentWindow_(x),date=x.s.FECHA_SERVICIO,C=new Set(),V=new Set();
   // Motivos informativos. NO cambian las reglas de bloqueo ni la elegibilidad.
   const detalleC=new Map(),detalleV=new Map();
+  const anotar=(map,k,descripcion)=>map.set(k,map.has(k)?map.get(k)+'; '+descripcion:descripcion);
   obtenerAsignaciones().forEach(a=>{
     if(s5Date_(a.FECHA)!==date||['CANCELADA','ANULADA','FINALIZADA','CERRADA','INACTIVA'].includes(s5Norm_(a.ESTADO)))return;
     if(a.ID_CHOFER){
       const k=String(a.ID_CHOFER);C.add(k);
-      detalleC.set(k,'Asignación activa del Maestro: bloquea el día completo');
+      anotar(detalleC,k,'Asignación activa del Maestro: bloquea el día completo');
     }
     if(a.ID_VEHICULO){
       const k=String(a.ID_VEHICULO);V.add(k);
-      detalleV.set(k,'Asignación activa del Maestro: bloquea el día completo');
+      anotar(detalleV,k,'Asignación activa del Maestro: bloquea el día completo');
     }
   });
   obtenerViajes().forEach(a=>{
     if(s5Date_(a.FECHA)!==date||!['EN CURSO','EN_CURSO','ACTIVO','INICIADO','EN RECORRIDO'].includes(s5Norm_(a.ESTADO)))return;
-    if(a.ID_CHOFER){const k=String(a.ID_CHOFER);C.add(k);detalleC.set(k,'Viaje del Maestro en curso');}
-    if(a.ID_VEHICULO){const k=String(a.ID_VEHICULO);V.add(k);detalleV.set(k,'Viaje del Maestro en curso');}
+    if(a.ID_CHOFER){const k=String(a.ID_CHOFER);C.add(k);anotar(detalleC,k,'Viaje del Maestro en curso');}
+    if(a.ID_VEHICULO){const k=String(a.ID_VEHICULO);V.add(k);anotar(detalleV,k,'Viaje del Maestro en curso');}
   });
   c.as.filter(a=>s5Active_(a)&&a.ID_SOLICITUD!==id).forEach(a=>{
     const otro=c.sol.find(s=>s.ID_SOLICITUD===a.ID_SOLICITUD);
@@ -124,10 +125,10 @@ function s5Resources_(c,id,x){
       (Date.parse(w.inicio)<Date.parse(ar.FIN_RESERVA)&&Date.parse(w.fin)>Date.parse(ar.INICIO_RESERVA));
     if(choca){
       if(a.ID_CHOFER_MAESTRO){
-        const k=String(a.ID_CHOFER_MAESTRO);C.add(k);detalleC.set(k,'Otra reserva de Secretaría superpuesta');
+        const k=String(a.ID_CHOFER_MAESTRO);C.add(k);anotar(detalleC,k,'Otra reserva de Secretaría superpuesta');
       }
       if(a.ID_VEHICULO_MAESTRO){
-        const k=String(a.ID_VEHICULO_MAESTRO);V.add(k);detalleV.set(k,'Otra reserva de Secretaría superpuesta');
+        const k=String(a.ID_VEHICULO_MAESTRO);V.add(k);anotar(detalleV,k,'Otra reserva de Secretaría superpuesta');
       }
     }
   });
