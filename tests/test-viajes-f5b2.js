@@ -6,7 +6,7 @@ const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{
   hour:'2-digit',minute:'2-digit',hourCycle:'h23'
 }).formatToParts(new Date(Date.now()+60*60000)).map(p=>[p.type,p.value]));
 const fecha=[parts.year,parts.month,parts.day].join('-'),hora=parts.hour+':'+parts.minute;
-const ts=new Date(Date.now()+60*60000).toISOString();
+const ts=new Date().toISOString();
 const s={ID_SOLICITUD:'SOL-F5B2TEST1234',FECHA_SERVICIO:fecha,HORA_INICIO_PREVISTA:hora,
   ESTADO:'CONFIRMADA',ORIGEN:'Municipalidad',DESTINO_FINAL:'Arroyo',PASAJEROS:3};
 const a={ID_SOLICITUD:s.ID_SOLICITUD,ID_ASIGNACION_LOCAL:'ASL-TEST123',ID_CHOFER_MAESTRO:'ch-sec',
