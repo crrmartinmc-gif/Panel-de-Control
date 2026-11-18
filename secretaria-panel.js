@@ -64,7 +64,8 @@ function dibujar(){
       else if(t.asignacion&&!vencida&&!confirmado)btn.push(['confirmar','Confirmar'],['liberar','Liberar']);
     }
     const res=t.reserva?'<span class="s5sub">Reserva '+e(hora(t.reserva.inicio))+'–'+e(hora(t.reserva.fin))+'</span>':'<span class="s5sub">Sin reserva</span>';
-    const recursos=t.asignacion?'<strong>'+e(t.asignacion.chofer)+'</strong><span class="s5sub">'+e(t.asignacion.vehiculo)+'</span>':'Sin preasignación';
+    const confirmadoChofer=t.asignacion && confirmado ? '<span class="s5sub">'+(String(t.asignacion.estado||'').toUpperCase()==='ACEPTADA'?'✓ CHOFER ACEPTÓ EL TRASLADO':'Esperando aceptación del chofer')+'</span>' : '';
+    const recursos=t.asignacion?'<strong>'+e(t.asignacion.chofer)+'</strong><span class="s5sub">'+e(t.asignacion.vehiculo)+'</span>'+confirmadoChofer:'Sin preasignación';
     return '<tr><td>'+e(ar(t.fecha))+' · '+e(t.hora)+res+'</td>'
       +'<td><strong>'+e(t.origen)+' → '+e(t.destino)+'</strong><span class="s5sub">'+Number(t.pasajeros||0)+' pasajeros · '+Number(t.duracion||0)+' min</span></td>'
       +'<td>'+e(t.dependencia)+'<span class="s5sub">'+e(t.solicitante)+'</span></td><td>'+e(t.estado)+'</td>'
