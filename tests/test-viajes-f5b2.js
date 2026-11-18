@@ -21,7 +21,9 @@ const ss={
   insertSheet:name=>{
     assert.equal(name,'VIAJES_ORDENES');
     db.headers=[];
-    return {getRange:()=>({setValues:rows=>{db.headers=rows[0]}}),setFrozenRows:()=>{}};
+    return {getLastColumn:()=>db.headers.length,
+      getRange:()=>({getDisplayValues:()=>[db.headers],setValues:rows=>{db.headers=rows[0]}}),
+      setFrozenRows:()=>{}};
   }
 };
 let starts=0,ends=0,tests=0,readLinks=0;
