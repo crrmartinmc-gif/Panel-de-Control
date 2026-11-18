@@ -57,14 +57,22 @@ function dibujar(){
   root.querySelector('#s5rows').innerHTML=items.length?items.map(t=>{
     const cerrado=['CANCELADA','RECHAZADA','FINALIZADA'].includes(String(t.estado||'').toUpperCase());
     const pasada=t.fecha<dia(),vencida=t.reserva&&Date.parse(t.reserva.fin)<=Date.now();
-    const confirmado=String(t.estado||'').toUpperCase()==='CONFIRMADA',btn=[];
-    if(!cerrado&&!pasada){
+    const estado=String(t.estado||'').toUpperCase();
+    const estadoAsignacion=String(t.asignacion?.estado||'').toUpperCase();
+    const confirmada=estado==='CONFIRMADA',btn=[];
+    const permiteGestion=['PENDIENTE','EN_REVISION','REPROGRAMADA'].includes(estado);
+    if(!cerrado&&!pasada&&permiteGestion){
       if(!t.reserva)btn.push(['reservar','Reservar']);
       else if(!t.asignacion&&!vencida)btn.push(['asignar','Asignar']);
-      else if(t.asignacion&&!vencida&&!confirmado)btn.push(['confirmar','Confirmar'],['liberar','Liberar']);
+      else if(t.asignacion&&!vencida&&estadoAsignacion==='PREASIGNADA')
+        btn.push(['confirmar','Confirmar'],['liberar','Liberar']);
     }
     const res=t.reserva?'<span class="s5sub">Reserva '+e(hora(t.reserva.inicio))+'–'+e(hora(t.reserva.fin))+'</span>':'<span class="s5sub">Sin reserva</span>';
-    const confirmadoChofer=t.asignacion && confirmado ? '<span class="s5sub">'+(String(t.asignacion.estado||'').toUpperCase()==='ACEPTADA'?'✓ CHOFER ACEPTÓ EL TRASLADO':'Esperando aceptación del chofer')+'</span>' : '';
+    const textoChofer=estadoAsignacion==='FINALIZADA'?'✓ VIAJE FINALIZADO':
+      estadoAsignacion==='EN_CURSO'?'🚐 VIAJE EN CURSO':
+      estadoAsignacion==='ACEPTADA'?'✓ CHOFER ACEPTÓ EL TRASLADO':
+      confirmada?'Esperando aceptación del chofer':'';
+    const confirmadoChofer=t.asignacion && textoChofer?'<span class="s5sub">'+textoChofer+'</span>':'';
     const recursos=t.asignacion?'<strong>'+e(t.asignacion.chofer)+'</strong><span class="s5sub">'+e(t.asignacion.vehiculo)+'</span>'+confirmadoChofer:'Sin preasignación';
     return '<tr><td>'+e(ar(t.fecha))+' · '+e(t.hora)+res+'</td>'
       +'<td><strong>'+e(t.origen)+' → '+e(t.destino)+'</strong><span class="s5sub">'+Number(t.pasajeros||0)+' pasajeros · '+Number(t.duracion||0)+' min</span></td>'
