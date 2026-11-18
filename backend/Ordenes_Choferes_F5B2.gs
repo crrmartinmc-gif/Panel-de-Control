@@ -1,7 +1,7 @@
 /**
  * FASE 5B.2: vincula inicio/cierre de App Choferes con APPSECRETARIA.
- * Solo actúa cuando el payload lleva ID_SOLICITUD y hay una orden ACEPTADA.
- * Viajes independientes, fotos, KM, RECORRIDOS e IndexedDB conservan su motor.
+ * Para NUEVOS inicios de Secretaría exige ID_SOLICITUD, asignación y orden ACEPTADA.
+ * Mantiene los cierres de viajes independientes ya iniciados; no altera fotos ni KM.
  * No crea SERVICIOS ni ASIGNACIONES en el Maestro.
  */
 const C52_HOJA = 'VIAJES_ORDENES';
@@ -97,8 +97,10 @@ function c52EstadoInicio_(orden,viaje,km){
   } finally {lock.releaseLock();}
 }
 function c52Iniciar_(d){
-  // Los viajes independientes de Secretaría conservan exactamente su circuito.
-  if(!d.idSolicitud && !d.idAsignacionLocal)return iniciarViajeSecretaria_(d);
+  // El chofer no puede abrir viajes de Secretaría sin una orden confirmada.
+  // Esta restricción NO afecta la finalización de viajes ya iniciados.
+  if(!d.idSolicitud && !d.idAsignacionLocal)
+    throw Error('Para iniciar un viaje de Secretaría necesitás un traslado confirmado y asignado desde el Panel.');
   if(!d.idSolicitud||!d.idAsignacionLocal)throw Error('La orden de Secretaría está incompleta.');
   const orden=c52Orden_(d),est=s5Norm_(orden.a.ESTADO);
   if(!['ACEPTADA','EN_CURSO'].includes(est))
