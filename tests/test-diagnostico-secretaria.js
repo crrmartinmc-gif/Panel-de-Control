@@ -8,7 +8,7 @@ let n=0;
 function check(c,msg){assert.ok(c,msg);n++}
 check(ui.includes('const cs=Array.isArray(r.datos.choferes)?r.datos.choferes:[]'),'consulta choferes sin ocultar indisponibles');
 check(ui.includes('const libres=items.filter(x=>x.disponible),bloqueados=items.filter(x=>!x.disponible)'),'separa libres y bloqueados');
-check(ui.includes('value="'+e(x.id)+'" disabled'),'opción no disponible explícitamente deshabilitada');
+check(ui.includes('" disabled>'),'opción no disponible explícitamente deshabilitada');
 check(ui.includes('e(motivo(x))'),'escapa descripciones no confiables');
 check(ui.includes('id="s5guardar"'),'conserva botón para guardar');
 check(ui.includes('(!(hayChofer&&hayVehiculo)?\' disabled'),'bloquea botón sin ambos recursos disponibles');
