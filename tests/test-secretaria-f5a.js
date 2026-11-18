@@ -25,6 +25,8 @@ const sheet=t=>({
  appendRow:r=>db[t].push(r)
 });
 const ss={getId:()=> 'appsecretaria-id-12345678901234567890',getSheetByName:t=>hd[t]?sheet(t):null};
+const ocupacionesMaestro=[],viajesMaestro=[],cuentasMaestro=[{ROL:'CHOFER_SECRETARIA',ESTADO:'ACTIVO',ID_CHOFER:'sec'},{ROL:'CHOFER_LOGISTICA',ESTADO:'ACTIVO',ID_CHOFER:'log'}];
+const vehiculosMaestro=[{ID_VEHICULO:'v-sec',DOMINIO:'AG213WY',INTERNO:'1',AREA:'SECRETARIA',ESTADO_OPERATIVO:'DISPONIBLE',ACTIVO:'SI'}];
 let clicks=0;const formatDate=(d,zone,fmt)=>{
  const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d).map(x=>[x.type,x.value]));
  return fmt==='yyyy-MM-dd'?p.year+'-'+p.month+'-'+p.day:p.hour+':'+p.minute;
@@ -36,10 +38,10 @@ const context={console,Date,Set,Map,Number,String,RegExp,JSON,Math,Error,Array,
  PropertiesService:{getScriptProperties:()=>({getProperty:()=>ss.getId()})},
  SpreadsheetApp:{openById:()=>ss},Utilities:{formatDate,getUuid:()=>('AAAAAAAA-AAAA-BBBB-CCCC-'+String(++clicks).padStart(12,'0'))},
  LockService:{getScriptLock:()=>({waitLock:()=>{},releaseLock:()=>{}})},
- leerTabla_:t=>t==='USUARIOS'?[{ROL:'CHOFER_SECRETARIA',ESTADO:'ACTIVO',ID_CHOFER:'sec'},{ROL:'CHOFER_LOGISTICA',ESTADO:'ACTIVO',ID_CHOFER:'log'}]:[],
+ leerTabla_:t=>t==='USUARIOS'?cuentasMaestro:[], 
  obtenerChoferes:()=>[{ID_CHOFER:'sec',NOMBRE:'Secretaría',ESTADO:'ACTIVO'},{ID_CHOFER:'log',NOMBRE:'Logística',ESTADO:'ACTIVO'}],
- obtenerVehiculos:()=>[{ID_VEHICULO:'v-sec',DOMINIO:'AG213WY',INTERNO:'1',AREA:'SECRETARIA',ESTADO_OPERATIVO:'DISPONIBLE',ACTIVO:'SI'}],
- obtenerAsignaciones:()=>[],obtenerViajes:()=>[]
+ obtenerVehiculos:()=>vehiculosMaestro, 
+ obtenerAsignaciones:()=>ocupacionesMaestro,obtenerViajes:()=>viajesMaestro
 };
 vm.createContext(context);vm.runInContext(source,context);
 let total=0;const check=(cond,msg)=>{assert.ok(cond,msg);total++};
@@ -84,4 +86,22 @@ const inicio=entrada[hd.AGENDA.indexOf('INICIO_RESERVA')],fin=entrada[hd.AGENDA.
 check(Date.parse(inicio)===Date.parse(manana+'T09:30:00-03:00'),'conserva 09:30 de Buenos Aires');
 check((Date.parse(fin)-Date.parse(inicio))/60000===40,'25 minutos de traslado + 15 de margen');
 
+
+// Diagnóstico de recursos: incluir los bloqueados, sin habilitar su selección.
+ocupacionesMaestro.push({FECHA:manana,ESTADO:'ASIGNADO',ID_CHOFER:'sec',ID_VEHICULO:'v-sec'});
+cuentasMaestro.push({ROL:'CHOFER_SECRETARIA',ESTADO:'INACTIVO',ID_CHOFER:'sec-inactivo',NOMBRE:'Chofer de prueba inactivo'});
+vehiculosMaestro.push({ID_VEHICULO:'v-fuera',DOMINIO:'CRONOS-PRUEBA',AREA:'SECRETARIA',
+  ESTADO_OPERATIVO:'FUERA DE SERVICIO',ACTIVO:'SI'});
+let diag=context.s5Recursos_({idSolicitud:idCorto});
+const ocupado=diag.choferes.find(x=>x.id==='sec');
+check(ocupado&&!ocupado.disponible&&ocupado.motivo==='Ocupado','chofer ocupado es visible, deshabilitado');
+check(ocupado.detalle.includes('día completo'),'mostrar motivo de ocupación del Maestro');
+const cuentaInactiva=diag.choferes.find(x=>x.id==='sec-inactivo');
+check(cuentaInactiva&&!cuentaInactiva.disponible&&cuentaInactiva.motivo==='Cuenta inactiva','mostrar cuenta inactiva sin autorizar');
+const vOcupado=diag.vehiculos.find(x=>x.id==='v-sec');
+check(vOcupado&&!vOcupado.disponible&&vOcupado.motivo==='Ocupado','vehículo ocupado se muestra deshabilitado');
+const vFuera=diag.vehiculos.find(x=>x.id==='v-fuera');
+check(vFuera&&!vFuera.disponible&&vFuera.motivo==='Fuera de servicio','mostrar unidad fuera de servicio');
+try{context.s5Post_('secretariaAsignar',{idSolicitud:idCorto,idChofer:'sec',idVehiculo:'v-sec'},{idUsuario:'secuser'});throw Error('allowed')}
+catch(e){check(/no disponibles/i.test(e.message),'sigue bloqueada la preasignación de ocupados');}
 console.log('OK: '+total+' verificaciones de integración F5A, sin tocar datos reales');
