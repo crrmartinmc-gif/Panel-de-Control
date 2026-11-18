@@ -98,13 +98,23 @@ function s5CurrentWindow_(x){
 }
 function s5Resources_(c,id,x){
   const w=s5CurrentWindow_(x),date=x.s.FECHA_SERVICIO,C=new Set(),V=new Set();
+  // Motivos informativos. NO cambian las reglas de bloqueo ni la elegibilidad.
+  const detalleC=new Map(),detalleV=new Map();
   obtenerAsignaciones().forEach(a=>{
     if(s5Date_(a.FECHA)!==date||['CANCELADA','ANULADA','FINALIZADA','CERRADA','INACTIVA'].includes(s5Norm_(a.ESTADO)))return;
-    if(a.ID_CHOFER)C.add(String(a.ID_CHOFER));if(a.ID_VEHICULO)V.add(String(a.ID_VEHICULO));
+    if(a.ID_CHOFER){
+      const k=String(a.ID_CHOFER);C.add(k);
+      detalleC.set(k,'Asignación activa del Maestro: bloquea el día completo');
+    }
+    if(a.ID_VEHICULO){
+      const k=String(a.ID_VEHICULO);V.add(k);
+      detalleV.set(k,'Asignación activa del Maestro: bloquea el día completo');
+    }
   });
   obtenerViajes().forEach(a=>{
     if(s5Date_(a.FECHA)!==date||!['EN CURSO','EN_CURSO','ACTIVO','INICIADO','EN RECORRIDO'].includes(s5Norm_(a.ESTADO)))return;
-    if(a.ID_CHOFER)C.add(String(a.ID_CHOFER));if(a.ID_VEHICULO)V.add(String(a.ID_VEHICULO));
+    if(a.ID_CHOFER){const k=String(a.ID_CHOFER);C.add(k);detalleC.set(k,'Viaje del Maestro en curso');}
+    if(a.ID_VEHICULO){const k=String(a.ID_VEHICULO);V.add(k);detalleV.set(k,'Viaje del Maestro en curso');}
   });
   c.as.filter(a=>s5Active_(a)&&a.ID_SOLICITUD!==id).forEach(a=>{
     const otro=c.sol.find(s=>s.ID_SOLICITUD===a.ID_SOLICITUD);
@@ -112,17 +122,39 @@ function s5Resources_(c,id,x){
     const ar=c.ag.find(t=>t.ID_AGENDA===a.ID_AGENDA);
     const choca=!ar||!Number.isFinite(Date.parse(ar.INICIO_RESERVA))||!Number.isFinite(Date.parse(ar.FIN_RESERVA))||
       (Date.parse(w.inicio)<Date.parse(ar.FIN_RESERVA)&&Date.parse(w.fin)>Date.parse(ar.INICIO_RESERVA));
-    if(choca){if(a.ID_CHOFER_MAESTRO)C.add(String(a.ID_CHOFER_MAESTRO));if(a.ID_VEHICULO_MAESTRO)V.add(String(a.ID_VEHICULO_MAESTRO));}
+    if(choca){
+      if(a.ID_CHOFER_MAESTRO){
+        const k=String(a.ID_CHOFER_MAESTRO);C.add(k);detalleC.set(k,'Otra reserva de Secretaría superpuesta');
+      }
+      if(a.ID_VEHICULO_MAESTRO){
+        const k=String(a.ID_VEHICULO_MAESTRO);V.add(k);detalleV.set(k,'Otra reserva de Secretaría superpuesta');
+      }
+    }
   });
-  const ids=new Set(leerTabla_(CONFIG.HOJAS.USUARIOS).filter(u=>s5Norm_(u.ROL)==='CHOFER_SECRETARIA'&&s5Norm_(u.ESTADO)==='ACTIVO'&&u.ID_CHOFER).map(u=>String(u.ID_CHOFER)));
-  const choferes=obtenerChoferes().filter(a=>ids.has(String(a.ID_CHOFER))).map(a=>{
-    const motivo=s5Norm_(a.ESTADO)!=='ACTIVO'?'Inactivo':C.has(String(a.ID_CHOFER))?'Ocupado':'';
-    return {id:String(a.ID_CHOFER),nombre:String(a.NOMBRE),disponible:!motivo,motivo};
+  // Incluir en la lectura las cuentas CHOFER_SECRETARIA inactivas o mal vinculadas.
+  // Solo las cuentas activas con chofer activo y libre siguen siendo asignables.
+  const cuentas=new Map();
+  leerTabla_(CONFIG.HOJAS.USUARIOS).filter(u=>s5Norm_(u.ROL)==='CHOFER_SECRETARIA'&&u.ID_CHOFER).forEach(u=>{
+    const k=String(u.ID_CHOFER),anterior=cuentas.get(k);
+    if(!anterior||s5Norm_(u.ESTADO)==='ACTIVO')cuentas.set(k,u);
+  });
+  const choferesPorId=new Map(obtenerChoferes().map(a=>[String(a.ID_CHOFER),a]));
+  const choferes=Array.from(cuentas,( [id,u] )=>{
+    const a=choferesPorId.get(id),activo=s5Norm_(u.ESTADO)==='ACTIVO';
+    const motivo=!activo?'Cuenta inactiva':!a?'Chofer sin ficha en el Maestro':
+      s5Norm_(a.ESTADO)!=='ACTIVO'?'Inactivo':C.has(id)?'Ocupado':'';
+    return {id,nombre:String(a?a.NOMBRE:(u.NOMBRE||id)),disponible:!motivo,motivo,
+      detalle:motivo==='Ocupado'?(detalleC.get(id)||'Revisar asignaciones del día'):''};
   }).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
   const vehiculos=obtenerVehiculos().filter(a=>s5Norm_(a.AREA)==='SECRETARIA').map(a=>{
+    const estado=s5Norm_(a.ESTADO_OPERATIVO),id=String(a.ID_VEHICULO);
     const motivo=!['SI','SÍ','TRUE','1'].includes(s5Norm_(a.ACTIVO))?'Unidad inactiva':
-      s5Norm_(a.ESTADO_OPERATIVO)!=='DISPONIBLE'?'No disponible':V.has(String(a.ID_VEHICULO))?'Ocupado':'';
-    return {id:String(a.ID_VEHICULO),nombre:[a.DOMINIO,a.INTERNO,a.MARCA,a.MODELO].filter(Boolean).join(' · '),disponible:!motivo,motivo};
+      estado!=='DISPONIBLE'?(['FUERA DE SERVICIO','FUERA_SERVICIO','FUERA DE SERVICIO MECANICO'].includes(estado)?'Fuera de servicio':'No disponible'):
+      V.has(id)?'Ocupado':'';
+    return {id,nombre:[a.DOMINIO,a.INTERNO,a.MARCA,a.MODELO].filter(Boolean).join(' · '),
+      disponible:!motivo,motivo,
+      detalle:motivo==='Ocupado'?(detalleV.get(id)||'Revisar asignaciones del día'):
+        motivo==='No disponible'?'Estado operativo: '+String(a.ESTADO_OPERATIVO||'sin informar'):''};
   }).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
   return {ok:true,choferes,vehiculos,asignacion:x.a?{id:x.a.ID_ASIGNACION_LOCAL,estado:x.a.ESTADO}:null,ventana:w};
 }
