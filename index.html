@@ -3541,7 +3541,7 @@ hr{border-color:var(--de-line)!important}
 
 <link rel="stylesheet" href="./responsive.css?v=1">
 <script src="./dv-contract.js?v=20261112-panel-perf1"></script>
-<link rel="stylesheet" href="./secretaria-panel.css?v=colores5">
+<link rel="stylesheet" href="./secretaria-panel.css?v=ocupacion1">
 </head>
 
 <body class="panel-auth-locked">
@@ -3641,6 +3641,10 @@ hr{border-color:var(--de-line)!important}
         <button onclick="mostrarPagina('servicios',this)">
             <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8 10h8M8 14h8M8 18h5"/></svg></span>
             <span>Servicios</span>
+        </button>
+<button id="ocMenu" onclick="mostrarPagina('ocupacion',this)">
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8 10h8M8 14h8M8 18h5"/></svg></span>
+            <span>Ocupación del día</span>
         </button>
 
         <button onclick="mostrarPagina('asignaciones',this)">
@@ -4380,6 +4384,12 @@ hr{border-color:var(--de-line)!important}
 
 
 
+<div class="page" id="ocupacion"><section class="oc-card"><h2>Ocupación del día</h2><div class="oc-controles">
+<label>Día <input type="date" name="fecha" onchange="abrirOcupacionSecretaria()"></label>
+<label>Desde <input type="time" name="desde" value="08:00"></label>
+<label>Ver <select name="horas"><option value="2">2 horas</option><option selected value="4">4 horas</option><option value="8">8 horas</option><option value="24">Hasta medianoche</option></select></label>
+<label>Hueco mínimo <select name="minimo"><option value="15">15 min</option><option selected value="30">30 min</option><option value="45">45 min</option><option value="60">1 hora</option></select></label>
+<button class="btn btn-secondary" onclick="abrirOcupacionSecretaria()">Actualizar</button></div><div class="oc-salida" aria-live="polite"></div></section></div>
 <div id="servicios" class="page">
     <div class="section-head">
         <div>
@@ -6663,7 +6673,8 @@ function panelAplicarPermisosInterfaz(){
 
 function mostrarPagina(id, boton){
 
-    if(panelEsConsultaServicios() && id !== "servicios"){
+    if(id==="ocupacion" && !document.body.classList.contains("panel-secretaria"))return;
+    if(panelEsConsultaServicios() && id !== "servicios" && id !== "ocupacion"){
         id = "servicios";
         boton = [...document.querySelectorAll('.menu button')]
             .find(b => (b.getAttribute('onclick') || '').includes("'servicios'")) || null;
@@ -6690,6 +6701,7 @@ function mostrarPagina(id, boton){
     }
 
     actualizarTitulo(id);
+    if(id==="ocupacion")window.abrirOcupacionSecretaria();
     if(id==="inicio" || id==="mapa")actualizarGpsDiaVerde();
 
     if(id === "mapa") {
@@ -6787,6 +6799,7 @@ function mostrarPaginaPorNombre(id){
    ========================================================= */
 
 const titulos = {
+    ocupacion:["Ocupación del día","Agenda de traslados de Secretaría"],
 
     inicio:[
         "Centro de Control",
@@ -17954,7 +17967,7 @@ function dvOrdenarCapasMapa(){
 </script>
 
 <script src="./responsive.js?v=1"></script>
-<script src="./secretaria-panel.js?v=colores3"></script>
+<script src="./secretaria-panel.js?v=ocupacion1"></script>
 </body>
 </html>
 
