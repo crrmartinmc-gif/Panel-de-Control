@@ -103,5 +103,5 @@ check(vOcupado&&!vOcupado.disponible&&vOcupado.motivo==='Ocupado','vehículo ocu
 const vFuera=diag.vehiculos.find(x=>x.id==='v-fuera');
 check(vFuera&&!vFuera.disponible&&vFuera.motivo==='Fuera de servicio','mostrar unidad fuera de servicio');
 try{context.s5Post_('secretariaAsignar',{idSolicitud:idCorto,idChofer:'sec',idVehiculo:'v-sec'},{idUsuario:'secuser'});throw Error('allowed')}
-catch(e){check(/no disponibles/i.test(e.message),'sigue bloqueada la preasignación de ocupados');}
+catch(e){check(/fuera de Secretaría u ocupado/i.test(e.message),'sigue bloqueada la preasignación de ocupados');}
 console.log('OK: '+total+' verificaciones de integración F5A, sin tocar datos reales');
