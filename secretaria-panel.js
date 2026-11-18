@@ -117,9 +117,14 @@ function dibujar(){
       confirmada?'Esperando aceptación del chofer':'';
     const confirmadoChofer=t.asignacion && textoChofer?'<span class="s5sub">'+textoChofer+'</span>':'';
     const recursos=t.asignacion?'<strong>'+e(t.asignacion.chofer)+'</strong><span class="s5sub">'+e(t.asignacion.vehiculo)+'</span>'+confirmadoChofer:'Sin preasignación';
+    const area=String(t.dependencia||'').trim();
+    const solicitante=String(t.solicitante||'').trim();
+    const etiqueta=area||solicitante||'Sin área';
+    const detalle=solicitante && s5NormalizarEtiqueta(solicitante)!==s5NormalizarEtiqueta(etiqueta)
+      ? '<span class="s5sub">'+e(solicitante)+'</span>' : '';
     return '<tr><td>'+e(ar(t.fecha))+' · '+e(t.hora)+res+'</td>'
       +'<td><strong>'+e(t.origen)+' → '+e(t.destino)+'</strong><span class="s5sub">'+Number(t.pasajeros||0)+' pasajeros · '+Number(t.duracion||0)+' min</span></td>'
-      +'<td><span class="s5-area s5-area--'+s5CodigoArea(t.dependencia)+'">'+e(t.dependencia||'Sin área')+'</span><span class="s5sub">'+e(t.solicitante)+'</span></td>'
+      +'<td><span class="s5-area s5-area--'+s5CodigoArea(etiqueta)+'">'+e(etiqueta)+'</span>'+detalle+'</td>'
       +'<td><span class="s5-state s5-state--'+s5CodigoEstado(t.estado)+'">'+e(t.estado||'Sin estado')+'</span></td>'
       +'<td>'+recursos+'</td><td><div class="s5actions">'+btn.map(([a,l])=>'<button type="button" data-accion="'+a+'" data-id="'+e(t.id)+'">'+e(l)+'</button>').join('')+'</div></td></tr>';
   }).join(''):'<tr><td colspan="6">Sin traslados para estas fechas.</td></tr>';
