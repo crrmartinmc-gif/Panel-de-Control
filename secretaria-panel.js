@@ -21,7 +21,7 @@ function raiz(){
     +'<div class="s5notice" id="s5mensaje" aria-live="polite"></div>'
     +'<div class="s5scroll"><table><thead><tr><th>Horario</th><th>Traslado</th><th>Solicitante</th><th>Estado</th><th>Recursos</th><th>Acciones</th></tr></thead><tbody id="s5rows"></tbody></table></div>'
     +'<div class="s5editor" id="s5editor"></div>'
-    +'<p class="s5muted">Las reservas y asignaciones se guardan en APPSECRETARIA. Todavía no se envían órdenes a App Choferes. Los servicios generales continúan debajo.</p>';
+    +'<p class="s5muted">Las reservas, asignaciones y aceptaciones se sincronizan con APPSECRETARIA y App Choferes. El inicio y cierre del viaje todavía no están vinculados a la solicitud. Los servicios generales continúan debajo.</p>';
   const top=page.querySelector('.section-head');if(top)top.insertAdjacentElement('afterend',root);else page.prepend(root);
   root.querySelector('#s5filtro').onchange=ev=>{filtro=ev.target.value;cargar()};
   root.querySelector('#s5refresh').onclick=cargar;root.addEventListener('click',accion);return root;
