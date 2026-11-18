@@ -97,12 +97,35 @@ async function asignar(id){
     const r=await s5Leer('secretariaRecursos',{idSolicitud:id});
     if(!r||r.ok!==true||!r.datos||r.datos.ok!==true)throw Error(r?.error||'No hay recursos disponibles.');
     if(r.datos.asignacion)throw Error('Esta solicitud ya tiene una preasignación.');
-    const cs=r.datos.choferes.filter(x=>x.disponible),vs=r.datos.vehiculos.filter(x=>x.disponible);
-    if(!cs.length||!vs.length)throw Error('No hay choferes o vehículos disponibles.');
-    editor.innerHTML='<strong>Preasignación de Secretaría</strong><div class="s5grid">'
-      +'<div><label for="s5chofer">Chofer</label><select id="s5chofer">'+cs.map(x=>'<option value="'+e(x.id)+'">'+e(x.nombre)+'</option>').join('')+'</select></div>'
-      +'<div><label for="s5vehiculo">Vehículo</label><select id="s5vehiculo">'+vs.map(x=>'<option value="'+e(x.id)+'">'+e(x.nombre)+'</option>').join('')+'</select></div></div>'
-      +'<button type="button" class="s5primary" id="s5guardar">Guardar preasignación</button> <button type="button" id="s5cerrar">Cancelar</button>';
+    // Diagnóstico visible: recursos no disponibles permanecen en la lista, pero deshabilitados.
+    const cs=Array.isArray(r.datos.choferes)?r.datos.choferes:[],
+          vs=Array.isArray(r.datos.vehiculos)?r.datos.vehiculos:[];
+    const hayChofer=cs.some(x=>x.disponible),hayVehiculo=vs.some(x=>x.disponible);
+    const motivo=x=>[x.motivo,x.detalle].filter(Boolean).join(' · ');
+    const opciones=items=>{
+      const libres=items.filter(x=>x.disponible),bloqueados=items.filter(x=>!x.disponible);
+      return (libres.length?'<optgroup label="Disponibles">'+libres.map(x=>
+        '<option value="'+e(x.id)+'">'+e(x.nombre)+'</option>').join('')+'</optgroup>':'')
+        +(bloqueados.length?'<optgroup label="No disponibles">'+bloqueados.map(x=>
+          '<option value="'+e(x.id)+'" disabled>'+e(x.nombre)+' — '+e(motivo(x))+'</option>').join('')+'</optgroup>':'')
+        +(!items.length?'<option value="" disabled selected>Sin recursos registrados</option>':'');
+    };
+    const bloqueados=(tipo,items)=>items.filter(x=>!x.disponible).map(x=>
+      '<li><strong>'+e(x.nombre)+'</strong> — '+e(motivo(x))+'</li>').join('');
+    const detalle=cs.some(x=>!x.disponible)||vs.some(x=>!x.disponible);
+    editor.innerHTML='<strong>Preasignación de Secretaría</strong>'
+      +'<p class="s5muted">Disponibles: '+cs.filter(x=>x.disponible).length+' chofer(es) y '
+      +vs.filter(x=>x.disponible).length+' vehículo(s). Los recursos bloqueados se muestran, pero no pueden seleccionarse.</p>'
+      +'<div class="s5grid">'
+      +'<div><label for="s5chofer">Chofer</label><select id="s5chofer"'+(!hayChofer?' disabled':'')+'>'+opciones(cs)+'</select></div>'
+      +'<div><label for="s5vehiculo">Vehículo</label><select id="s5vehiculo"'+(!hayVehiculo?' disabled':'')+'>'+opciones(vs)+'</select></div></div>'
+      +(detalle?'<div class="s5diagnostico"><strong>Por qué no aparecen como disponibles</strong>'
+        +(cs.some(x=>!x.disponible)?'<p>Choferes</p><ul>'+bloqueados('choferes',cs)+'</ul>':'')
+        +(vs.some(x=>!x.disponible)?'<p>Vehículos</p><ul>'+bloqueados('vehículos',vs)+'</ul>':'')
+        +'</div>':'')
+      +'<p class="s5muted">Si falta algún recurso, verificá que el chofer tenga el rol CHOFER_SECRETARIA y que el vehículo pertenezca al área SECRETARIA en el Maestro. No se modificaron las reglas de disponibilidad.</p>'
+      +'<button type="button" class="s5primary" id="s5guardar"'+(!(hayChofer&&hayVehiculo)?' disabled title="No hay suficientes recursos disponibles"':'')+'>Guardar preasignación</button> '
+      +'<button type="button" id="s5cerrar">Cancelar</button>';
     editor.querySelector('#s5cerrar').onclick=()=>editor.classList.remove('open');
     editor.querySelector('#s5guardar').onclick=async()=>{
       if(!confirm('¿Guardar preasignación local en APPSECRETARIA?'))return;
