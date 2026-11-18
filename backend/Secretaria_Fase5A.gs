@@ -191,13 +191,27 @@ function s5Audit_(c,id,sesion,tipo,detalle){
 function s5Post_(action,p,sesion){
   const id=String(p.idSolicitud||'').trim();
   if(!/^SOL-[\w-]{6,40}$/.test(id))throw Error('Solicitud inválida.');
-  if(!['secretariaReservar','secretariaAsignar','secretariaLiberar','secretariaConfirmar'].includes(action))
+  if(!['secretariaReservar','secretariaRechazar','secretariaAsignar','secretariaLiberar','secretariaConfirmar'].includes(action))
     throw Error('Acción no habilitada.');
   const lk=LockService.getScriptLock();lk.waitLock(30000);
   try{
     const c=s5Ctx_(),x=s5Item_(c,id),s=x.s,estado=s5Norm_(s.ESTADO);
     if(['CANCELADA','RECHAZADA'].includes(estado))throw Error('Solicitud cerrada.');
     if(s.FECHA_SERVICIO<s5Today_())throw Error('No se pueden modificar fechas anteriores.');
+    if(action==='secretariaRechazar'){
+      s5Auth_(sesion);
+      if(!['PENDIENTE','EN_REVISION','REPROGRAMADA'].includes(estado)||x.a)
+        throw Error('Solo se pueden rechazar solicitudes pendientes sin asignación activa.');
+      const cola=s5Read_(c.ss,'INTEGRACION',['ID_SOLICITUD','TIPO','ESTADO']);
+      if(cola.some(f=>f.ID_SOLICITUD===id&&f.TIPO==='SOLICITUD_A_MAESTRO_F5'&&['PREPARADA','ENVIANDO','INCIERTA','ENVIADA'].includes(s5Norm_(f.ESTADO))))
+        throw Error('La solicitud tiene un envío al Maestro. Revisalo antes de rechazar.');
+      if(x.r)s5Patch_(c.ss,'AGENDA',x.r,{ESTADO:'CANCELADA',FECHA_ACTUALIZACION:s5Now_()});
+      s5Patch_(c.ss,'SOLICITUDES',s,{ESTADO:'RECHAZADA',FECHA_MODIFICACION:s5Now_()});
+      s5Audit_(c,id,sesion,'CAMBIO_ESTADO','Solicitud rechazada desde el panel.');
+      try{s5Append_(c.ss,'NOTIFICACIONES',{ID_NOTIFICACION:s5ID_('NOT'),ID_USUARIO:s.ID_SOLICITANTE,ID_SOLICITUD:id,TIPO:'ESTADO',MENSAJE:'Secretaría rechazó tu solicitud de traslado.',FECHA_CREACION:s5Now_()});}
+      catch(err){console.warn('Solicitud rechazada; aviso pendiente: '+err.message);}
+      return {ok:true,estado:'RECHAZADA'};
+    }
     if(action==='secretariaReservar'){
       if(x.a)throw Error('Liberá primero la preasignación.');
       const m=Number(p.margen),w=s5Window_(s,x.dur,m);
