@@ -3,6 +3,49 @@
 'use strict';
 if(window.__SEC_F5A__)return;window.__SEC_F5A__=true;
 const e=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Paleta de áreas y estados de traslados. Normalizar tildes sin cambiar el dato.
+function s5NormalizarEtiqueta(valor){
+  return String(valor==null?'':valor).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .trim().replace(/\s+/g,' ').toUpperCase();
+}
+function s5CodigoArea(valor){
+  const area=s5NormalizarEtiqueta(valor).replace(/\s+/g,'');
+  const codigos={
+    CUENCAS:'cuencas',
+    EDUCACION:'educacion',
+    CAMBIOCLIMATICO:'cambio-climatico',
+    GOBERNANZA:'gobernanza',
+    RECICLADO:'reciclado',
+    IMPULSORAS:'impulsoras',
+    MICROBASURALES:'microbasurales'
+  };
+  return codigos[area]||'general';
+}
+function s5CodigoEstado(valor){
+  const estado=s5NormalizarEtiqueta(valor).replace(/[\s-]+/g,'_');
+  const codigos={
+    PENDIENTE:'pendiente',
+    EN_REVISION:'revision',
+    REPROGRAMADA:'reprogramada',
+    REPROGRAMADO:'reprogramada',
+    PREASIGNADA:'preasignada',
+    PREASIGNADO:'preasignada',
+    CONFIRMADA:'confirmada',
+    CONFIRMADO:'confirmada',
+    ACEPTADA:'aceptada',
+    ACEPTADO:'aceptada',
+    EN_CURSO:'en-curso',
+    FINALIZADA:'finalizada',
+    FINALIZADO:'finalizada',
+    CANCELADA:'cancelada',
+    CANCELADO:'cancelada',
+    RECHAZADA:'rechazada',
+    RECHAZADO:'rechazada'
+  };
+  return codigos[estado]||'general';
+}
+
 const dia=()=>typeof hoyArgentinaISO==='function'?hoyArgentinaISO():new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const sumar=(s,n)=>{const [y,m,d]=s.split('-').map(Number);return new Date(Date.UTC(y,m-1,d+n,12)).toISOString().slice(0,10)};
 const ar=s=>{const m=/^(\d{4})-(\d\d)-(\d\d)/.exec(String(s||''));return m?m[3]+'/'+m[2]+'/'+m[1]:String(s||'')};
@@ -76,7 +119,8 @@ function dibujar(){
     const recursos=t.asignacion?'<strong>'+e(t.asignacion.chofer)+'</strong><span class="s5sub">'+e(t.asignacion.vehiculo)+'</span>'+confirmadoChofer:'Sin preasignación';
     return '<tr><td>'+e(ar(t.fecha))+' · '+e(t.hora)+res+'</td>'
       +'<td><strong>'+e(t.origen)+' → '+e(t.destino)+'</strong><span class="s5sub">'+Number(t.pasajeros||0)+' pasajeros · '+Number(t.duracion||0)+' min</span></td>'
-      +'<td>'+e(t.dependencia)+'<span class="s5sub">'+e(t.solicitante)+'</span></td><td>'+e(t.estado)+'</td>'
+      +'<td><span class="s5-area s5-area--'+s5CodigoArea(t.dependencia)+'">'+e(t.dependencia||'Sin área')+'</span><span class="s5sub">'+e(t.solicitante)+'</span></td>'
+      +'<td><span class="s5-state s5-state--'+s5CodigoEstado(t.estado)+'">'+e(t.estado||'Sin estado')+'</span></td>'
       +'<td>'+recursos+'</td><td><div class="s5actions">'+btn.map(([a,l])=>'<button type="button" data-accion="'+a+'" data-id="'+e(t.id)+'">'+e(l)+'</button>').join('')+'</div></td></tr>';
   }).join(''):'<tr><td colspan="6">Sin traslados para estas fechas.</td></tr>';
 }
