@@ -110,6 +110,7 @@ function dibujar(){
       else if(t.asignacion&&!vencida&&estadoAsignacion==='PREASIGNADA')
         btn.push(['confirmar','Confirmar'],['liberar','Liberar']);
     }
+    if(permiteGestion&&!pasada&&!t.asignacion)btn.push(['rechazar','Rechazar']);
     const res=t.reserva?'<span class="s5sub">Reserva '+e(hora(t.reserva.inicio))+'–'+e(hora(t.reserva.fin))+'</span>':'<span class="s5sub">Sin reserva</span>';
     const textoChofer=estadoAsignacion==='FINALIZADA'?'✓ VIAJE FINALIZADO':
       estadoAsignacion==='EN_CURSO'?'🚐 VIAJE EN CURSO':
@@ -186,6 +187,12 @@ async function asignar(id){
 async function accion(ev){
   const b=ev.target.closest('button[data-accion]');if(!b||enviando||!esSecretaria())return;
   const a=b.dataset.accion,id=b.dataset.id;if(!(modelo?.items||[]).some(x=>x.id===id))return;
+  if(a==='rechazar'){
+    const t=modelo.items.find(x=>x.id===id);
+    if(confirm('¿Rechazar el traslado '+t.origen+' → '+t.destino+'? El área verá RECHAZADO en Mis solicitudes.'))
+      await ejecutar('secretariaRechazar',{idSolicitud:id});
+    return;
+  }
   if(a==='asignar'){await asignar(id);return}
   if(a==='reservar'){
     const x=prompt('Margen en minutos (0 a 240):','15');if(x===null)return;
