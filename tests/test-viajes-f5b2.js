@@ -55,15 +55,22 @@ const ctx={
 vm.createContext(ctx);vm.runInContext(source,ctx);
 const indep={accion:'iniciarViajeSecretaria',usuario:'javier',idChofer:'ch-sec',idVehiculo:'veh-sec',
   idViaje:'VIA-IND-123',kmInicial:100};
-test(ctx.c52Iniciar_(indep).ok===true&&starts===1,'inicio independiente sin órdenes');
-test(readLinks===0,'inicio independiente sin consultar APPSECRETARIA');
-test(ctx.c52Finalizar_({...indep,kmFinal:110}).ok===true&&ends===1,'cierre independiente sin órdenes');
-test(readLinks===0,'cierre independiente sin consultar APPSECRETARIA');
+try{ctx.c52Iniciar_(indep);throw Error('fail')}
+catch(e){test(/necesitás un traslado confirmado y asignado/.test(e.message),'bloquear inicio de Secretaría sin asignación');}
+test(starts===0&&readLinks===0,'nunca crear viaje independiente ni consultar APPSECRETARIA');
+try{ctx.c52Iniciar_({...indep,idSolicitud:s.ID_SOLICITUD});throw Error('fail')}
+catch(e){test(/orden de Secretaría está incompleta/.test(e.message),'rechazar órdenes parcialmente informadas');}
+test(ctx.c52Finalizar_({...indep,kmFinal:110}).ok===true&&ends===1,'permitir cierre de un viaje independiente ya iniciado');
+test(readLinks===0,'el cierre independiente sigue funcionando sin APPSECRETARIA');
 const d={...indep,idViaje:'VIA-ORD-987654321',horaInicio:ts,kmInicial:110,idSolicitud:s.ID_SOLICITUD,
   idAsignacionLocal:a.ID_ASIGNACION_LOCAL,tokenOrdenes:'token-valido'};
 try{ctx.c52Iniciar_({...d,tokenOrdenes:'falso'});throw Error('fail')}catch(e){test(/Sesión inválida/.test(e.message),'exigir token válido');}
 try{ctx.c52Iniciar_({...d,idVehiculo:'veh-otro'});throw Error('fail')}catch(e){test(/vehículo no coincide/.test(e.message),'rechazar vehículo no asignado');}
 try{ctx.c52Iniciar_({...d,idAsignacionLocal:'ASL-OTRA'});throw Error('fail')}catch(e){test(/asignación local cambió/.test(e.message),'rechazar asignación alterada');}
+const estadoPrevio=a.ESTADO;a.ESTADO='PREASIGNADA';
+try{ctx.c52Iniciar_(d);throw Error('fail')}catch(e){test(/aceptar la orden/.test(e.message),'asignada pero no aceptada: inicio bloqueado');}
+a.ESTADO=estadoPrevio;
+test(starts===0,'ningún inicio previo antes de orden aceptada');
 const inicio=ctx.c52Iniciar_(d);
 test(inicio.ok===true&&db.links.length===1,'inicia y vincula solo un viaje');
 test(db.links[0].ID_VIAJE_MAESTRO===d.idViaje,'vínculo conserva ID del Maestro');
