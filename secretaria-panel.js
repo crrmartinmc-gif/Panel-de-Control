@@ -199,6 +199,80 @@ async function accion(ev){
     if(motivo!==null)await ejecutar('secretariaLiberar',{idSolicitud:id,motivo});
   }
 }
+let consultaOcupacion=0;
+const relojOcupacion=m=>m===1440?'24:00':String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+function intervalosOcupacion(items,fecha){
+  const base=Date.parse(fecha+'T00:00:00-03:00'),filas=new Map(),reservas=[];
+  let sinHorario=0,sinAsignar=0;
+  for(const t of items){
+    const a=t.asignacion;
+    if(['cancelada','rechazada'].includes(s5CodigoEstado(t.estado)))continue;
+    if(!a){if(t.fecha===fecha)sinAsignar++;continue}
+    if(!a.chofer||!a.vehiculo)continue;
+    const inicio=Math.floor((Date.parse(t.reserva?.inicio)-base)/60000);
+    let fin=Math.ceil((Date.parse(t.reserva?.fin)-base)/60000);
+    const enCurso=s5CodigoEstado(a.estado)==='en-curso';
+    if(!Number.isFinite(inicio)||!Number.isFinite(fin)||fin<=inicio){if(t.fecha===fecha)sinHorario++;continue}
+    if(enCurso&&fecha===dia()&&Date.now()>=base+fin*60000)fin=1440;
+    if(inicio>=1440||fin<=0)continue;
+    const key=JSON.stringify([a.chofer,a.vehiculo]);
+    filas.set(key,{chofer:a.chofer,vehiculo:a.vehiculo});
+    reservas.push({t,chofer:a.chofer,vehiculo:a.vehiculo,inicio:Math.max(0,inicio),fin:Math.min(1440,fin),enCurso});
+  }
+  return {filas:[...filas.values()].sort((a,b)=>a.chofer.localeCompare(b.chofer,'es')),reservas,sinHorario,sinAsignar};
+}
+function segmentosOcupacion(fila,reservas,inicio,fin){
+  const activos=reservas.filter(r=>(r.chofer===fila.chofer||r.vehiculo===fila.vehiculo)&&r.fin>inicio&&r.inicio<fin);
+  const cortes=[...new Set([inicio,fin,...activos.flatMap(r=>[Math.max(inicio,r.inicio),Math.min(fin,r.fin)])])].sort((a,b)=>a-b);
+  return cortes.slice(1).map((b,i)=>({a:cortes[i],b,viajes:activos.filter(r=>r.inicio<b&&r.fin>cortes[i])}));
+}
+async function abrirOcupacion(){
+  if(!esSecretaria())return;
+  const page=document.getElementById('ocupacion');
+  const fecha=page.querySelector('[name=fecha]');
+  if(!fecha.value){fecha.value=dia();page.querySelector('[name=desde]').value=hora(Date.now());}
+  const salida=page.querySelector('.oc-salida'),ticket=++consultaOcupacion;
+  salida.textContent='Consultando reservas…';
+  try{
+    const d=fecha.value;
+    const r=await s5Leer('secretariaAgenda',{desde:sumar(d,-1),hasta:d});
+    if(ticket!==consultaOcupacion||!esSecretaria())return;
+    if(!r.datos?.ok||!Array.isArray(r.datos.items))throw Error('Agenda no disponible');
+    const datos=intervalosOcupacion(r.datos.items,d);
+    const pintar=()=>{
+      const desde=page.querySelector('[name=desde]').value;
+      const [h,m]=desde.split(':').map(Number);
+      if(!Number.isFinite(h+m)){salida.textContent='Elegí una hora de inicio.';return}
+      const inicio=h*60+m,fin=Math.min(1440,inicio+Number(page.querySelector('[name=horas]').value)*60);
+      const minimo=Number(page.querySelector('[name=minimo]').value);
+      const detalle=[];
+      const filas=datos.filas.map(f=>{
+        const segmentos=segmentosOcupacion(f,datos.reservas,inicio,fin);
+        const bloques=segmentos.map(s=>{
+          const n=s.b-s.a,libre=!s.viajes.length;
+          const label=libre?'LIBRE':s.viajes.map(v=>v.t.dependencia||'TRASLADO').join(' / ').toUpperCase();
+          const texto=relojOcupacion(s.a)+'–'+relojOcupacion(s.b)+' · '+(libre?'Sin reserva en agenda':s.viajes.map(v=>[v.t.dependencia,v.t.origen+' → '+v.t.destino,v.chofer,v.vehiculo,v.enCurso?'EN VIAJE':v.t.estado].join(' · ')).join(' / '));
+          const id=detalle.push(texto)-1;
+          return '<button type="button" class="oc-bloque '+(libre?(n>=minimo?'oc-libre':'oc-corto'):'oc-ocupado s5-area--'+s5CodigoArea(s.viajes[0].t.dependencia))+'" data-detalle="'+id+'" title="'+e(texto)+'" aria-label="'+e(texto)+'" style="flex:'+n+' 1 0"><span>'+e(label)+'</span><small>'+n+' min</small></button>';
+        }).join('');
+        return '<div class="oc-fila"><div class="oc-persona"><b>'+e(f.chofer)+'</b><small>'+e(f.vehiculo)+'</small></div><div class="oc-pista">'+bloques+'</div></div>';
+      }).join('');
+      const ticks=[inicio];for(let t=(Math.floor(inicio/60)+1)*60;t<fin;t+=60)if(t-inicio>=25&&fin-t>=25)ticks.push(t);
+      ticks.push(fin);
+      const eje=ticks.map(t=>'<span style="left:'+100*(t-inicio)/(fin-inicio)+'%">'+relojOcupacion(t)+'</span>').join('');
+      const huecos=datos.filas.flatMap(f=>segmentosOcupacion(f,datos.reservas,inicio,fin).filter(s=>!s.viajes.length&&s.b-s.a>=minimo).map(s=>({...s,f}))).sort((x,y)=>x.a-y.a||(y.b-y.a)-(x.b-x.a));
+      const primero=huecos[0];
+      salida.innerHTML='<p class="oc-resumen">'+(primero?'Primer hueco de '+minimo+' min o más · <b>'+e(primero.f.chofer)+' · '+relojOcupacion(primero.a)+'–'+relojOcupacion(primero.b)+'</b>':'Sin huecos identificados para esta búsqueda.')+'</p>'
+        +(filas?'<div class="oc-scroll"><div class="oc-tablero"><div class="oc-fila"><b>Chofer / vehículo</b><div class="oc-eje">'+eje+'</div></div>'+filas+'</div></div>':'<p>Sin unidades con reserva asignada para este día.</p>')
+        +'<p class="oc-detalle" aria-live="polite"></p><small>Libre en la agenda de traslados. Verificá la jornada del chofer antes de asignar. Sin asignar: '+datos.sinAsignar+' · Asignados sin horario válido: '+datos.sinHorario+'.</small>';
+      salida.onclick=ev=>{const b=ev.target.closest('[data-detalle]');if(b)salida.querySelector('.oc-detalle').textContent=detalle[Number(b.dataset.detalle)]};
+    };
+    page.querySelectorAll('[name=desde],[name=horas],[name=minimo]').forEach(el=>el.onchange=pintar);
+    pintar();
+  }catch(err){if(ticket===consultaOcupacion)salida.textContent='No se pudo cargar la ocupación. '+err.message}
+}
+window.abrirOcupacionSecretaria=abrirOcupacion;
+
 function activar(){
   const v=esSecretaria();document.body.classList.toggle('panel-secretaria',v);
   if(v){raiz();cargar()}
