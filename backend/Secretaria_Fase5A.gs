@@ -22,7 +22,7 @@ function s5Date_(v,visible){
 // Normalizar al reloj local HH:mm evita rechazar reservas de la mañana.
 function s5Hora_(valor){
   const x=String(valor==null?'':valor).trim();
-  const m=/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]\. ?m\.?)?$/i.exec(x);
+  const m=/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]\.?\s*m\.?)?$/i.exec(x);
   if(!m)return '';
   let h=Number(m[1]);const minutos=Number(m[2]);
   if(minutos>59||h>23)return '';
