@@ -63,4 +63,25 @@ check(context.s5Agenda_({desde:manana,hasta:manana}).items[0].estado==='CONFIRMA
 check(db.NOTIFICACIONES.length===2,'notificación al solicitante');
 try{context.s5Post_('secretariaLiberar',{idSolicitud:id,motivo:'Cambio de unidad'},{idUsuario:'secuser'});throw Error('allowed')}
 catch(e){check(e.message.includes('no se puede liberar'),'no liberar confirmadas')}
+
+for(const [entrada,esperado] of [['9:30','09:30'],['09:30','09:30'],['9:30:00','09:30'],['9:30 a. m.','09:30'],['9:30 AM','09:30'],['12:00 a. m.','00:00'],['12:15 p. m.','12:15'],['9:30 PM','21:30'],['24:00',''],['9:60',''],['sin horario','']]){
+ check(context.s5Hora_(entrada)===esperado,'normalizar horario '+entrada);
+}
+const idCorto='SOL-TEST0930ABCDEF';
+add('SOLICITUDES',{ID_SOLICITUD:idCorto,ID_SOLICITANTE:'u',ID_DEPENDENCIA:'d',
+ FECHA_SERVICIO:manana,HORA_INICIO_PREVISTA:'9:30',ORIGEN:'KIOSHI',
+ DESTINO_FINAL:'JARDIN',ESTADO:'PENDIENTE',PASAJEROS:1});
+add('TRAMOS',{ID_SOLICITUD:idCorto,MINUTOS_ESTIMADOS:25});
+const agendaCorta=context.s5Agenda_({desde:manana,hasta:manana});
+check(agendaCorta.items.find(x=>x.id===idCorto).hora==='09:30','agenda normaliza hora 9:30 sin cambiar la celda');
+const horaGuardada=db.SOLICITUDES.find(r=>r[0]===idCorto)[hd.SOLICITUDES.indexOf('HORA_INICIO_PREVISTA')];
+check(horaGuardada==='9:30','no modifica horario original en la planilla');
+const reservada=context.s5Post_('secretariaReservar',{idSolicitud:idCorto,margen:15},{idUsuario:'secuser'});
+check(reservada.ok===true,'acepta Reserva de traslado de 9:30 y 25 min');
+const entrada=db.AGENDA.find((r,i)=>i>0&&r[hd.AGENDA.indexOf('ID_SOLICITUD')]===idCorto);
+check(!!entrada,'reserva nueva añadida sin duplicar otros servicios');
+const inicio=entrada[hd.AGENDA.indexOf('INICIO_RESERVA')],fin=entrada[hd.AGENDA.indexOf('FIN_RESERVA')];
+check(Date.parse(inicio)===Date.parse(manana+'T09:30:00-03:00'),'conserva 09:30 de Buenos Aires');
+check((Date.parse(fin)-Date.parse(inicio))/60000===40,'25 minutos de traslado + 15 de margen');
+
 console.log('OK: '+total+' verificaciones de integración F5A, sin tocar datos reales');
