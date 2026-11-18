@@ -139,11 +139,11 @@ function c52EstadoCierre_(ss,link,viaje){
   }finally{lock.releaseLock();}
 }
 function c52Finalizar_(d){
+  // Jamás depender de APPSECRETARIA para cerrar un viaje independiente.
+  if(!d.idSolicitud)return finalizarViajeSecretaria_(d);
   const idViaje=String(d.idViaje||'').trim();
   if(!idViaje)throw Error('Para cerrar el traslado falta el ID de viaje.');
-  const ss=s5Open_(),link=c52Find_(c52Links_(ss,false),String(d.idSolicitud||''),idViaje);
-  // Las salidas independientes, previas o sin vinculación mantienen su flujo.
-  if(!link && !d.idSolicitud)return finalizarViajeSecretaria_(d);
+  const ss=s5Open_(),link=c52Find_(c52Links_(ss,false),String(d.idSolicitud),idViaje);
   if(!link)throw Error('No se encontró el vínculo del traslado. Esperá a que se sincronice el inicio.');
   if(String(link.ID_VIAJE_MAESTRO)!==idViaje)throw Error('El vínculo no coincide con este viaje.');
   if(d.idSolicitud && String(link.ID_SOLICITUD)!==String(d.idSolicitud))
