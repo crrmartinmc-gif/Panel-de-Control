@@ -18,6 +18,20 @@ function s5Date_(v,visible){
   const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(x);
   return m?m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'):'';
 }
+// Google Sheets puede mostrar 9:30, 09:30, 9:30:00 o 9:30 a. m.
+// Normalizar al reloj local HH:mm evita rechazar reservas de la mañana.
+function s5Hora_(valor){
+  const x=String(valor==null?'':valor).trim();
+  const m=/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]\. ?m\.?)?$/i.exec(x);
+  if(!m)return '';
+  let h=Number(m[1]);const minutos=Number(m[2]);
+  if(minutos>59||h>23)return '';
+  if(m[3]){
+    if(h<1||h>12)return '';
+    h=h%12+(/p/i.test(m[3])?12:0);
+  }
+  return String(h).padStart(2,'0')+':'+m[2];
+}
 function s5Open_(){
   const id=String(PropertiesService.getScriptProperties().getProperty('SEC_SOLICITUDES_SPREADSHEET_ID')||S5_SHEET_ID).trim();
   if(id===obtenerSpreadsheet_().getId())throw Error('APPSECRETARIA y Maestro no pueden ser la misma planilla.');
@@ -32,7 +46,7 @@ function s5Read_(ss,name,req){
   return vals.map((a,i)=>{const r={_row:i+2};h.forEach((k,j)=>{
     let v=a[j];
     if(k==='FECHA_SERVICIO'||k==='FECHA_PROPUESTA')v=s5Date_(v,vis[i][j]);
-    else if(k==='HORA_INICIO_PREVISTA')v=String(vis[i][j]||v||'').trim().slice(0,5);
+    else if(k==='HORA_INICIO_PREVISTA')v=s5Hora_(vis[i][j]||v);
     else if(v instanceof Date)v=v.toISOString();
     r[k]=v==null?'':v;
   });return r;}).filter(o=>Object.keys(o).some(k=>k!=='_row'&&String(o[k]).trim()));
@@ -66,7 +80,7 @@ function s5Item_(c,id){
   return {s,r:ag[0]||null,a:as[0]||null,dur};
 }
 function s5Window_(s,dur,margen){
-  const f=String(s.FECHA_SERVICIO),h=String(s.HORA_INICIO_PREVISTA).slice(0,5);
+  const f=String(s.FECHA_SERVICIO),h=s5Hora_(s.HORA_INICIO_PREVISTA);
   if(!/^\d{4}-\d\d-\d\d$/.test(f)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(h))
     throw Error('Fecha u hora de traslado inválida.');
   const n=Number(dur),m=Number(margen);
