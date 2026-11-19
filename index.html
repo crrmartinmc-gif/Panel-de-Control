@@ -1617,6 +1617,14 @@ textarea.form-control{
 .planificacion-preview strong{color:#6ee7a0}
 @media(max-width:760px){.planificacion-grid{grid-template-columns:1fr}.planificacion-days{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .servicio-assignment{display:flex;flex-direction:column;gap:2px}.servicio-assignment strong{color:#eef4fb;font-size:10px}.servicio-assignment span{font-size:8px;color:#718198}
+.servicio-assignment .servicio-dominio{
+    color:#8cf1d5;
+    font-size:14px;
+    font-weight:800;
+    line-height:1.2;
+    letter-spacing:.03em;
+    white-space:nowrap;
+}
 
 
 
@@ -7599,14 +7607,12 @@ function renderAsignacionServicio(idAsignacion){
         chofer?.NOMBRE ||
         "Cargando chofer...";
 
-    const dominio =
-        vehiculo?.DOMINIO ||
-        "Cargando unidad...";
+    const dominio = vehiculo?.DOMINIO;
 
     return `
         <div class="servicio-assignment">
             <strong>${escaparHTML(nombre)}</strong>
-            <span>${escaparHTML(dominio)}</span>
+            <span class="${dominio ? "servicio-dominio" : ""}">${escaparHTML(dominio || "Cargando unidad...")}</span>
         </div>
     `;
 }
