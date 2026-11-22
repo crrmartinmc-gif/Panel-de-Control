@@ -2500,6 +2500,16 @@ textarea.form-control{
 #mapa .dv-live-dot.off{background:var(--red);box-shadow:0 0 0 4px rgba(239,68,68,.12);}
 #mapa .dv-map-meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:11px;}
 #mapa .dv-map-meta strong{color:var(--text);}
+#mapa .dv-periodos-mapa,.dv-home-map-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+#mapa .dv-periodos-mapa .btn{min-height:36px;}
+#mapa .dv-periodos-mapa .btn[aria-pressed="true"]{border-color:#32d19a;color:#c1f7e1;background:#153d37;}
+#mapa #dvMapBadge[hidden]{display:none;}
+#mapa .dv-ayer-resumen{margin:0;min-height:42px;padding:12px 14px;font-size:12px;}
+#mapa .dv-ayer-reclamos{padding:14px;}
+#mapa .dv-ayer-reclamos h3{margin:0 0 10px;font-size:14px;}
+#mapa .dv-ayer-reclamos a,#mapa .dv-ayer-popup a{color:#26ba80;text-decoration:underline;}
+#mapa .dv-ayer-reclamos table{min-width:0;}
+#mapa .dv-ayer-reclamos td{white-space:normal;}
 #mapa .dv-legend{position:absolute;right:14px;top:72px;z-index:500;background:rgba(8,17,31,.94);border:1px solid var(--border);border-radius:10px;padding:10px 11px;min-width:190px;max-width:260px;box-shadow:var(--shadow);}
 #mapa .dv-legend-title{font-size:11px;font-weight:800;margin-bottom:7px;color:#fff;}
 #mapa .dv-legend-item{display:flex;align-items:center;gap:7px;font-size:10px;color:#d7dfeb;margin:5px 0;}
@@ -3991,9 +4001,10 @@ hr{border-color:var(--de-line)!important}
                         <span id="dvHomeMapLiveDot" class="dv-live-dot"></span>
                         <span id="dvHomeMapStatusText">Conectando con Día Verde...</span>
                     </div>
-                    <button type="button" class="btn btn-secondary dv-home-map-open" onclick="mostrarPaginaPorNombre('mapa')">
-                        Ver mapa completo ↗
-                    </button>
+                    <div class="dv-home-map-actions">
+                        <button type="button" class="btn btn-secondary dv-home-map-open" onclick="mostrarPaginaPorNombre('mapa'); dvElegirPeriodoMapa('ayer')">Ver ayer</button>
+                        <button type="button" class="btn btn-secondary dv-home-map-open" onclick="mostrarPaginaPorNombre('mapa')">Ver mapa completo ↗</button>
+                    </div>
                 </div>
                 <div id="dvMapHomeHost" class="dv-home-map-host">
                     <div id="dvMap" class="dv-map"></div>
@@ -4151,10 +4162,14 @@ hr{border-color:var(--de-line)!important}
             <h2>Mapa Operativo</h2>
             <p>Seguimiento GPS exclusivo de Día Verde</p>
         </div>
-        <span id="dvMapBadge" class="status-badge badge-green">SINCRONIZANDO</span>
+        <div class="dv-periodos-mapa" role="group" aria-label="Fecha del mapa">
+            <button id="dvPeriodoHoy" type="button" class="btn btn-secondary" aria-pressed="true" onclick="dvElegirPeriodoMapa('hoy')">Hoy</button>
+            <button id="dvPeriodoAyer" type="button" class="btn btn-secondary" aria-pressed="false" onclick="dvElegirPeriodoMapa('ayer')">Ayer</button>
+            <span id="dvMapBadge" class="status-badge badge-green">SINCRONIZANDO</span>
+        </div>
     </div>
 
-    <div class="panel">
+    <div id="dvMapVistaHoy" class="panel">
         <div class="dv-map-shell">
             <div class="dv-map-toolbar">
                 <div class="dv-map-status">
@@ -4198,6 +4213,20 @@ hr{border-color:var(--de-line)!important}
             <div class="dv-history-card"><div class="dv-history-label">Usuarios con posición</div><div id="dvKpiNombres" class="dv-history-value">0</div></div>
             <div class="dv-history-card"><div class="dv-history-label">Realizados hoy</div><div id="dvKpiRealizados" class="dv-history-value">0</div></div>
             <div class="dv-history-card"><div class="dv-history-label">Histórico cargado</div><div id="dvKpiHistorico" class="dv-history-value">0</div></div>
+        </div>
+    </div>
+
+    <div id="dvMapVistaAyer" class="panel" hidden>
+        <p id="dvAyerResumen" class="dv-ayer-resumen" role="status"></p>
+        <div id="dvMapaAyer" class="dv-map" aria-label="Recorridos y reclamos realizados ayer" hidden></div>
+        <div id="dvAyerReclamos" class="dv-ayer-reclamos" hidden>
+            <h3>Reclamos realizados</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th scope="col">Dirección</th><th scope="col">Zona</th><th scope="col">Hora</th><th scope="col">Evidencia</th></tr></thead>
+                    <tbody id="dvAyerReclamosFilas"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -6701,6 +6730,8 @@ function mostrarPagina(id, boton){
     if(pagina){
         pagina.classList.add('active');
     }
+
+    if(id!=="mapa" && !document.getElementById("dvMapVistaAyer").hidden)dvElegirPeriodoMapa("hoy");
 
 
     document
@@ -14307,13 +14338,9 @@ function dvNormalizar(valor){
         .normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 }
 
-function dvCrearMapa(){
-    const el=document.getElementById("dvMap");
-    if(!el || typeof maplibregl === "undefined") return false;
-    if(dvMapInitialized && dvMap) return true;
-
-    dvMap=new maplibregl.Map({
-        container:el,
+function dvOpcionesMapa(container){
+    return {
+        container,
         style:"https://tiles.openfreemap.org/styles/liberty",
         // OpenFreeMap sirve los glyphs con Noto Sans. El estilo Liberty
         // puede pedir Open Sans/Arial Unicode MS en algunos symbol layers,
@@ -14357,7 +14384,15 @@ function dvCrearMapa(){
         touchPitch:true,
         pitchWithRotate:true,
         attributionControl:true
-    });
+    };
+}
+
+function dvCrearMapa(){
+    const el=document.getElementById("dvMap");
+    if(!el || typeof maplibregl === "undefined") return false;
+    if(dvMapInitialized && dvMap) return true;
+
+    dvMap=new maplibregl.Map(dvOpcionesMapa(el));
 
     dvMap.addControl(
         new maplibregl.NavigationControl({visualizePitch:true}),
@@ -15405,42 +15440,13 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
 
     // Conservamos las fuentes y capas: un refresco actualiza sus coordenadas.
     const rutasVigentes=new Set();
-    const puntos=(Array.isArray(gps)?gps:[]).map((p,i)=>({
-        ...p,lat:dvLatPunto(p),lng:dvLngPunto(p),nombre:dvNombrePunto(p),usuario:dvUsuarioPunto(p),
-        zona:dvZonaPunto(p),fecha:dvFechaPunto(p),orden:i,
-        captura:DVContract.timestamp(dvFechaPunto(p)),precision:DVContract.number(p.precision ?? p.Precision ?? p.PRECISION)
-    })).filter(p=>p.lat!==null && p.lng!==null && p.captura!==null && p.captura<=Date.now()+60000 &&
-        (p.precision===null || (p.precision>=0 && p.precision<=50)));
-    const porNombre={};
-    puntos.forEach(p=>{
-        const key=DVContract.userKey(p);
-        if(!porNombre[key])porNombre[key]=[];
-        porNombre[key].push(p);
-    });
+    const {puntos,porNombre}=dvAgruparGpsMapa(gps);
     const colores={};
     const gpsFeatures=[];
     let routeIndex=0;
     Object.entries(porNombre).sort(([a],[b])=>a.localeCompare(b)).forEach(([key,lista])=>{
-        lista.sort((a,b)=>a.captura-b.captura || a.orden-b.orden);
         const color=dvColorPorNombre(key,colores);
-        const segmentos=[];
-        let segmento=[];
-        const cerrar=()=>{if(segmento.length)segmentos.push(segmento);segmento=[];};
-        lista.forEach(p=>{
-            const anterior=segmento[segmento.length-1];
-            if(anterior){
-                const delta=p.captura-anterior.captura;
-                const distancia=DVContract.distance([anterior.lat,anterior.lng],[p.lat,p.lng]);
-                const cambiaRecorrido=DVContract.routeId(p)!==DVContract.routeId(anterior);
-                const cambiaZona=dvNormalizar(p.zona)!==dvNormalizar(anterior.zona);
-                if(DVContract.active(anterior)===false || cambiaRecorrido || cambiaZona ||
-                   DVContract.dayKey(anterior.captura)!==DVContract.dayKey(p.captura) || delta>900000 ||
-                   distancia>3000 || (delta>0 && distancia/(delta/1000)>50))cerrar();
-            }
-            segmento.push(p);
-        });
-        cerrar();
-        segmentos.forEach(seg=>{
+        dvSegmentosGpsMapa(lista).forEach(seg=>{
             const coordinates=seg.map(p=>[p.lng,p.lat]);
             if(coordinates.length<2)return;
             const sourceId="dv-route-"+(routeIndex++);
@@ -15536,6 +15542,206 @@ function dvActualizarGpsFiltradoSinDestruirCapas(gps){
     }
     dvOrdenarCapasMapa();
 }
+
+function dvAgruparGpsMapa(gps){
+    const puntos=(Array.isArray(gps)?gps:[]).map((p,i)=>({
+        ...p,lat:dvLatPunto(p),lng:dvLngPunto(p),nombre:dvNombrePunto(p),usuario:dvUsuarioPunto(p),
+        zona:dvZonaPunto(p),fecha:dvFechaPunto(p),orden:i,
+        captura:DVContract.timestamp(dvFechaPunto(p)),precision:DVContract.number(p.precision ?? p.Precision ?? p.PRECISION)
+    })).filter(p=>p.lat!==null && p.lng!==null && p.captura!==null && p.captura<=Date.now()+60000 &&
+        (p.precision===null || (p.precision>=0 && p.precision<=50)));
+    const porNombre={};
+    for(const punto of puntos){
+        const clave=DVContract.userKey(punto);
+        (porNombre[clave]??=[]).push(punto);
+    }
+    return {puntos,porNombre};
+}
+
+function dvSegmentosGpsMapa(lista){
+    lista.sort((a,b)=>a.captura-b.captura || a.orden-b.orden);
+    const segmentos=[];
+    let segmento=[];
+    for(const punto of lista){
+        const anterior=segmento[segmento.length-1];
+        if(anterior){
+            const delta=punto.captura-anterior.captura;
+            const distancia=DVContract.distance([anterior.lat,anterior.lng],[punto.lat,punto.lng]);
+            if(DVContract.active(anterior)===false || DVContract.routeId(punto)!==DVContract.routeId(anterior) ||
+               dvNormalizar(punto.zona)!==dvNormalizar(anterior.zona) || DVContract.dayKey(anterior.captura)!==DVContract.dayKey(punto.captura) ||
+               delta>900000 || distancia>3000 || (delta>0 && distancia/(delta/1000)>50)){
+                segmentos.push(segmento);
+                segmento=[];
+            }
+        }
+        segmento.push(punto);
+    }
+    if(segmento.length)segmentos.push(segmento);
+    return segmentos;
+}
+
+let dvInstanciaMapaAyer=null;
+let dvSolicitudMapaAyer=0;
+
+function dvFechaDeAyer(){
+    const fecha=new Date(DVContract.dayKey()+"T12:00:00Z");
+    fecha.setUTCDate(fecha.getUTCDate()-1);
+    return fecha.toISOString().slice(0,10);
+}
+
+async function dvLeerMapaAyer(fecha){
+    const respuesta=await dvPanelFetchDiaVerde("mapaDiaVerde",{fecha,modo:"completo"});
+    if(!respuesta.ok)throw new Error("Mapa HTTP "+respuesta.status);
+    const {ok,datos}=await respuesta.json();
+    if(!ok || !Array.isArray(datos?.gps) || !Array.isArray(datos?.historico) ||
+        datos.hayMas===true || (datos.fecha && DVContract.dayKey(datos.fecha)!==fecha)){
+        throw new Error("La consulta histórica no devolvió el día solicitado completo.");
+    }
+
+    const gps=datos.gps.filter(p=>DVContract.dayKey(DVContract.date(p))===fecha);
+    const porReclamo=new Map();
+    for(const evidencia of datos.historico){
+        const dia=DVContract.pick(evidencia,["fecha","FECHA","Fecha","timestampCaptura","TIMESTAMP_CAPTURA"]);
+        const estado=DVContract.pick(evidencia,["estado","ESTADO","Estado"]);
+        const direccion=DVContract.address(evidencia);
+        if(!dia || DVContract.dayKey(dia)!==fecha || !direccion || DVContract.completedStatus(estado)===false)continue;
+
+        const identidad=DVContract.pick(evidencia,["claveReclamo","CLAVE_RECLAMO","idReclamo","ID_RECLAMO"]);
+        const clave=identidad ? DVContract.normalize(identidad) : [dvCgmObjeto(evidencia),dvZonaCanonica(evidencia),direccion].join("|");
+        const registro={
+            direccion:dvDireccionReclamo(evidencia) || direccion,
+            zona:DVContract.pick(evidencia,["zona","ZONA","Zona","cgm","CGM"]) || "",
+            hora:dvHoraTexto(DVContract.pick(evidencia,["hora","HORA","Hora"])),
+            foto:dvUrlEvidencia(evidencia),
+            posicion:DVContract.coords(evidencia)
+        };
+        const anterior=porReclamo.get(clave);
+        if(anterior){
+            registro.foto=registro.foto || anterior.foto;
+            registro.posicion=registro.posicion || anterior.posicion;
+        }
+        porReclamo.set(clave,registro);
+    }
+    return {gps,reclamos:[...porReclamo.values()].sort((a,b)=>b.hora.localeCompare(a.hora))};
+}
+
+function dvEnlaceFotoAyer(foto){
+    return /^https:\/\/[^\s]+$/i.test(foto)
+        ? `<a href="${dvEscaparAtributo(foto)}" target="_blank" rel="noopener noreferrer">Ver foto</a>`
+        : "";
+}
+
+function dvDibujarMapaAyer(mapa,puntos,porNombre,reclamos){
+    const colores={};
+    const recorridos=Object.entries(porNombre).flatMap(([clave,lista])=>{
+        const color=dvColorPorNombre(clave,colores);
+        return dvSegmentosGpsMapa(lista).map(segmento=>{
+            const coordinates=segmento.map(p=>[p.lng,p.lat]);
+            return {type:"Feature",
+                geometry:coordinates.length>1 ? {type:"LineString",coordinates} : {type:"Point",coordinates:coordinates[0]},
+                properties:{color,nombre:segmento[0].nombre,zona:segmento[0].zona}};
+        });
+    });
+    const atendidos=reclamos.flatMap((reclamo,indice)=>reclamo.posicion ? [{
+        type:"Feature",geometry:{type:"Point",coordinates:[reclamo.posicion[1],reclamo.posicion[0]]},properties:{indice}
+    }] : []);
+    mapa.addSource("dv-ayer-gps",{type:"geojson",data:{type:"FeatureCollection",features:recorridos}});
+    mapa.addSource("dv-ayer-reclamos",{type:"geojson",data:{type:"FeatureCollection",features:atendidos}});
+    mapa.addLayer({id:"dv-ayer-recorridos",source:"dv-ayer-gps",type:"line",
+        filter:["==",["geometry-type"],"LineString"],layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":["get","color"],"line-width":5}});
+    mapa.addLayer({id:"dv-ayer-gps-puntos",source:"dv-ayer-gps",type:"circle",
+        filter:["==",["geometry-type"],"Point"],paint:{"circle-color":["get","color"],"circle-radius":6,
+            "circle-stroke-color":"#fff","circle-stroke-width":2}});
+    mapa.addLayer({id:"dv-ayer-atendidos",source:"dv-ayer-reclamos",type:"circle",
+        paint:{"circle-color":"#25834f","circle-radius":8,"circle-stroke-color":"#fff","circle-stroke-width":2.5}});
+
+    mapa.on("click",evento=>{
+        const punto=mapa.queryRenderedFeatures(evento.point,{layers:["dv-ayer-atendidos","dv-ayer-gps-puntos","dv-ayer-recorridos"]})[0];
+        if(!punto)return;
+        const reclamo=reclamos[punto.properties.indice];
+        const contenido=reclamo
+            ? `<strong>${dvEscapar(reclamo.direccion)}</strong><p>${dvEscapar(reclamo.zona)} · ${dvEscapar(reclamo.hora)}</p>${dvEnlaceFotoAyer(reclamo.foto)}`
+            : `<strong>${dvEscapar(punto.properties.nombre)}</strong><p>${dvEscapar(punto.properties.zona)}</p>`;
+        new maplibregl.Popup({offset:12,className:"dv-ayer-popup"}).setLngLat(evento.lngLat).setHTML(contenido).addTo(mapa);
+    });
+    mapa.on("mouseenter","dv-ayer-atendidos",()=>{mapa.getCanvas().style.cursor="pointer";});
+    mapa.on("mouseleave","dv-ayer-atendidos",()=>{mapa.getCanvas().style.cursor="";});
+
+    const limites=new maplibregl.LngLatBounds();
+    for(const punto of puntos)limites.extend([punto.lng,punto.lat]);
+    for(const punto of atendidos)limites.extend(punto.geometry.coordinates);
+    if(!limites.isEmpty())mapa.fitBounds(limites,{padding:42,maxZoom:16,duration:0});
+}
+
+async function dvElegirPeriodoMapa(periodo){
+    const ayer=periodo==="ayer";
+    const paginaActiva=document.getElementById("mapa").classList.contains("active");
+    if(ayer && (!paginaActiva || !window.__PANEL_AUTH_READY__ || panelEsConsultaServicios()))return;
+    const idSolicitud=++dvSolicitudMapaAyer;
+    const vista=document.getElementById("dvMapVistaAyer");
+    const mapa=document.getElementById("dvMapaAyer");
+    const resumen=document.getElementById("dvAyerResumen");
+    const lista=document.getElementById("dvAyerReclamos");
+    const filas=document.getElementById("dvAyerReclamosFilas");
+    document.getElementById("dvPeriodoHoy").setAttribute("aria-pressed",String(!ayer));
+    document.getElementById("dvPeriodoAyer").setAttribute("aria-pressed",String(ayer));
+    document.getElementById("dvMapVistaHoy").hidden=ayer;
+    document.getElementById("dvMapBadge").hidden=ayer;
+    vista.hidden=!ayer;
+    dvInstanciaMapaAyer?.remove();
+    dvInstanciaMapaAyer=null;
+    mapa.hidden=true;
+    lista.hidden=true;
+    filas.replaceChildren();
+
+    if(!ayer){
+        resumen.textContent="";
+        if(paginaActiva && window.__PANEL_AUTH_READY__){
+            dvActivarMapaPaginaCompleta();
+            actualizarGpsDiaVerde();
+        }
+        return;
+    }
+
+    const fecha=dvFechaDeAyer();
+    const etiqueta=fecha.split("-").reverse().join("/");
+    resumen.textContent=`Cargando la jornada del ${etiqueta}…`;
+    let datos;
+    try{
+        datos=await dvLeerMapaAyer(fecha);
+    }catch(error){
+        if(idSolicitud===dvSolicitudMapaAyer){
+            resumen.textContent=`No se pudo cargar el ${etiqueta}. Tocá «Ayer» para reintentar.`;
+        }
+        return;
+    }
+    if(idSolicitud!==dvSolicitudMapaAyer || !window.__PANEL_AUTH_READY__)return;
+
+    const {puntos,porNombre}=dvAgruparGpsMapa(datos.gps);
+    const reclamos=datos.reclamos;
+    const sinUbicacion=reclamos.filter(r=>!r.posicion).length;
+    resumen.textContent=puntos.length || reclamos.length
+        ? `${etiqueta} · ${puntos.length} puntos GPS · ${reclamos.length} reclamos realizados${sinUbicacion ? ` · ${sinUbicacion} sin ubicación` : ""}`
+        : `${etiqueta} · Sin recorrido GPS disponible ni reclamos realizados.`;
+    filas.innerHTML=reclamos.map(r=>
+        `<tr><td>${dvEscapar(r.direccion)}</td><td>${dvEscapar(r.zona || "—")}</td><td>${dvEscapar(r.hora)}</td><td>${dvEnlaceFotoAyer(r.foto) || "—"}</td></tr>`
+    ).join("");
+    lista.hidden=!reclamos.length;
+    if(!puntos.length && sinUbicacion===reclamos.length)return;
+
+    try{
+        mapa.hidden=false;
+        const instancia=new maplibregl.Map(dvOpcionesMapa(mapa));
+        dvInstanciaMapaAyer=instancia;
+        instancia.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-left");
+        instancia.once("load",()=>dvDibujarMapaAyer(instancia,puntos,porNombre,reclamos));
+    }catch(error){
+        mapa.hidden=true;
+        resumen.textContent+=" · No se pudo abrir el mapa.";
+    }
+}
+
 function dvCentrarReclamosFiltrados(){
     if(!dvMap||!dvMapReady)return;
 
@@ -15967,7 +16173,8 @@ async function dvRefrescarReclamosCompartidos(){
 }
 function panelMapaOperativoVisible(){
     if(document.hidden || !window.__PANEL_AUTH_READY__)return false;
-    return ["inicio","mapa"].some(id=>document.getElementById(id)?.classList.contains("active"));
+    return document.getElementById("inicio")?.classList.contains("active") ||
+        (document.getElementById("mapa")?.classList.contains("active") && !document.getElementById("dvMapVistaHoy").hidden);
 }
 document.addEventListener("visibilitychange",()=>{
     if(panelMapaOperativoVisible())actualizarGpsDiaVerde();
@@ -17917,6 +18124,7 @@ function dvOrdenarCapasMapa(){
   }
   function mostrarLogin(mensaje){
     window.__PANEL_AUTH_READY__ = false;
+    if(!document.getElementById('dvMapVistaAyer').hidden)dvElegirPeriodoMapa('hoy');
     document.body.classList.add('panel-auth-locked');
     cover.hidden = false;
     if(errorBox) errorBox.textContent = mensaje || '';
