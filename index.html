@@ -15589,6 +15589,33 @@ function dvFechaDeAyer(){
     return fecha.toISOString().slice(0,10);
 }
 
+async function dvCatalogoUbicacionesAyer(){
+    if(dvMapReclamos.length)return dvMapReclamos;
+    try{
+        const respuesta=await dvPanelFetchDiaVerde(DV_RECLAMOS_ACCION);
+        if(respuesta.ok){
+            const {ok,datos}=await respuesta.json();
+            if(ok && Array.isArray(datos?.reclamos))return datos.reclamos;
+        }
+    }catch(error){console.warn("Ubicaciones de reclamos no disponibles:",error.message);}
+    return dvMapReclamos;
+}
+
+function dvUbicacionDesdeReclamo(evidencia,catalogo){
+    const direccion=DVContract.address(evidencia);
+    const direccionesIguales=catalogo.filter(reclamo=>DVContract.address(reclamo)===direccion);
+    const coincidencias=direccionesIguales.filter(reclamo=>DVContract.evidenceMatches(reclamo,evidencia,catalogo));
+    if(coincidencias.length===1)return dvReclamoLatLng(coincidencias[0]);
+    if(coincidencias.length>1)return null;
+
+    // Algunos registros anteriores conservan la dirección y el CGM pero usan otra clave.
+    const cgm=dvCgmObjeto(evidencia);
+    if(!cgm)return null;
+    const zona=dvZonaCanonica(evidencia);
+    const enLaZona=direccionesIguales.filter(reclamo=>dvCgmObjeto(reclamo)===cgm && (!zona || dvZonaCanonica(reclamo)===zona));
+    return enLaZona.length===1 ? dvReclamoLatLng(enLaZona[0]) : null;
+}
+
 async function dvLeerMapaAyer(fecha){
     const respuesta=await dvPanelFetchDiaVerde("mapaDiaVerde",{fecha,modo:"completo"});
     if(!respuesta.ok)throw new Error("Mapa HTTP "+respuesta.status);
@@ -15617,12 +15644,21 @@ async function dvLeerMapaAyer(fecha){
         };
         const anterior=porReclamo.get(clave);
         if(anterior){
-            registro.foto=registro.foto || anterior.foto;
-            registro.posicion=registro.posicion || anterior.posicion;
+            registro.foto=registro.foto || anterior.registro.foto;
+            registro.posicion=registro.posicion || anterior.registro.posicion;
         }
-        porReclamo.set(clave,registro);
+        porReclamo.set(clave,{evidencia,registro});
     }
-    return {gps,reclamos:[...porReclamo.values()].sort((a,b)=>b.hora.localeCompare(a.hora))};
+    const entradas=[...porReclamo.values()];
+    const catalogo=entradas.some(({registro})=>!registro.posicion) ? await dvCatalogoUbicacionesAyer() : [];
+    const reclamos=entradas.map(({evidencia,registro})=>{
+        if(!registro.posicion && catalogo.length){
+            registro.posicion=dvUbicacionDesdeReclamo(evidencia,catalogo);
+            registro.ubicacionPorDireccion=!!registro.posicion;
+        }
+        return registro;
+    });
+    return {gps,reclamos:reclamos.sort((a,b)=>b.hora.localeCompare(a.hora))};
 }
 
 function dvEnlaceFotoAyer(foto){
@@ -15661,7 +15697,8 @@ function dvDibujarMapaAyer(mapa,puntos,porNombre,reclamos){
         if(!punto)return;
         const reclamo=reclamos[punto.properties.indice];
         const contenido=reclamo
-            ? `<strong>${dvEscapar(reclamo.direccion)}</strong><p>${dvEscapar(reclamo.zona)} · ${dvEscapar(reclamo.hora)}</p>${dvEnlaceFotoAyer(reclamo.foto)}`
+            ? `<strong>${dvEscapar(reclamo.direccion)}</strong><p>${dvEscapar(reclamo.zona)} · ${dvEscapar(reclamo.hora)}</p>
+                ${reclamo.ubicacionPorDireccion ? "<p>Ubicación de la dirección registrada</p>" : ""}${dvEnlaceFotoAyer(reclamo.foto)}`
             : `<strong>${dvEscapar(punto.properties.nombre)}</strong><p>${dvEscapar(punto.properties.zona)}</p>`;
         new maplibregl.Popup({offset:12,className:"dv-ayer-popup"}).setLngLat(evento.lngLat).setHTML(contenido).addTo(mapa);
     });
