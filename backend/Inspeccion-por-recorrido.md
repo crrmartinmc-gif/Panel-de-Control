@@ -8,6 +8,8 @@ Preparación aditiva: ejecutar `prepararInspeccionesPorRecorrido`. Agrega `RECOR
 
 Publicar primero la versión del Backend Maestro en la implementación existente de Apps Script y luego la app de Choferes. Las solicitudes anteriores siguen siendo compatibles durante la actualización. La respuesta `fotosViajeCompletas` indica si el viaje tiene sus cuatro evidencias propias.
 
+La app conserva los envíos pendientes hasta que el servidor confirma las cuatro fotos. Si un envío se completa después del cierre, las evidencias se agregan al viaje original y el cierre se conserva.
+
 Pruebas: `node --test tests/*.test.cjs` desde la raíz del repositorio.
 
 Actualización del panel: las fechas dd/MM/yyyy del backend se normalizan en el cliente; Actualizar fuerza una instantánea y los cursores se recuperan tras limpiezas. La reutilización de asignaciones distingue jornadas y la app permite completar fotos de un viaje iniciado en el panel. `repararIniciosServiciosHoy` completa únicamente horas vacías con horas reales del viaje del día.

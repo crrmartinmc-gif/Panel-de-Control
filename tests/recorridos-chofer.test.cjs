@@ -71,3 +71,26 @@ test('la lectura separa el respaldo anterior de las fotos de un nuevo viaje parc
  assert.equal(f.uploads(),8);
  assert.equal(f.db.VIAJES.length,2);
 });
+
+test('las fotos atrasadas se agregan a un viaje cerrado sin volver a abrirlo',()=>{
+ const f=fixture();
+ f.fallo('TRASERA');
+ const parcial=f.start(1,{fotosPorViaje:true});
+ f.end(parcial,115,{finalizarRecorrido:true});
+ f.fallo('');
+ const completo=f.start(1,{fotosPorViaje:true});
+ assert.equal(completo.ID_VIAJE,parcial.ID_VIAJE);
+ assert.equal(completo.VIAJE_ACTIVO,false);
+ assert.equal(completo.FOTOS_SALIDA.registradas,4);
+ assert.equal(f.db.VIAJES.length,1);
+ assert.equal(f.db.VIAJES[0].ESTADO,'FINALIZADO');
+ assert.equal(f.db.RECORRIDOS_CHOFER.length,0);
+});
+
+test('una salida atrasada no crea otro viaje si el servicio ya fue cancelado',()=>{
+ const f=fixture();
+ f.db.SERVICIOS[0].ESTADO='CANCELADO';
+ assert.throws(()=>f.start(1,{fotosPorViaje:true}),/cerrado desde el panel/);
+ assert.equal(f.db.VIAJES.length,0);
+ assert.equal(f.uploads(),0);
+});

@@ -5722,6 +5722,19 @@ function recIniciar_(datos,secretaria){
     const viajes=obtenerViajes();
     const existente=viajes.find(v=>secretaria?!!d.idViaje&&recIgual_(v.ID_VIAJE,d.idViaje):recMismaSalida_(v,d));
     if(existente && (!recIgual_(existente.ID_CHOFER,d.idChofer)||!recIgual_(existente.ID_VEHICULO,d.idVehiculo)))throw new Error('El viaje ya pertenece a otro chofer o vehículo.');
+    if(fotosPorViaje){
+      if(existente && !recActivo_(existente)){
+        // Una foto atrasada pertenece al viaje original, incluso después del cierre.
+        const fotos=registrarFotosSalidaOriginal_(d,existente.ID_VIAJE);
+        return {...existente,FOTOS_SALIDA:{...fotos,ID_VIAJE_ORIGEN:existente.ID_VIAJE},IDEMPOTENTE:true,VIAJE_ACTIVO:false};
+      }
+      if(!existente){
+        const servicio=obtenerPorID_(CONFIG.HOJAS.SERVICIOS,'ID_SERVICIO',d.idServicio);
+        if(['FINALIZADO','CANCELADO','CANCELADA'].includes(normalizar_(servicio?.ESTADO))){
+          throw new Error('El servicio ya fue cerrado desde el panel.');
+        }
+      }
+    }
     const anterior=existente?.ID_RECORRIDO?recLeer_().find(r=>recIgual_(r.ID_RECORRIDO,existente.ID_RECORRIDO)):null;
     const inspeccionCompartida=!!anterior && recIgual_(existente.ID_INSPECCION,anterior.ID_INSPECCION) &&
       !recIgual_(existente.ID_VIAJE,anterior.ID_VIAJE_ORIGEN);
