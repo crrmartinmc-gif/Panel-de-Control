@@ -94,3 +94,30 @@ test('una salida atrasada no crea otro viaje si el servicio ya fue cancelado',()
  assert.equal(f.db.VIAJES.length,0);
  assert.equal(f.uploads(),0);
 });
+
+test('el inicio separado confirma la salida sin usar Drive y las fotos se vinculan aunque ya se haya cerrado',()=>{
+ const f=fixture();
+ const datos={usuario:'chofer',idServicio:'S1',idAsignacion:'A1',idVehiculo:'V1',idChofer:'C1'};
+ const inicio=f.c.iniciarViaje_({...datos,etapaSalida:'INICIO'});
+ assert.equal(inicio.INICIO_CONFIRMADO,true);
+ assert.ok(inicio.ID_INSPECCION);
+ assert.equal(f.uploads(),0);
+ assert.equal(f.db.SERVICIOS[0].ESTADO,'EN CURSO');
+ assert.equal(f.c.iniciarViaje_({...datos,etapaSalida:'INICIO'}).ID_VIAJE,inicio.ID_VIAJE);
+ f.end(inicio,110,{finalizarRecorrido:true});
+ const adjunto=f.c.iniciarViaje_({...datos,etapaSalida:'FOTOS',idViaje:inicio.ID_VIAJE,fotos:f.fotos});
+ assert.equal(adjunto.FOTOS_SALIDA.registradas,4);
+ assert.equal(adjunto.VIAJE_ACTIVO,false);
+ assert.equal(f.db.VIAJES.length,1);
+ assert.equal(f.db.VIAJES[0].ESTADO,'FINALIZADO');
+ assert.equal(f.db.RECORRIDOS_CHOFER[0].ESTADO,'CERRADO');
+});
+
+test('el envío independiente rechaza un vehículo o una asignación ajenos al viaje',()=>{
+ const f=fixture();
+ const datos={usuario:'chofer',idServicio:'S1',idAsignacion:'A1',idVehiculo:'V1',idChofer:'C1'};
+ const inicio=f.c.iniciarViaje_({...datos,etapaSalida:'INICIO'});
+ assert.throws(()=>f.c.iniciarViaje_({...datos,idVehiculo:'V2',etapaSalida:'FOTOS',idViaje:inicio.ID_VIAJE,fotos:f.fotos}),/no corresponden/);
+ assert.throws(()=>f.c.iniciarViaje_({...datos,idAsignacion:'A2',etapaSalida:'FOTOS',idViaje:inicio.ID_VIAJE,fotos:f.fotos}),/no corresponden/);
+ assert.equal(f.uploads(),0);
+});
