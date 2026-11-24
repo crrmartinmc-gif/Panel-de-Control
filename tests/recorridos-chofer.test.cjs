@@ -4,7 +4,7 @@ function fixture(){
  const db={VIAJES:[],SERVICIOS:[],ASIGNACIONES:[],VEHICULOS:[{ID_VEHICULO:'V1',KM_ACTUAL:100},{ID_VEHICULO:'V2',KM_ACTUAL:200}],INSPECCIONES:[],EVIDENCIAS:[],RECORRIDOS_CHOFER:[]};
  for(let i=1;i<=4;i++){db.SERVICIOS.push({ID_SERVICIO:'S'+i,ESTADO:'PENDIENTE'});db.ASIGNACIONES.push({ID_ASIGNACION:'A'+i,ID_SERVICIO:'S'+i,ID_CHOFER:'C1',ID_VEHICULO:'V1',ESTADO:'ACTIVA'});}
  let id=0,upload=0,fallo='',dia='2026-11-13';const lock={waitLock(){},tryLock(){return true;},releaseLock(){}};const props={};
- const c={console:{log(){}},CONFIG:{ZONA_HORARIA:'America/Argentina/Buenos_Aires',HOJAS:Object.fromEntries(Object.keys(db).map(k=>[k,k]))},PropertiesService:{getScriptProperties:()=>({getProperty:k=>props[k]||null,setProperties:v=>Object.assign(props,v),deleteProperty:k=>delete props[k]})},Utilities:{getUuid:()=>String(++id),formatDate:v=>require('../dv-contract.js').dayKey(v)},LockService:{getUserLock:()=>lock,getScriptLock:()=>lock},ahora_:()=> dia+'T10:00:00Z',normalizar_:v=>String(v||'').trim().toUpperCase(),validarCampos_:()=>{},generarID_:p=>p+(++id),obtenerSpreadsheet_:()=>({getSheetByName:n=>db[n]?{}:null}),leerTabla_:n=>db[n],obtenerPorID_:(n,k,v)=>db[n].find(x=>String(x[k])===String(v)),insertarObjeto_:(n,v)=>{db[n].push({...v});return {...v};},actualizarPorID_:(n,k,v,changes)=>{const row=db[n].find(x=>String(x[k])===String(v));if(!row)throw Error('No existe '+v);Object.assign(row,changes);return {...row};},obtenerViajes:()=>db.VIAJES,obtenerEvidencias:()=>db.EVIDENCIAS,obtenerUsuarios:()=>[{USUARIO:'chofer',ID_CHOFER:'C1',ESTADO:'ACTIVO',APLICACION:'CHOFERES'}],registrarEvento_:()=>{},asegurarColumnaVehiculosKM_:()=>{},crearInspeccion_:()=>{const row={ID_INSPECCION:'INS'+(++id)};db.INSPECCIONES.push(row);return row;},guardarFotoDrive_:(f,n)=>{if(fallo&&n.includes(fallo))throw Error('Drive temporal');upload++;return 'https://drive.test/'+n;},crearEvidencia_:d=>{const row={ID_VIAJE:d.idViaje,URL_DRIVE:d.urlDrive,TIPO_EVIDENCIA:d.tipoEvidencia};db.EVIDENCIAS.push(row);return row;},cerrarAsignacionesDeServicio_:()=>{},validarChoferSecretaria_:()=>({chofer:{ID_CHOFER:'C1'},usuario:{ID_USUARIO:'U1'}}),vehiculoSecretariaHabilitado_:id=>db.VEHICULOS.find(v=>v.ID_VEHICULO===id)};
+ const c={console:{log(){}},CONFIG:{ZONA_HORARIA:'America/Argentina/Buenos_Aires',HOJAS:Object.fromEntries(Object.keys(db).map(k=>[k,k]))},PropertiesService:{getScriptProperties:()=>({getProperty:k=>props[k]||null,setProperties:v=>Object.assign(props,v),deleteProperty:k=>delete props[k]})},Utilities:{getUuid:()=>String(++id),formatDate:v=>require('../dv-contract.js').dayKey(v)},LockService:{getUserLock:()=>lock,getScriptLock:()=>lock},ahora_:()=> dia+'T10:00:00Z',normalizar_:v=>String(v||'').trim().toUpperCase(),validarCampos_:()=>{},generarID_:p=>p+(++id),obtenerSpreadsheet_:()=>({getSheetByName:n=>db[n]?{}:null}),leerTabla_:n=>db[n],obtenerPorID_:(n,k,v)=>db[n].find(x=>String(x[k])===String(v)),insertarObjeto_:(n,v)=>{db[n].push({...v});return {...v};},actualizarPorID_:(n,k,v,changes)=>{const row=db[n].find(x=>String(x[k])===String(v));if(!row)throw Error('No existe '+v);Object.assign(row,changes);return {...row};},obtenerViajes:()=>db.VIAJES,obtenerEvidencias:()=>db.EVIDENCIAS.slice(),obtenerUsuarios:()=>[{USUARIO:'chofer',ID_CHOFER:'C1',ESTADO:'ACTIVO',APLICACION:'CHOFERES'}],registrarEvento_:()=>{},asegurarColumnaVehiculosKM_:()=>{},crearInspeccion_:()=>{const row={ID_INSPECCION:'INS'+(++id)};db.INSPECCIONES.push(row);return row;},guardarFotoDrive_:(f,n)=>{if(fallo&&n.includes(fallo))throw Error('Drive temporal');upload++;return 'https://drive.test/'+n;},crearEvidencia_:d=>{const row={ID_VIAJE:d.idViaje,URL_DRIVE:d.urlDrive,TIPO_EVIDENCIA:d.tipoEvidencia};db.EVIDENCIAS.push(row);return row;},cerrarAsignacionesDeServicio_:()=>{},validarChoferSecretaria_:()=>({chofer:{ID_CHOFER:'C1'},usuario:{ID_USUARIO:'U1'}}),vehiculoSecretariaHabilitado_:id=>db.VEHICULOS.find(v=>v.ID_VEHICULO===id)};
  vm.createContext(c);
  for(const n of ['normalizarKilometraje_','registrarFotosSalidaOriginal_','iniciarViajeBase_','iniciarViajeSecretariaBase_','finalizarViaje_','finalizarViajeSecretaria_','sincronizarHorarioServicioDesdeViaje_']){const a=src.indexOf('function '+n+'(');const rest=src.slice(a+10);const m=/\nfunction [A-Za-z_$]/.exec(rest);vm.runInContext(src.slice(a,m?a+10+m.index:undefined),c);}
  vm.runInContext(src.slice(src.indexOf('/* INSPECCION COMPARTIDA POR RECORRIDO')),c);
@@ -27,3 +27,47 @@ test('viaje iniciado en panel sin fotos se identifica como inspección pendiente
 
 test('viaje histórico de otro chofer no reserva hoy la unidad ni se modifica',()=>{const f=fixture();const viejo={ID_VIAJE:'HIST',ID_SERVICIO:'HIST-S',ID_CHOFER:'C2',ID_VEHICULO:'V1',HORA_INICIO:'2026-09-23T00:29:40Z',ESTADO:'EN CURSO'};f.db.SERVICIOS.push({ID_SERVICIO:'HIST-S',FECHA:'2026-09-22',ESTADO:'EN CURSO'});f.db.VIAJES.push({...viejo});const a=f.start(1);assert.ok(a.ID_VIAJE);assert.deepEqual(f.db.VIAJES[0],viejo);});
 test('otro chofer con viaje de hoy sí reserva la unidad',()=>{const f=fixture();f.db.VIAJES.push({ID_VIAJE:'OTRO',ID_CHOFER:'C2',ID_VEHICULO:'V1',HORA_INICIO:'2026-11-13T10:00:00Z',ESTADO:'EN CURSO'});assert.throws(()=>f.start(1),/otro chofer en esta jornada/);assert.equal(f.uploads(),0);});
+
+test('dos viajes en la misma unidad conservan cuatro fotos e inspección propias por salida',()=>{
+ const f=fixture();
+ const primero=f.start(1,{fotosPorViaje:true});
+ f.end(primero,110);
+ const segundo=f.start(2,{fotosPorViaje:true});
+ assert.equal(segundo.ID_RECORRIDO,primero.ID_RECORRIDO);
+ assert.notEqual(segundo.ID_INSPECCION,primero.ID_INSPECCION);
+ assert.equal(segundo.FOTOS_SALIDA.ID_VIAJE_ORIGEN,segundo.ID_VIAJE);
+ assert.equal(f.db.EVIDENCIAS.filter(e=>e.ID_VIAJE===primero.ID_VIAJE).length,4);
+ assert.equal(f.db.EVIDENCIAS.filter(e=>e.ID_VIAJE===segundo.ID_VIAJE).length,4);
+ assert.equal(f.db.INSPECCIONES.length,2);
+});
+
+test('un recorrido abierto no habilita otro viaje sin las cuatro fotos nuevas',()=>{
+ const f=fixture();
+ const primero=f.start(1);
+ f.end(primero,110);
+ assert.throws(()=>f.start(2,{fotosPorViaje:true,idRecorrido:primero.ID_RECORRIDO,
+  fotos:{...f.fotos,trasera:''}}),/cuatro fotos nuevas/);
+ assert.equal(f.db.VIAJES.length,1);
+ assert.equal(f.uploads(),4);
+});
+
+test('la lectura separa el respaldo anterior de las fotos de un nuevo viaje parcialmente guardadas',()=>{
+ const f=fixture();
+ const primero=f.start(1);
+ f.end(primero,110);
+ const consultar=()=>f.c.estadoRecorridoChofer_({usuario:'chofer',idChofer:'C1',idVehiculo:'V1'}).viajeActivo;
+ f.fallo('TRASERA');
+ const parcial=f.start(2,{fotosPorViaje:true});
+ assert.equal(parcial.FOTOS_SALIDA.registradas,3);
+ assert.equal(consultar().fotosViajeCompletas,false);
+ f.fallo('');
+ const completo=f.start(2,{fotosPorViaje:true});
+ assert.equal(consultar().fotosViajeCompletas,true);
+ assert.equal(completo.ID_VIAJE,parcial.ID_VIAJE);
+ assert.equal(completo.ID_INSPECCION,parcial.ID_INSPECCION);
+ const reintento=f.start(2,{fotosPorViaje:true});
+ assert.equal(reintento.IDEMPOTENTE,true);
+ assert.equal(reintento.FOTOS_SALIDA.ID_VIAJE_ORIGEN,completo.ID_VIAJE);
+ assert.equal(f.uploads(),8);
+ assert.equal(f.db.VIAJES.length,2);
+});

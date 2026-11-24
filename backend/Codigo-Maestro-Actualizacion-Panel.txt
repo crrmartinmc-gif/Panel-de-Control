@@ -5651,9 +5651,11 @@ function estadoRecorridoChofer_(d){
   const activo=recViajesActivos_(obtenerViajes(),v=>recIgual_(v.ID_CHOFER,d.idChofer))[0];
   const r=recLeer_().filter(r=>recIgual_(r.ID_CHOFER,d.idChofer)&&r.DIA===recDia_()&&normalizar_(r.ESTADO)==='ABIERTO').pop()||null;
   const fotos=r&&recFotos_(r);
+  const fotosViajeCompletas=!!(activo&&recFotos_({ID_VIAJE_ORIGEN:activo.ID_VIAJE}));
   return {ok:true,versionRecorridos:1,recorrido:r?{...r,DOMINIO:obtenerPorID_(CONFIG.HOJAS.VEHICULOS,'ID_VEHICULO',r.ID_VEHICULO)?.DOMINIO||''}:null,
     reutilizable:!!(recValido_(r,d.idChofer,r?.ID_VEHICULO)&&fotos&&(!d.idVehiculo||recIgual_(r.ID_VEHICULO,d.idVehiculo))),
-    viajeActivo:activo?{ID_VIAJE:activo.ID_VIAJE,ID_SERVICIO:activo.ID_SERVICIO,ID_ASIGNACION:activo.ID_ASIGNACION,ID_VEHICULO:activo.ID_VEHICULO,KM_INICIAL:activo.KM_INICIAL,inspeccionCompleta:!!(recFotos_({ID_VIAJE_ORIGEN:activo.ID_VIAJE}) || (r&&recValido_(r,d.idChofer,activo.ID_VEHICULO)&&fotos))}:null};
+    viajeActivo:activo?{ID_VIAJE:activo.ID_VIAJE,ID_SERVICIO:activo.ID_SERVICIO,ID_ASIGNACION:activo.ID_ASIGNACION,ID_VEHICULO:activo.ID_VEHICULO,KM_INICIAL:activo.KM_INICIAL,
+      fotosViajeCompletas,inspeccionCompleta:fotosViajeCompletas||!!(r&&recValido_(r,d.idChofer,activo.ID_VEHICULO)&&fotos)}:null};
 }
 function registrarFotosSalida_(d,viajeId){
   // __recorridoId se reemplaza siempre en el punto de entrada, nunca se confía en el cliente.
@@ -5695,7 +5697,7 @@ function recDespuesCierre_(viaje,d){
         const fotos=recFotos_({ID_VIAJE_ORIGEN:viaje.ID_VIAJE});
         if(fotos){
           let r=recLeer_().filter(r=>recValido_(r,viaje.ID_CHOFER,viaje.ID_VEHICULO)).pop();
-          let inspeccion=r?.ID_INSPECCION||viaje.ID_INSPECCION||obtenerInspecciones().find(i=>viaje.ID_ASIGNACION&&recIgual_(i.ID_ASIGNACION,viaje.ID_ASIGNACION)&&recIgual_(i.ID_CHOFER,viaje.ID_CHOFER)&&recIgual_(i.ID_VEHICULO,viaje.ID_VEHICULO))?.ID_INSPECCION;
+          let inspeccion=viaje.ID_INSPECCION||r?.ID_INSPECCION||obtenerInspecciones().find(i=>viaje.ID_ASIGNACION&&recIgual_(i.ID_ASIGNACION,viaje.ID_ASIGNACION)&&recIgual_(i.ID_CHOFER,viaje.ID_CHOFER)&&recIgual_(i.ID_VEHICULO,viaje.ID_VEHICULO))?.ID_INSPECCION;
           if(!inspeccion){inspeccion=generarID_('INS');insertarObjeto_(CONFIG.HOJAS.INSPECCIONES,{ID_INSPECCION:inspeccion,ID_CHOFER:viaje.ID_CHOFER,ID_VEHICULO:viaje.ID_VEHICULO,ID_ASIGNACION:viaje.ID_ASIGNACION||'',KM_INICIAL:viaje.KM_INICIAL,FECHA:viaje.HORA_INICIO,HORA:viaje.HORA_INICIO,RESULTADO:'APTO',ESTADO:'FINALIZADA',FECHA_FINALIZACION:viaje.HORA_INICIO,OBSERVACIONES:'Vinculada a cuatro fotos ya confirmadas de la salida del día'});}
           if(!r)r=insertarObjeto_(REC_CHOFER_HOJA,{ID_RECORRIDO:generarID_('REC'),DIA:recDia_(viaje.HORA_INICIO),ID_CHOFER:viaje.ID_CHOFER,ID_VEHICULO:viaje.ID_VEHICULO,ID_INSPECCION:inspeccion,ID_VIAJE_ORIGEN:viaje.ID_VIAJE,ESTADO:'ABIERTO',HORA_INICIO:viaje.HORA_INICIO,HORA_FIN:'',MOTIVO_CIERRE:''});
           viaje=recVincular_(viaje,r,inspeccion);
@@ -5708,6 +5710,7 @@ function recDespuesCierre_(viaje,d){
 function recIniciar_(datos,secretaria){
   // Las marcas internas no pueden llegar desde un POST manipulado.
   const d={...datos,__recorridoId:'',__inspeccionId:''};
+  const fotosPorViaje=!secretaria && d.fotosPorViaje===true;
   const lock=recTomarReservaViaje_(d);
   try{
     if(secretaria)validarChoferSecretaria_(d);
@@ -5720,10 +5723,15 @@ function recIniciar_(datos,secretaria){
     const existente=viajes.find(v=>secretaria?!!d.idViaje&&recIgual_(v.ID_VIAJE,d.idViaje):recMismaSalida_(v,d));
     if(existente && (!recIgual_(existente.ID_CHOFER,d.idChofer)||!recIgual_(existente.ID_VEHICULO,d.idVehiculo)))throw new Error('El viaje ya pertenece a otro chofer o vehículo.');
     const anterior=existente?.ID_RECORRIDO?recLeer_().find(r=>recIgual_(r.ID_RECORRIDO,existente.ID_RECORRIDO)):null;
+    const inspeccionCompartida=!!anterior && recIgual_(existente.ID_INSPECCION,anterior.ID_INSPECCION) &&
+      !recIgual_(existente.ID_VIAJE,anterior.ID_VIAJE_ORIGEN);
+    const origenFotos=fotosPorViaje?existente?.ID_VIAJE:anterior?.ID_VIAJE_ORIGEN;
     // Un reintento confirmado no vuelve a abrir el recorrido ni sube fotos otra vez.
-    const fotosAnteriores=existente&&anterior?recFotos_(anterior):null;
+    const fotosAnteriores=anterior&&(!fotosPorViaje||(!inspeccionCompartida&&existente.ID_INSPECCION))
+      ?recFotos_({ID_VIAJE_ORIGEN:origenFotos}):null;
     if(fotosAnteriores){
-      const fotos={...fotosAnteriores,reutilizadas:!recIgual_(anterior.ID_VIAJE_ORIGEN,existente.ID_VIAJE),ID_RECORRIDO:anterior.ID_RECORRIDO,ID_INSPECCION:anterior.ID_INSPECCION,ID_VIAJE_ORIGEN:anterior.ID_VIAJE_ORIGEN};
+      const fotos={...fotosAnteriores,reutilizadas:!recIgual_(origenFotos,existente.ID_VIAJE),ID_RECORRIDO:anterior.ID_RECORRIDO,
+        ID_INSPECCION:fotosPorViaje?existente.ID_INSPECCION:anterior.ID_INSPECCION,ID_VIAJE_ORIGEN:origenFotos};
       sincronizarHorarioServicioDesdeViaje_(existente);
       return secretaria?{ok:true,viaje:existente,FOTOS_SALIDA:fotos,RECORRIDO:anterior,IDEMPOTENTE:true}:{...existente,FOTOS_SALIDA:fotos,RECORRIDO:anterior,IDEMPOTENTE:true};
     }
@@ -5731,11 +5739,16 @@ function recIniciar_(datos,secretaria){
     if(conflictos.some(v=>recIgual_(v.ID_CHOFER,d.idChofer)))throw new Error('Ya tenés un servicio en curso. Finalizalo antes de iniciar otro.');
     // Las filas históricas de otra jornada no reservan hoy la unidad de otro chofer.
     if(conflictos.some(v=>recIgual_(v.ID_VEHICULO,d.idVehiculo)&&recDia_(v.HORA_INICIO||v.FECHA)===recDia_(d.horaInicio||ahora_())))throw new Error('El vehículo tiene un servicio en curso de otro chofer en esta jornada. Revisá ese viaje desde el panel.');
-    const rutas=recLeer_();let r=rutas.filter(r=>recValido_(r,d.idChofer,d.idVehiculo)).pop()||null;
-    if(r&&!recFotos_(r))r=null;
-    if(d.idRecorrido && (!r||!recIgual_(r.ID_RECORRIDO,d.idRecorrido)))throw new Error('La inspección ya no está vigente. Actualizá la pantalla y tomá cuatro fotos nuevas.');
-    if(r){d.__recorridoId=r.ID_RECORRIDO;d.__inspeccionId=r.ID_INSPECCION;}
-    else if(!existente && !['frente','trasera','lateral_derecho','lateral_izquierdo'].every(k=>!!d.fotos?.[k]))throw new Error('Se requieren las cuatro fotos para abrir un nuevo recorrido.');
+    const rutas=recLeer_();
+    let r=(fotosPorViaje&&anterior)||rutas.filter(r=>recValido_(r,d.idChofer,d.idVehiculo)).pop()||null;
+    if(!fotosPorViaje){
+      if(r&&!recFotos_(r))r=null;
+      if(d.idRecorrido && (!r||!recIgual_(r.ID_RECORRIDO,d.idRecorrido)))throw new Error('La inspección ya no está vigente. Actualizá la pantalla y tomá cuatro fotos nuevas.');
+      if(r){d.__recorridoId=r.ID_RECORRIDO;d.__inspeccionId=r.ID_INSPECCION;}
+    }
+    if(!existente && (fotosPorViaje||!r) && !['frente','trasera','lateral_derecho','lateral_izquierdo'].every(k=>!!d.fotos?.[k])){
+      throw new Error(fotosPorViaje?'Se requieren cuatro fotos nuevas para iniciar el viaje.':'Se requieren las cuatro fotos para abrir un nuevo recorrido.');
+    }
     // Preparación aditiva de columnas; no cambia ni elimina filas anteriores.
     const ss=obtenerSpreadsheet_();
     if(!ss.getSheetByName(REC_CHOFER_HOJA))throw new Error('Falta preparar las inspecciones por recorrido en el backend.');
@@ -5746,7 +5759,8 @@ function recIniciar_(datos,secretaria){
     }else respuesta=secretaria?iniciarViajeSecretariaBase_(d):iniciarViajeBase_(d);
     let viaje=respuesta.viaje||respuesta;const fotos=respuesta.FOTOS_SALIDA;
     if(!fotos||fotos.registradas!==4||fotos.errores.length||fotos.faltantes.length)return respuesta;
-    let inspeccion=r?.ID_INSPECCION||viaje.ID_INSPECCION||respuesta.ID_INSPECCION;
+    const inspeccionViaje=viaje.ID_INSPECCION||respuesta.ID_INSPECCION;
+    let inspeccion=fotosPorViaje?(inspeccionCompartida?'':inspeccionViaje):(r?.ID_INSPECCION||inspeccionViaje);
     if(!inspeccion){inspeccion=generarID_('INS');insertarObjeto_(CONFIG.HOJAS.INSPECCIONES,{ID_INSPECCION:inspeccion,FECHA:viaje.HORA_INICIO,HORA:viaje.HORA_INICIO,ID_ASIGNACION:viaje.ID_ASIGNACION||'',ID_CHOFER:viaje.ID_CHOFER,ID_VEHICULO:viaje.ID_VEHICULO,KM_INICIAL:viaje.KM_INICIAL,RESULTADO:'APTO',ESTADO:'FINALIZADA',FECHA_FINALIZACION:ahora_(),OBSERVACIONES:'Inspección inicial del recorrido'});}
     if(!r){
       r=insertarObjeto_(REC_CHOFER_HOJA,{ID_RECORRIDO:generarID_('REC'),DIA:recDia_(viaje.HORA_INICIO),ID_CHOFER:d.idChofer,ID_VEHICULO:d.idVehiculo,ID_INSPECCION:inspeccion,ID_VIAJE_ORIGEN:viaje.ID_VIAJE,ESTADO:'ABIERTO',HORA_INICIO:viaje.HORA_INICIO,HORA_FIN:'',MOTIVO_CIERRE:''});
@@ -5758,8 +5772,10 @@ function recIniciar_(datos,secretaria){
       if(Number.isFinite(inicial)&&(!Number.isFinite(actual)||actual<inicial)){asegurarColumnaVehiculosKM_();actualizarPorID_(CONFIG.HOJAS.VEHICULOS,'ID_VEHICULO',viaje.ID_VEHICULO,{KM_ACTUAL:inicial});}
     }
     // Un cambio real de unidad invalida el recorrido anterior, incluso si luego vuelve a ella.
-    for(const otra of rutas.filter(x=>(recIgual_(x.ID_CHOFER,d.idChofer)||recIgual_(x.ID_VEHICULO,d.idVehiculo))&&normalizar_(x.ESTADO)==='ABIERTO'&&!recIgual_(x.ID_RECORRIDO,r.ID_RECORRIDO)))recCerrarInterno_(otra.ID_RECORRIDO,'CAMBIO DE VEHICULO O JORNADA',null,viaje.ID_VIAJE);
-    const confirmadas={...fotos,ID_RECORRIDO:r.ID_RECORRIDO,ID_INSPECCION:inspeccion,ID_VIAJE_ORIGEN:r.ID_VIAJE_ORIGEN};
+    if(!fotosPorViaje||recActivo_(viaje)){
+      for(const otra of rutas.filter(x=>(recIgual_(x.ID_CHOFER,d.idChofer)||recIgual_(x.ID_VEHICULO,d.idVehiculo))&&normalizar_(x.ESTADO)==='ABIERTO'&&!recIgual_(x.ID_RECORRIDO,r.ID_RECORRIDO)))recCerrarInterno_(otra.ID_RECORRIDO,'CAMBIO DE VEHICULO O JORNADA',null,viaje.ID_VIAJE);
+    }
+    const confirmadas={...fotos,ID_RECORRIDO:r.ID_RECORRIDO,ID_INSPECCION:inspeccion,ID_VIAJE_ORIGEN:fotosPorViaje?viaje.ID_VIAJE:r.ID_VIAJE_ORIGEN};
     return secretaria?{...respuesta,viaje,FOTOS_SALIDA:confirmadas,RECORRIDO:r}:{...respuesta,...viaje,FOTOS_SALIDA:confirmadas,RECORRIDO:r};
   }finally{lock.releaseLock();}
 }
