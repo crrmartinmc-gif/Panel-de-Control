@@ -31,6 +31,51 @@ test('no une recorridos distintos ni convierte coordenadas vacías en cero',()=>
 });
 test('sintaxis de todos los scripts del Panel',()=>{for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g))new vm.Script(m[1]);});
 
+test('Ver evidencia abre el visor del mapa y muestra la foto del reclamo',()=>{
+ const ids=['dvEvidenciaModal','dvEvidenciaTitulo','dvEvidenciaSub','dvEvidenciaImagen','dvEvidenciaSinImagen','dvEvidenciaInfo','dvEvidenciaLink'];
+ const elements=Object.fromEntries(ids.map(id=>{
+  assert.equal([...html.matchAll(new RegExp(`id="${id}"`,'g'))].length,1,`Falta el elemento del visor ${id}`);
+  return [id,{style:{},removeAttribute(name){delete this[name];}}];
+ }));
+ const classes=new Set();
+ const modal=elements.dvEvidenciaModal;
+ modal.classList={add:name=>classes.add(name),remove:name=>classes.delete(name),contains:name=>classes.has(name)};
+ let focused=false,openPopup,clickEvidence,keydown;
+ modal.querySelector=()=>({focus(){focused=true;}});
+ const document={baseURI:'https://panel.test/',getElementById:id=>elements[id],addEventListener(type,handler){if(type==='keydown') keydown=handler;}};
+ class Popup {
+  setLngLat(){return this;}
+  setHTML(markup){assert.match(markup,/Ver evidencia/);return this;}
+  on(name,fn){assert.equal(name,'open');openPopup=fn;}
+  addTo(){openPopup();}
+  remove(){}
+  getElement(){return {querySelector:selector=>selector==='.dv-evidencia-btn'?{addEventListener(type,fn){assert.equal(type,'click');clickEvidence=fn;}}:null};}
+ }
+ const d={calle:'Zapiola',numero:'698',localidad:'Turdera',zona:'Turdera'};
+ const url='https://drive.google.com/file/d/prueba-123/view?resourcekey=clave';
+ const ctx=vm.createContext({URL,document,dvMap:null,dvMapEvidencias:[{foto:url}],maplibregl:{Popup},
+  dvReclamoRealizado:()=>true,dvEsHoy:()=>true,dvEvidenciaCoincide:()=>true,dvReclamoTieneCorreccion:()=>false,
+  dvCoordenadaManualReclamo:()=>null,dvDireccionReclamo:r=>`${r.calle} ${r.numero}`,dvEscapar:String});
+ vm.runInContext(get('function dvUrlEvidencia','function dvLimpiarMarcadoresReclamos'),ctx);
+ ctx.dvAbrirPopupReclamo(d,[-58.4,-34.8]);
+ clickEvidence();
+ const img=elements.dvEvidenciaImagen,link=elements.dvEvidenciaLink,placeholder=elements.dvEvidenciaSinImagen;
+ assert(classes.has('show'));
+ assert(focused);
+ assert.match(elements.dvEvidenciaSub.textContent,/^Zapiola 698/);
+ assert.equal(img.src,'https://drive.google.com/thumbnail?id=prueba-123&sz=w1200&resourcekey=clave');
+ assert.equal(link.href,url);
+ img.onload();
+ assert.equal(img.style.display,'block');
+ assert.equal(placeholder.style.display,'none');
+ keydown({key:'Escape'});
+ assert.equal(classes.has('show'),false);
+ assert.equal(img.src,undefined);
+ clickEvidence();
+ img.onerror();
+ assert.match(placeholder.textContent,/archivo original/);
+ assert.equal(link.href,url);
+});
 
 test('un refresco reutiliza las fuentes; quitar filtros retira solo segmentos obsoletos',()=>{
  const {ctx,sources,layers}=harness(),now=Date.now();

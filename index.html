@@ -14750,13 +14750,18 @@ function dvUrlEvidencia(e){
 
 function dvConvertirUrlImagenDrive(url){
     const texto=String(url||"").trim();
-    if(!texto) return "";
-    if(texto.startsWith("data:image/")) return texto;
-    let match=texto.match(/\/file\/d\/([^/]+)/);
-    if(!match) match=texto.match(/[?&]id=([^&]+)/);
-    if(!match) match=texto.match(/\/d\/([^/]+)/);
-    if(match && match[1]) return "https://drive.google.com/thumbnail?id="+encodeURIComponent(match[1])+"&sz=w1200";
-    return texto;
+    if(!texto || texto.startsWith("data:image/")) return texto;
+    let original;
+    try{original=new URL(texto,document.baseURI);}catch(e){return texto;}
+    if(original.hostname!=="drive.google.com") return texto;
+    const id=original.pathname.match(/\/d\/([\w-]+)(?:\/|$)/)?.[1] || original.searchParams.get("id");
+    if(!id) return texto;
+    const miniatura=new URL("https://drive.google.com/thumbnail");
+    miniatura.searchParams.set("id",id);
+    miniatura.searchParams.set("sz","w1200");
+    const clave=original.searchParams.get("resourcekey");
+    if(clave) miniatura.searchParams.set("resourcekey",clave);
+    return miniatura.href;
 }
 
 function dvBuscarEvidenciaReclamo(d){
@@ -14779,30 +14784,28 @@ function dvAbrirEvidenciaReclamo(d){
     const noImg=document.getElementById("dvEvidenciaSinImagen");
     const info=document.getElementById("dvEvidenciaInfo");
     const link=document.getElementById("dvEvidenciaLink");
-    const titulo=document.getElementById("dvEvidenciaTitulo");
     const sub=document.getElementById("dvEvidenciaSub");
     if(!modal) return;
 
     const url=dvUrlEvidencia(evidencia);
     const preview=dvConvertirUrlImagenDrive(url);
-    titulo.textContent="📷 Evidencia del reclamo";
-    sub.textContent=`${dvDireccionReclamo(d)} · ${dvEscapar(d.localidad||"")} · ${dvEscapar(d.zona||"")}`;
+    sub.textContent=[dvDireccionReclamo(d),d.localidad,d.zona].filter(Boolean).join(" · ");
     info.innerHTML=(evidencia.latitud && evidencia.longitud)
         ? `🟢 <strong>Realizado hoy</strong><br>📍 Latitud: ${dvEscapar(evidencia.latitud)} · Longitud: ${dvEscapar(evidencia.longitud)}`
         : `🟢 <strong>Realizado hoy</strong><br>📍 Sin coordenadas registradas en la evidencia.`;
 
+    img.style.display="none";
+    noImg.style.display="flex";
+    noImg.textContent=preview ? "Cargando foto…" : "La evidencia registrada no tiene una foto asociada.";
     if(preview){
-        img.src=preview;
-        img.style.display="block";
-        noImg.style.display="none";
-        img.onerror=()=>{
-            img.style.display="none";
-            noImg.style.display="flex";
+        img.onload=()=>{
+            img.style.display="block";
+            noImg.style.display="none";
         };
-    }else{
-        img.removeAttribute("src");
-        img.style.display="none";
-        noImg.style.display="flex";
+        img.onerror=()=>{
+            noImg.textContent="No se pudo cargar la vista previa. Podés probar con el archivo original.";
+        };
+        img.src=preview;
     }
 
     if(url){
@@ -14813,14 +14816,27 @@ function dvAbrirEvidenciaReclamo(d){
         link.style.display="none";
     }
     modal.classList.add("show");
+    modal.querySelector(".dv-evidencia-close").focus();
 }
 
 function dvCerrarEvidenciaReclamo(){
     const modal=document.getElementById("dvEvidenciaModal");
-    if(modal) modal.classList.remove("show");
+    modal?.classList.remove("show");
     const img=document.getElementById("dvEvidenciaImagen");
-    if(img){img.removeAttribute("src");img.style.display="none";}
+    if(img){
+        img.onload=null;
+        img.onerror=null;
+        img.removeAttribute("src");
+        img.style.display="none";
+    }
 }
+
+document.addEventListener("keydown",event=>{
+    if(event.key==="Escape" && document.getElementById("dvEvidenciaModal")?.classList.contains("show")){
+        dvCerrarEvidenciaReclamo();
+        dvMap?.getCanvas().focus();
+    }
+});
 
 function dvAbrirPopupReclamo(d,lngLat){
     const realizado=dvReclamoRealizado(d);
@@ -18222,6 +18238,19 @@ function dvOrdenarCapasMapa(){
 
 <script src="./responsive.js?v=1"></script>
 <script src="./secretaria-panel.js?v=rechazo1"></script>
+
+<div id="dvEvidenciaModal" class="dv-evidencia-modal" role="dialog" aria-modal="true"
+     aria-labelledby="dvEvidenciaTitulo" onclick="if(event.target===this)dvCerrarEvidenciaReclamo()">
+    <div class="dv-evidencia-card">
+        <button type="button" class="dv-evidencia-close" aria-label="Cerrar evidencia" onclick="dvCerrarEvidenciaReclamo()">×</button>
+        <h2 id="dvEvidenciaTitulo" class="dv-evidencia-title">Evidencia del reclamo</h2>
+        <p id="dvEvidenciaSub" class="dv-evidencia-sub"></p>
+        <img id="dvEvidenciaImagen" class="dv-evidencia-img" alt="Foto de la recolección" style="display:none">
+        <div id="dvEvidenciaSinImagen" class="dv-evidencia-noimg" role="status"></div>
+        <div id="dvEvidenciaInfo" class="dv-evidencia-info"></div>
+        <a id="dvEvidenciaLink" class="dv-evidencia-link" target="_blank" rel="noopener noreferrer">Abrir foto original</a>
+    </div>
+</div>
 </body>
 </html>
 
